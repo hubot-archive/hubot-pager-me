@@ -14,12 +14,12 @@
 #   hubot pager me problems - return all open incidents
 #   hubot pager me ack <incident> - ack incident #<incident>
 #   hubot pager me resolve <incident1> <incident2> ... <incidentN> - ack all specified incidents
-#   hubot pager me ack - ack all triggered incidents 
+#   hubot pager me ack - ack all triggered incidents
 #   hubot pager me resolve <incident> - resolve incident #<incident>
 #   hubot pager me resolve <incident1> <incident2> ... <incidentN>- resolve all specified incidents
 #   hubot pager me resolve - resolve all acknowledged incidents
 #
-# Authors: 
+# Authors:
 #   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin
 
 inspect = require('util').inspect
@@ -32,7 +32,7 @@ pagerDutyBaseUrl       = "https://#{pagerDutySubdomain}.pagerduty.com/api/v1"
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
 pagerDutyScheduleId    = process.env.HUBOT_PAGERDUTY_SCHEDULE_ID
 pagerRoom              = process.env.HUBOT_PAGERDUTY_ROOM
-# Webhook listener endpoint. Set it to whatever URL you want, and make sure it matches your pagerduty service settings 
+# Webhook listener endpoint. Set it to whatever URL you want, and make sure it matches your pagerduty service settings
 pagerEndpoint          = process.env.HUBOT_PAGERDUTY_ENDPOINT || "/hook"
 
 module.exports = (robot) ->
@@ -142,7 +142,7 @@ module.exports = (robot) ->
         msg.send "Nothing to resolve"
         return
 
-      # only resolve things that are acknowledged 
+      # only resolve things that are acknowledged
       updateIncidents(msg, incidentNumbers, 'acknowledged', 'resolved')
 
   robot.respond /(pager|major)( me)? notes (.+)$/i, (msg) ->
@@ -313,7 +313,7 @@ module.exports = (robot) ->
      #   SERVICEDESC: 'snapshot_repositories',
      #   SERVICESTATE: 'CRITICAL',
      #   HOSTSTATE: 'UP' },
-    
+
     summary = if inc.trigger_summary_data
               # email services
               if inc.trigger_summary_data.subject
@@ -332,7 +332,7 @@ module.exports = (robot) ->
                     "- assigned to #{inc.assigned_to_user.name}"
                   else
                     ""
-                    
+
 
     "#{inc.incident_number}: #{inc.created_on} #{summary} #{assigned_to}\n"
 
@@ -387,7 +387,7 @@ module.exports = (robot) ->
             console.log res.statusCode
             console.log body
 
-  
+
   # Pagerduty Webhook Integration (For a payload example, see http://developer.pagerduty.com/documentation/rest/webhooks)
   parseWebhook = (req, res) ->
     hook = req.body
