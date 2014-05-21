@@ -23,6 +23,11 @@ Then add **hubot-pager-me** to your `external-scripts.json`:
 * HUBOT_PAGERDUTY_SERVICE_API_KEY - Service API Key from a 'General API Service'
 * HUBOT_PAGERDUTY_SCHEDULE_ID - The ID of the On-Call schedule used by `who's on call` and `pager me <minutes>`
 
+### Shotgun
+
+
+* HUBOT_PAGERDUTY_SHOTGUN_ID - a second ride-along schedule to the primary
+
 ### Webhook
 
 Using a webhook requires a bit more configuration:

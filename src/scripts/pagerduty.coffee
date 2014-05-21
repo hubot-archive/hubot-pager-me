@@ -6,6 +6,7 @@
 #   hubot who's on call - return the username of who's on call
 #   hubot pager me trigger <msg> - create a new incident with <msg>
 #   hubot pager me 60 - take the pager for 60 minutes
+#   hubot shotgun me 60 - take the secondary pager for 60 minutes
 #   hubot pager me as <email> - remember your pager email is <email>
 #   hubot pager me incidents - return the current incidents
 #   hubot pager me incident NNN - return the incident NNN
@@ -31,6 +32,7 @@ pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
 pagerDutyBaseUrl       = "https://#{pagerDutySubdomain}.pagerduty.com/api/v1"
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
 pagerDutyScheduleId    = process.env.HUBOT_PAGERDUTY_SCHEDULE_ID
+pagerDutyShotgunId     = process.env.HUBOT_PAGERDUTY_SHOTGUN_ID
 pagerRoom              = process.env.HUBOT_PAGERDUTY_ROOM
 # Webhook listener endpoint. Set it to whatever URL you want, and make sure it matches your pagerduty service settings 
 pagerEndpoint          = process.env.HUBOT_PAGERDUTY_ENDPOINT || "/hook"
@@ -84,6 +86,29 @@ module.exports = (robot) ->
             start = moment(json.override.start)
             end = moment(json.override.end)
             msg.send "Rejoice, #{old_username}! #{json.override.user.name} has the pager until #{end.format()}"
+
+  # Shotgun!
+  robot.respond /shotgun( me)? (\d+)/i, (msg) ->
+    withPagerDutyUser msg, (user) ->
+
+      userId = user.id
+      return unless userId
+
+      start     = moment().format()
+      minutes   = parseInt msg.match[2]
+      end       = moment().add('minutes', minutes).format()
+      override  = {
+        'start':     start,
+        'end':       end,
+        'user_id':   userId
+      }
+      withCurrentShotgun msg, (old_username) ->
+        data = { 'override': override }
+        pagerDutyPost msg, "/schedules/#{pagerDutyShotgunId}/overrides", data, (json) ->
+          if json.override
+            start = moment(json.override.start)
+            end = moment(json.override.end)
+            msg.send "#{json.override.user.name} has stolen the pager from #{old_username}. He might steal it back at #{end.format()}"
 
   robot.respond /(pager|major)( me)? incident (.*)$/, (msg) ->
     pagerDutyIncident msg, msg.match[3], (incident) ->
@@ -280,6 +305,19 @@ module.exports = (robot) ->
       overflow: 'true'
     }
     pagerDutyGet msg, "/schedules/#{pagerDutyScheduleId}/entries", query, (json) ->
+      if json.entries and json.entries.length > 0
+        cb(json.entries[0].user.name)
+
+  withCurrentShotgun = (msg, cb) ->
+    oneHour = moment().add('hours', 1).format()
+    now = moment().format()
+
+    query = {
+      since: now,
+      until: oneHour,
+      overflow: 'true'
+    }
+    pagerDutyGet msg, "/schedules/#{pagerDutyShotgunId}/entries", query, (json) ->
       if json.entries and json.entries.length > 0
         cb(json.entries[0].user.name)
 
