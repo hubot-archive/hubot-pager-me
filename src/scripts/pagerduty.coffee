@@ -351,7 +351,7 @@ module.exports = (robot) ->
      #   SERVICEDESC: 'snapshot_repositories',
      #   SERVICESTATE: 'CRITICAL',
      #   HOSTSTATE: 'UP' },
-    
+
     summary = if inc.trigger_summary_data
               # email services
               if inc.trigger_summary_data.subject
@@ -370,7 +370,7 @@ module.exports = (robot) ->
                     "- assigned to #{inc.assigned_to_user.name}"
                   else
                     ""
-                    
+
 
     "#{inc.incident_number}: #{inc.created_on} #{summary} #{assigned_to}\n"
 
@@ -425,7 +425,7 @@ module.exports = (robot) ->
             console.log res.statusCode
             console.log body
 
-  
+
   # Pagerduty Webhook Integration (For a payload example, see http://developer.pagerduty.com/documentation/rest/webhooks)
   parseWebhook = (req, res) ->
     hook = req.body
