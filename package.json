@@ -9,11 +9,11 @@
 
   "repository": {
     "type": "git",
-    "url": "git://github.com/github/hubot-pager-me.git"
+    "url": "git://github.com/hubot-scripts/hubot-pager-me.git"
   },
 
   "bugs": {
-    "url": "https://github.com/github/hubot-pager-me/issues"
+    "url": "https://github.com/hubot-scripts/hubot-pager-me/issues"
   },
 
   "dependencies": {
