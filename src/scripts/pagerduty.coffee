@@ -542,7 +542,8 @@ module.exports = (robot) ->
 
   incidentsForEmail = (incidents, userEmail) ->
     incidents.filter (incident) ->
-      getUserForIncident(incident) == userEmail
+      incident.assigned_to.some (assignment) ->
+        assignment.object.email is userEmail
 
   generateIncidentString = (incident, hookType) ->
     console.log "hookType is " + hookType
