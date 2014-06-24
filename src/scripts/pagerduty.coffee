@@ -17,7 +17,7 @@
 #   hubot pager me ack - ack all triggered incidents assigned to you
 #   hubot pager me resolve <incident> - resolve incident #<incident>
 #   hubot pager me resolve <incident1> <incident2> ... <incidentN>- resolve all specified incidents
-#   hubot pager me resolve - resolve all acknowledged incidents
+#   hubot pager me resolve - resolve all acknowledged incidents assigned to you
 #   hubot pager me schedule - show the schedule, including overides, for the next month
 #   hubot pager me override <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
 #   hubot pager me overrides - show upcoming overrides for the next month
@@ -150,10 +150,17 @@ module.exports = (robot) ->
 
   robot.respond /(pager|major)( me)? res(olve)?(d)?$/i, (msg) ->
     pagerDutyIncidents msg, "acknowledged", (incidents) ->
-      incidentNumbers = (incident.incident_number for incident in incidents)
-      if incidentNumbers.length < 1
-        msg.send "Nothing to resolve"
+      filteredIncidents = incidentsForEmail(incidents, email)
+
+      if filteredIncidents.length is 0
+        # nothing assigned to the user, but there were others
+        if incidents.length > 0
+          msg.send "Nothing assigned to you to resolve. Resolve someone else's incident with `hubot pager ack <nnn>`"
+        else
+          msg.send "Nothing to resolve"
         return
+
+      incidentNumbers = (incident.incident_number for incident in filteredIncidents)
 
       # only resolve things that are acknowledged
       updateIncidents(msg, incidentNumbers, 'acknowledged', 'resolved')
