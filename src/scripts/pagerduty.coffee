@@ -14,7 +14,7 @@
 #   hubot pager me problems - return all open incidents
 #   hubot pager me ack <incident> - ack incident #<incident>
 #   hubot pager me resolve <incident1> <incident2> ... <incidentN> - ack all specified incidents
-#   hubot pager me ack - ack all triggered incidents
+#   hubot pager me ack - ack all triggered incidents assigned to you
 #   hubot pager me resolve <incident> - resolve incident #<incident>
 #   hubot pager me resolve <incident1> <incident2> ... <incidentN>- resolve all specified incidents
 #   hubot pager me resolve - resolve all acknowledged incidents
