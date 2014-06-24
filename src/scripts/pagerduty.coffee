@@ -38,6 +38,8 @@ pagerDutyScheduleId    = process.env.HUBOT_PAGERDUTY_SCHEDULE_ID
 pagerRoom              = process.env.HUBOT_PAGERDUTY_ROOM
 # Webhook listener endpoint. Set it to whatever URL you want, and make sure it matches your pagerduty service settings
 pagerEndpoint          = process.env.HUBOT_PAGERDUTY_ENDPOINT || "/hook"
+pagerNoop              = process.env.HUBOT_PAGERDUTY_NOOP
+pagerNoop               = false if pagerNoop is "false" or pagerNoop  is "off"
 
 module.exports = (robot) ->
   robot.respond /pager( me)?$/i, (msg) ->
@@ -326,6 +328,10 @@ module.exports = (robot) ->
     if missingEnvironmentForApi(msg)
       return
 
+    if pagerNoop
+      msg.send "Would have PUT #{url}: #{inspect data}"
+      return
+
     json = JSON.stringify(data)
     auth = "Token token=#{pagerDutyApiKey}"
     msg.http(pagerDutyBaseUrl + url)
@@ -346,6 +352,10 @@ module.exports = (robot) ->
     if missingEnvironmentForApi(msg)
       return
 
+    if pagerNoop
+      msg.send "Would have POST #{url}: #{inspect data}"
+      return
+
     json = JSON.stringify(data)
     auth = "Token token=#{pagerDutyApiKey}"
     msg.http(pagerDutyBaseUrl + url)
@@ -364,6 +374,10 @@ module.exports = (robot) ->
 
   pagerDutyDelete = (msg, url, cb) ->
     if missingEnvironmentForApi(msg)
+      return
+
+    if pagerNoop
+      msg.send "Would have DELETE #{url}"
       return
 
     auth = "Token token=#{pagerDutyApiKey}"
