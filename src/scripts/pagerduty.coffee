@@ -125,12 +125,17 @@ module.exports = (robot) ->
   robot.respond /(pager|major)( me)? ack(nowledge)?$/i, (msg) ->
     pagerDutyIncidents msg, 'triggered,acknwowledged', (incidents) ->
       email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
-      incidents = incidentsForEmail(incidents, email)
+      filteredIncidents = incidentsForEmail(incidents, email)
 
-      incidentNumbers = (incident.incident_number for incident in incidents)
-      if incidentNumbers.length < 1
-        msg.send "Nothing to acknowledge"
+      if filteredIncidents.length is 0
+        # nothing assigned to the user, but there were others
+        if incidents.length > 0
+          msg.send "Nothing assigned to you to acknowledge. Acknowledge someone else's incident with `hubot pager ack <nnn>`"
+        else
+          msg.send "Nothing to acknowledge"
         return
+
+      incidentNumbers = (incident.incident_number for incident in filteredIncidents)
 
       # only acknowledge triggered things
       updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged')
