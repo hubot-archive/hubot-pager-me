@@ -513,9 +513,9 @@ module.exports = (robot) ->
     else
       '(???)'
 
-  incidentsForEmail = (incidents, user_email) ->
+  incidentsForEmail = (incidents, userEmail) ->
     incidents.filter (incident) ->
-      getUserForIncident(incident) == user_email
+      getUserForIncident(incident) == userEmail
 
   generateIncidentString = (incident, hookType) ->
     console.log "hookType is " + hookType
