@@ -208,6 +208,10 @@ module.exports = (robot) ->
   robot.respond /(pager|major)( me)? (override) ([\w\-:]*) - ([\w\-:]*)( (.*))?$/i, (msg) ->
     if msg.match[7]
       overrideUser = robot.brain.userForName(msg.match[7])
+
+      unless overrideUser
+        msg.send "Sorry, I don't seem to know who that is. Are you sure they are in chat?"
+        return
     else
       overrideUser = msg.message.user
 
