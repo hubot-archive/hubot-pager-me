@@ -19,7 +19,7 @@
 #   hubot pager me resolve <incident1> <incident2> ... <incidentN>- resolve all specified incidents
 #   hubot pager me resolve - resolve all acknowledged incidents
 #   hubot pager me schedule - show me the final schedule
-#   hubot pager me override Date.parse-able - Date.parse-able [username] - create an override
+#   hubot pager me override <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
 #   hubot pager me overrides - show upcoming overrides
 #   hubot pager me override delete <id> - delete an override by its ID
 #
