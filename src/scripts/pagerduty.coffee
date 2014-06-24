@@ -197,9 +197,9 @@ module.exports = (robot) ->
         buffer = ""
         for entry in sortedEntries
           if entry.id
-            buffer += "* (#{entry.id}) #{entry.start} - #{entry.end}: #{entry.user.name}\n"
+            buffer += "* (#{entry.id}) #{entry.start} - #{entry.end} #{entry.user.name}\n"
           else
-            buffer += "* #{entry.start} - #{entry.end}: #{entry.user.name}\n"
+            buffer += "* #{entry.start} - #{entry.end} #{entry.user.name}\n"
         if buffer == ""
           msg.send "None found!"
         else
