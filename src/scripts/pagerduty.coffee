@@ -191,8 +191,11 @@ module.exports = (robot) ->
     pagerDutyGet msg, "/schedules/#{pagerDutyScheduleId}/#{thing}", query, (json) ->
       entries = json.entries || json.overrides
       if entries
+        sortedEntries = entries.sort (a, b) ->
+          moment(a.start).unix() - moment(b.start).unix()
+
         buffer = ""
-        for entry in entries
+        for entry in sortedEntries
           if entry.id
             buffer += "* (#{entry.id}) #{entry.start} - #{entry.end}: #{entry.user.name}\n"
           else
