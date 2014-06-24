@@ -460,8 +460,9 @@ module.exports = (robot) ->
                 ""
             else
               ""
-    assigned_to = if inc.assigned_to_user
-                    "- assigned to #{inc.assigned_to_user.name}"
+    assigned_to = if inc.assigned_to
+                    names = inc.assigned_to.map (assignment) -> assignment.object.name
+                    "- assigned to #{names.join(', ')}"
                   else
                     ""
 
