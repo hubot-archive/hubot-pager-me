@@ -278,7 +278,7 @@ module.exports = (robot) ->
 
     pagerDutyGet msg, "/users", {query: email}, (json) ->
       if json.users.length isnt 1
-        msg.send "Sorry, I expected to get 1 user back for #{email}, but got #{json.users.length} :sweat:"
+        msg.send "Sorry, I expected to get 1 user back for #{email}, but got #{json.users.length} :sweat:. Can you make sure that is actually a real user on PagerDuty?"
         return
 
       cb(json.users[0])
