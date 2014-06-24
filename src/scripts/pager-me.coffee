@@ -19,9 +19,6 @@
 #   hubot pager me resolve <incident1> <incident2> ... <incidentN>- resolve all specified incidents
 #   hubot pager me resolve - resolve all acknowledged incidents
 #
-# Dependencies:
-#  "moment": "1.6.2"
-#
 # Notes: 
 #   To setup the webhooks and get the alerts in your chatrooms, you need to add the endpoint you define here (e.g /hooks) in 
 #   the service settings of your Pagerduty accounts. You also need to define the room in which you want them to appear. 
