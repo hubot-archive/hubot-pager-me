@@ -18,7 +18,7 @@
 
   "dependencies": {
     "coffee-script": "~1.6",
-    "moment": "1.6.2"
+    "moment": "2.7.0"
   },
 
   "devDependencies": {

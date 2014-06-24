@@ -18,6 +18,10 @@
 #   hubot pager me resolve <incident> - resolve incident #<incident>
 #   hubot pager me resolve <incident1> <incident2> ... <incidentN>- resolve all specified incidents
 #   hubot pager me resolve - resolve all acknowledged incidents
+#   hubot pager me schedule - show me the final schedule
+#   hubot pager me override Date.parse-able - Date.parse-able [username] - create an override
+#   hubot pager me overrides - show upcoming overrides
+#   hubot pager me override delete <id> - delete an override by its ID
 #
 # Authors: 
 #   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin
@@ -41,7 +45,7 @@ module.exports = (robot) ->
       return
 
 
-    withPagerDutyUser msg, (user) ->
+    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
       emailNote = if msg.message.user.pagerdutyEmail
                     "You've told me your PagerDuty email is #{msg.message.user.pagerdutyEmail}"
                   else if msg.message.user.email_address
@@ -64,7 +68,7 @@ module.exports = (robot) ->
 
   # Assumes your Campfire usernames and PagerDuty names are identical
   robot.respond /pager( me)? (\d+)/i, (msg) ->
-    withPagerDutyUser msg, (user) ->
+    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
 
       userId = user.id
       return unless userId
@@ -158,7 +162,7 @@ module.exports = (robot) ->
     incidentId = msg.match[3]
     content = msg.match[4]
 
-    withPagerDutyUser msg, (user) ->
+    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
       userId = user.id
       return unless userId
 
@@ -173,6 +177,70 @@ module.exports = (robot) ->
         else
           msg.send "Sorry, I couldn't do it :("
 
+  robot.respond /(pager|major)( me)? (schedule|overrides)/i, (msg) ->
+    query = {
+      since: moment().format(),
+      until: moment().add('days', 30).format(),
+      overflow: 'true'
+    }
+
+    thing = 'entries'
+    if msg.match[3] && msg.match[3].match /overrides/
+      thing = 'overrides'
+      query['editable'] = 'true'
+
+    pagerDutyGet msg, "/schedules/#{pagerDutyScheduleId}/#{thing}", query, (json) ->
+      entries = json.entries || json.overrides
+      if entries
+        buffer = ""
+        for entry in entries
+          if entry.id
+            buffer += "* (#{entry.id}) #{entry.start} - #{entry.end}: #{entry.user.name}\n"
+          else
+            buffer += "* #{entry.start} - #{entry.end}: #{entry.user.name}\n"
+        if buffer == ""
+          msg.send "None found!"
+        else
+          msg.send buffer
+      else
+        msg.send "None found!"
+
+  robot.respond /(pager|major)( me)? (override) ([\w\-:]*) - ([\w\-:]*)( (.*))?$/i, (msg) ->
+    if msg.match[7]
+      overrideUser = robot.brain.userForName(msg.match[7])
+    else
+      overrideUser = msg.message.user
+
+    campfireUserToPagerDutyUser msg, overrideUser, (user) ->
+      userId = user.id
+      return unless userId
+
+      if moment(msg.match[4]).isValid() && moment(msg.match[5]).isValid()
+        start_time = moment(msg.match[4]).format()
+        end_time = moment(msg.match[5]).format()
+
+        override  = {
+          'start':     start_time,
+          'end':       end_time,
+          'user_id':   userId
+        }
+        data = { 'override': override }
+        pagerDutyPost msg, "/schedules/#{pagerDutyScheduleId}/overrides", data, (json) ->
+          if json && json.override
+            start = moment(json.override.start)
+            end = moment(json.override.end)
+            msg.send "Override setup! #{json.override.user.name} has the pager from #{start.format()} until #{end.format()}"
+          else
+            msg.send "That didn't work. Check Hubot's logs for an error!"
+      else
+        msg.send "Please use a http://momentjs.com/ compatible date!"
+
+  robot.respond /(pager|major)( me)? (override) (delete) (.*)$/i, (msg) ->
+    pagerDutyDelete msg, "/schedules/#{pagerDutyScheduleId}/overrides/#{msg.match[5]}", (success) ->
+      if success
+        msg.send ":boom:"
+      else
+        msg.send "Something went weird."
 
   # who is on call?
   robot.respond /who('s|s| is)? (on call|oncall)/i, (msg) ->
@@ -197,9 +265,9 @@ module.exports = (robot) ->
     missingAnything
 
 
-  withPagerDutyUser = (msg, cb) ->
+  campfireUserToPagerDutyUser = (msg, user, cb) ->
 
-    email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
+    email  = user.pagerdutyEmail || user.email_address
     unless email
       msg.send "Sorry, I can't figure out your email address :( Can you tell me with `#{robot.name} pager me as you@yourdomain.com`?"
       return
@@ -270,6 +338,25 @@ module.exports = (robot) ->
             json_body = null
         cb json_body
 
+  pagerDutyDelete = (msg, url, cb) ->
+    if missingEnvironmentForApi(msg)
+      return
+
+    auth = "Token token=#{pagerDutyApiKey}"
+    msg.http(pagerDutyBaseUrl + url)
+      .headers(Authorization: auth, Accept: 'application/json')
+      .header("content-length",0)
+      .delete() (err, res, body) ->
+        json_body = null
+        switch res.statusCode
+          when 204
+            value = true
+          else
+            console.log res.statusCode
+            console.log body
+            value = false
+        cb value
+
   withCurrentOncall = (msg, cb) ->
     oneHour = moment().add('hours', 1).format()
     now = moment().format()
@@ -332,12 +419,12 @@ module.exports = (robot) ->
                     "- assigned to #{inc.assigned_to_user.name}"
                   else
                     ""
-                    
+
 
     "#{inc.incident_number}: #{inc.created_on} #{summary} #{assigned_to}\n"
 
   updateIncidents = (msg, incidentNumbers, statusFilter, updatedStatus) ->
-    withPagerDutyUser msg, (user) ->
+    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
 
       requesterId = user.id
       return unless requesterId
