@@ -150,6 +150,7 @@ module.exports = (robot) ->
 
   robot.respond /(pager|major)( me)? res(olve)?(d)?$/i, (msg) ->
     pagerDutyIncidents msg, "acknowledged", (incidents) ->
+      email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
       filteredIncidents = incidentsForEmail(incidents, email)
 
       if filteredIncidents.length is 0
@@ -172,7 +173,6 @@ module.exports = (robot) ->
       for note in json.notes
         buffer += "#{note.created_at} #{note.user.name}: #{note.content}\n"
       msg.send buffer
-
 
   robot.respond /(pager|major)( me)? note ([\d\w]+) (.+)$/i, (msg) ->
     incidentId = msg.match[3]
