@@ -18,9 +18,9 @@
 #   hubot pager me resolve <incident> - resolve incident #<incident>
 #   hubot pager me resolve <incident1> <incident2> ... <incidentN>- resolve all specified incidents
 #   hubot pager me resolve - resolve all acknowledged incidents
-#   hubot pager me schedule - show me the final schedule
+#   hubot pager me schedule - show the schedule, including overides, for the next month
 #   hubot pager me override <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
-#   hubot pager me overrides - show upcoming overrides
+#   hubot pager me overrides - show upcoming overrides for the next month
 #   hubot pager me override delete <id> - delete an override by its ID
 #
 # Authors: 
@@ -43,7 +43,6 @@ module.exports = (robot) ->
   robot.respond /pager( me)?$/i, (msg) ->
     if missingEnvironmentForApi(msg)
       return
-
 
     campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
       emailNote = if msg.message.user.pagerdutyEmail
