@@ -272,8 +272,18 @@ module.exports = (robot) ->
   campfireUserToPagerDutyUser = (msg, user, cb) ->
 
     email  = user.pagerdutyEmail || user.email_address
+    speakerEmail = msg.message.user.pagerdutyEmail || msg.message.user.email_address
     unless email
-      msg.send "Sorry, I can't figure out your email address :( Can you tell me with `#{robot.name} pager me as you@yourdomain.com`?"
+      possessive = if email is speakerEmail
+                    "your"
+                   else
+                    "#{user.name}'s"
+      addressee = if email is speakerEmail
+                    "you"
+                  else
+                    "#{user.name}"
+
+      msg.send "Sorry, I can't figure out #{possesive} email address :( Can #{addressee} tell me with `#{robot.name} pager me as you@yourdomain.com`?"
       return
 
     pagerDutyGet msg, "/users", {query: email}, (json) ->
