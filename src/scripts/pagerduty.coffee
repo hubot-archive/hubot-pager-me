@@ -18,6 +18,10 @@
 #   hubot pager me resolve <incident> - resolve incident #<incident>
 #   hubot pager me resolve <incident1> <incident2> ... <incidentN>- resolve all specified incidents
 #   hubot pager me resolve - resolve all acknowledged incidents
+#   hubot pager me schedule - show the schedule, including overides, for the next month
+#   hubot pager me override <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
+#   hubot pager me overrides - show upcoming overrides for the next month
+#   hubot pager me override delete <id> - delete an override by its ID
 #
 # Authors:
 #   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin
@@ -40,8 +44,7 @@ module.exports = (robot) ->
     if missingEnvironmentForApi(msg)
       return
 
-
-    withPagerDutyUser msg, (user) ->
+    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
       emailNote = if msg.message.user.pagerdutyEmail
                     "You've told me your PagerDuty email is #{msg.message.user.pagerdutyEmail}"
                   else if msg.message.user.email_address
@@ -64,7 +67,7 @@ module.exports = (robot) ->
 
   # Assumes your Campfire usernames and PagerDuty names are identical
   robot.respond /pager( me)? (\d+)/i, (msg) ->
-    withPagerDutyUser msg, (user) ->
+    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
 
       userId = user.id
       return unless userId
@@ -161,7 +164,7 @@ module.exports = (robot) ->
     incidentId = msg.match[3]
     content = msg.match[4]
 
-    withPagerDutyUser msg, (user) ->
+    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
       userId = user.id
       return unless userId
 
@@ -176,6 +179,77 @@ module.exports = (robot) ->
         else
           msg.send "Sorry, I couldn't do it :("
 
+  robot.respond /(pager|major)( me)? (schedule|overrides)/i, (msg) ->
+    query = {
+      since: moment().format(),
+      until: moment().add('days', 30).format(),
+      overflow: 'true'
+    }
+
+    thing = 'entries'
+    if msg.match[3] && msg.match[3].match /overrides/
+      thing = 'overrides'
+      query['editable'] = 'true'
+
+    pagerDutyGet msg, "/schedules/#{pagerDutyScheduleId}/#{thing}", query, (json) ->
+      entries = json.entries || json.overrides
+      if entries
+        sortedEntries = entries.sort (a, b) ->
+          moment(a.start).unix() - moment(b.start).unix()
+
+        buffer = ""
+        for entry in sortedEntries
+          if entry.id
+            buffer += "* (#{entry.id}) #{entry.start} - #{entry.end} #{entry.user.name}\n"
+          else
+            buffer += "* #{entry.start} - #{entry.end} #{entry.user.name}\n"
+        if buffer == ""
+          msg.send "None found!"
+        else
+          msg.send buffer
+      else
+        msg.send "None found!"
+
+  robot.respond /(pager|major)( me)? (override) ([\w\-:]*) - ([\w\-:]*)( (.*))?$/i, (msg) ->
+    if msg.match[7]
+      overrideUser = robot.brain.userForName(msg.match[7])
+
+      unless overrideUser
+        msg.send "Sorry, I don't seem to know who that is. Are you sure they are in chat?"
+        return
+    else
+      overrideUser = msg.message.user
+
+    campfireUserToPagerDutyUser msg, overrideUser, (user) ->
+      userId = user.id
+      return unless userId
+
+      if moment(msg.match[4]).isValid() && moment(msg.match[5]).isValid()
+        start_time = moment(msg.match[4]).format()
+        end_time = moment(msg.match[5]).format()
+
+        override  = {
+          'start':     start_time,
+          'end':       end_time,
+          'user_id':   userId
+        }
+        data = { 'override': override }
+        pagerDutyPost msg, "/schedules/#{pagerDutyScheduleId}/overrides", data, (json) ->
+          if json && json.override
+            start = moment(json.override.start)
+            end = moment(json.override.end)
+            msg.send "Override setup! #{json.override.user.name} has the pager from #{start.format()} until #{end.format()}"
+          else
+            msg.send "That didn't work. Check Hubot's logs for an error!"
+      else
+        msg.send "Please use a http://momentjs.com/ compatible date!"
+
+  robot.respond /(pager|major)( me)? (override) (delete) (.*)$/i, (msg) ->
+    pagerDutyDelete msg, "/schedules/#{pagerDutyScheduleId}/overrides/#{msg.match[5]}", (success) ->
+      if success
+        msg.send ":boom:"
+      else
+        msg.send "Something went weird."
 
   # who is on call?
   robot.respond /who('s|s| is)? (on call|oncall)/i, (msg) ->
@@ -200,15 +274,26 @@ module.exports = (robot) ->
     missingAnything
 
 
-  withPagerDutyUser = (msg, cb) ->
-    email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
+  campfireUserToPagerDutyUser = (msg, user, cb) ->
+
+    email  = user.pagerdutyEmail || user.email_address
+    speakerEmail = msg.message.user.pagerdutyEmail || msg.message.user.email_address
     unless email
-      msg.send "Sorry, I can't figure out your email address :( Can you tell me with `#{robot.name} pager me as you@yourdomain.com`?"
+      possessive = if email is speakerEmail
+                    "your"
+                   else
+                    "#{user.name}'s"
+      addressee = if email is speakerEmail
+                    "you"
+                  else
+                    "#{user.name}"
+
+      msg.send "Sorry, I can't figure out #{possesive} email address :( Can #{addressee} tell me with `#{robot.name} pager me as you@yourdomain.com`?"
       return
 
     pagerDutyGet msg, "/users", {query: email}, (json) ->
       if json.users.length isnt 1
-        msg.send "Sorry, I expected to get 1 user back for #{email}, but got #{json.users.length} :sweat:"
+        msg.send "Sorry, I expected to get 1 user back for #{email}, but got #{json.users.length} :sweat:. Can you make sure that is actually a real user on PagerDuty?"
         return
 
       cb(json.users[0])
@@ -271,6 +356,25 @@ module.exports = (robot) ->
             console.log body
             json_body = null
         cb json_body
+
+  pagerDutyDelete = (msg, url, cb) ->
+    if missingEnvironmentForApi(msg)
+      return
+
+    auth = "Token token=#{pagerDutyApiKey}"
+    msg.http(pagerDutyBaseUrl + url)
+      .headers(Authorization: auth, Accept: 'application/json')
+      .header("content-length",0)
+      .delete() (err, res, body) ->
+        json_body = null
+        switch res.statusCode
+          when 204
+            value = true
+          else
+            console.log res.statusCode
+            console.log body
+            value = false
+        cb value
 
   withCurrentOncall = (msg, cb) ->
     oneHour = moment().add('hours', 1).format()
@@ -339,7 +443,7 @@ module.exports = (robot) ->
     "#{inc.incident_number}: #{inc.created_on} #{summary} #{assigned_to}\n"
 
   updateIncidents = (msg, incidentNumbers, statusFilter, updatedStatus) ->
-    withPagerDutyUser msg, (user) ->
+    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
 
       requesterId = user.id
       return unless requesterId
