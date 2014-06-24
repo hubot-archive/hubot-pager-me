@@ -13,11 +13,13 @@
 #   hubot pager me notes <incident> - show notes for incident #<incident>
 #   hubot pager me problems - return all open incidents
 #   hubot pager me ack <incident> - ack incident #<incident>
+#   hubot pager me ack - ack triggered incidents assigned to you
+#   hubot pager me ack! - ack all triggered incidents, not just yours
 #   hubot pager me resolve <incident1> <incident2> ... <incidentN> - ack all specified incidents
-#   hubot pager me ack - ack all triggered incidents assigned to you
 #   hubot pager me resolve <incident> - resolve incident #<incident>
 #   hubot pager me resolve <incident1> <incident2> ... <incidentN>- resolve all specified incidents
-#   hubot pager me resolve - resolve all acknowledged incidents assigned to you
+#   hubot pager me resolve - resolve acknowledged incidents assigned to you
+#   hubot pager me resolve! - resolve all acknowledged, not just yours
 #   hubot pager me schedule - show the schedule, including overides, for the next month
 #   hubot pager me override <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
 #   hubot pager me overrides - show upcoming overrides for the next month
@@ -124,14 +126,19 @@ module.exports = (robot) ->
     # if it ever doesn't need acknowledge again, it means it's timed out and has become 'triggered' again anyways
     updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged')
 
-  robot.respond /(pager|major)( me)? ack(nowledge)?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? ack(nowledge)?(!)?$/i, (msg) ->
+    force = msg.match[4]?
+
     pagerDutyIncidents msg, 'triggered,acknwowledged', (incidents) ->
       email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
-      filteredIncidents = incidentsForEmail(incidents, email)
+      filteredIncidents = if force
+                            incidents # don't filter at all
+                          else
+                            incidentsForEmail(incidents, email) # filter by email
 
       if filteredIncidents.length is 0
         # nothing assigned to the user, but there were others
-        if incidents.length > 0
+        if incidents.length > 0 and not force
           msg.send "Nothing assigned to you to acknowledge. Acknowledge someone else's incident with `hubot pager ack <nnn>`"
         else
           msg.send "Nothing to acknowledge"
@@ -148,14 +155,17 @@ module.exports = (robot) ->
     # allow resolving of triggered and acknowedlge, since being explicit
     updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'resolved')
 
-  robot.respond /(pager|major)( me)? res(olve)?(d)?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? res(olve)?(d)?(!)?$/i, (msg) ->
+    force = msg.match[5]?
     pagerDutyIncidents msg, "acknowledged", (incidents) ->
       email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
-      filteredIncidents = incidentsForEmail(incidents, email)
-
+      filteredIncidents = if force
+                            incidents # don't filter at all
+                          else
+                            incidentsForEmail(incidents, email) # filter by email
       if filteredIncidents.length is 0
         # nothing assigned to the user, but there were others
-        if incidents.length > 0
+        if incidents.length > 0 and not force
           msg.send "Nothing assigned to you to resolve. Resolve someone else's incident with `hubot pager ack <nnn>`"
         else
           msg.send "Nothing to resolve"
