@@ -13,17 +13,19 @@
 #   hubot pager me notes <incident> - show notes for incident #<incident>
 #   hubot pager me problems - return all open incidents
 #   hubot pager me ack <incident> - ack incident #<incident>
+#   hubot pager me ack - ack triggered incidents assigned to you
+#   hubot pager me ack! - ack all triggered incidents, not just yours
 #   hubot pager me resolve <incident1> <incident2> ... <incidentN> - ack all specified incidents
-#   hubot pager me ack - ack all triggered incidents 
 #   hubot pager me resolve <incident> - resolve incident #<incident>
 #   hubot pager me resolve <incident1> <incident2> ... <incidentN>- resolve all specified incidents
-#   hubot pager me resolve - resolve all acknowledged incidents
+#   hubot pager me resolve - resolve acknowledged incidents assigned to you
+#   hubot pager me resolve! - resolve all acknowledged, not just yours
 #   hubot pager me schedule - show the schedule, including overides, for the next month
 #   hubot pager me override <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
 #   hubot pager me overrides - show upcoming overrides for the next month
 #   hubot pager me override delete <id> - delete an override by its ID
 #
-# Authors: 
+# Authors:
 #   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin
 
 inspect = require('util').inspect
@@ -36,8 +38,10 @@ pagerDutyBaseUrl       = "https://#{pagerDutySubdomain}.pagerduty.com/api/v1"
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
 pagerDutyScheduleId    = process.env.HUBOT_PAGERDUTY_SCHEDULE_ID
 pagerRoom              = process.env.HUBOT_PAGERDUTY_ROOM
-# Webhook listener endpoint. Set it to whatever URL you want, and make sure it matches your pagerduty service settings 
+# Webhook listener endpoint. Set it to whatever URL you want, and make sure it matches your pagerduty service settings
 pagerEndpoint          = process.env.HUBOT_PAGERDUTY_ENDPOINT || "/hook"
+pagerNoop              = process.env.HUBOT_PAGERDUTY_NOOP
+pagerNoop               = false if pagerNoop is "false" or pagerNoop  is "off"
 
 module.exports = (robot) ->
   robot.respond /pager( me)?$/i, (msg) ->
@@ -122,12 +126,25 @@ module.exports = (robot) ->
     # if it ever doesn't need acknowledge again, it means it's timed out and has become 'triggered' again anyways
     updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged')
 
-  robot.respond /(pager|major)( me)? ack(nowledge)?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? ack(nowledge)?(!)?$/i, (msg) ->
+    force = msg.match[4]?
+
     pagerDutyIncidents msg, 'triggered,acknwowledged', (incidents) ->
-      incidentNumbers = (incident.incident_number for incident in incidents)
-      if incidentNumbers.length < 1
-        msg.send "Nothing to acknowledge"
+      email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
+      filteredIncidents = if force
+                            incidents # don't filter at all
+                          else
+                            incidentsForEmail(incidents, email) # filter by email
+
+      if filteredIncidents.length is 0
+        # nothing assigned to the user, but there were others
+        if incidents.length > 0 and not force
+          msg.send "Nothing assigned to you to acknowledge. Acknowledge someone else's incident with `hubot pager ack <nnn>`"
+        else
+          msg.send "Nothing to acknowledge"
         return
+
+      incidentNumbers = (incident.incident_number for incident in filteredIncidents)
 
       # only acknowledge triggered things
       updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged')
@@ -138,14 +155,25 @@ module.exports = (robot) ->
     # allow resolving of triggered and acknowedlge, since being explicit
     updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'resolved')
 
-  robot.respond /(pager|major)( me)? res(olve)?(d)?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? res(olve)?(d)?(!)?$/i, (msg) ->
+    force = msg.match[5]?
     pagerDutyIncidents msg, "acknowledged", (incidents) ->
-      incidentNumbers = (incident.incident_number for incident in incidents)
-      if incidentNumbers.length < 1
-        msg.send "Nothing to resolve"
+      email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
+      filteredIncidents = if force
+                            incidents # don't filter at all
+                          else
+                            incidentsForEmail(incidents, email) # filter by email
+      if filteredIncidents.length is 0
+        # nothing assigned to the user, but there were others
+        if incidents.length > 0 and not force
+          msg.send "Nothing assigned to you to resolve. Resolve someone else's incident with `hubot pager ack <nnn>`"
+        else
+          msg.send "Nothing to resolve"
         return
 
-      # only resolve things that are acknowledged 
+      incidentNumbers = (incident.incident_number for incident in filteredIncidents)
+
+      # only resolve things that are acknowledged
       updateIncidents(msg, incidentNumbers, 'acknowledged', 'resolved')
 
   robot.respond /(pager|major)( me)? notes (.+)$/i, (msg) ->
@@ -155,7 +183,6 @@ module.exports = (robot) ->
       for note in json.notes
         buffer += "#{note.created_at} #{note.user.name}: #{note.content}\n"
       msg.send buffer
-
 
   robot.respond /(pager|major)( me)? note ([\d\w]+) (.+)$/i, (msg) ->
     incidentId = msg.match[3]
@@ -318,6 +345,10 @@ module.exports = (robot) ->
     if missingEnvironmentForApi(msg)
       return
 
+    if pagerNoop
+      msg.send "Would have PUT #{url}: #{inspect data}"
+      return
+
     json = JSON.stringify(data)
     auth = "Token token=#{pagerDutyApiKey}"
     msg.http(pagerDutyBaseUrl + url)
@@ -338,6 +369,10 @@ module.exports = (robot) ->
     if missingEnvironmentForApi(msg)
       return
 
+    if pagerNoop
+      msg.send "Would have POST #{url}: #{inspect data}"
+      return
+
     json = JSON.stringify(data)
     auth = "Token token=#{pagerDutyApiKey}"
     msg.http(pagerDutyBaseUrl + url)
@@ -356,6 +391,10 @@ module.exports = (robot) ->
 
   pagerDutyDelete = (msg, url, cb) ->
     if missingEnvironmentForApi(msg)
+      return
+
+    if pagerNoop
+      msg.send "Would have DELETE #{url}"
       return
 
     auth = "Token token=#{pagerDutyApiKey}"
@@ -416,7 +455,7 @@ module.exports = (robot) ->
      #   SERVICEDESC: 'snapshot_repositories',
      #   SERVICESTATE: 'CRITICAL',
      #   HOSTSTATE: 'UP' },
-    
+
     summary = if inc.trigger_summary_data
               # email services
               if inc.trigger_summary_data.subject
@@ -431,8 +470,9 @@ module.exports = (robot) ->
                 ""
             else
               ""
-    assigned_to = if inc.assigned_to_user
-                    "- assigned to #{inc.assigned_to_user.name}"
+    assigned_to = if inc.assigned_to
+                    names = inc.assigned_to.map (assignment) -> assignment.object.name
+                    "- assigned to #{names.join(', ')}"
                   else
                     ""
 
@@ -490,7 +530,7 @@ module.exports = (robot) ->
             console.log res.statusCode
             console.log body
 
-  
+
   # Pagerduty Webhook Integration (For a payload example, see http://developer.pagerduty.com/documentation/rest/webhooks)
   parseWebhook = (req, res) ->
     hook = req.body
@@ -510,49 +550,57 @@ module.exports = (robot) ->
     else
       '(???)'
 
+  incidentsForEmail = (incidents, userEmail) ->
+    incidents.filter (incident) ->
+      incident.assigned_to.some (assignment) ->
+        assignment.object.email is userEmail
+
   generateIncidentString = (incident, hookType) ->
     console.log "hookType is " + hookType
+    assigned_user   = getUserForIncident(incident)
+    incident_number = incident.incident_number
+
     if hookType == "incident.trigger"
       """
-      Incident # #{incident.incident_number} :
-      #{incident.status} and assigned to #{getUserForIncident(incident)}
+      Incident # #{incident_number} :
+      #{incident.status} and assigned to #{assigned_user}
        #{incident.html_url}
-      To acknowledge: @#{robot.name} pager me ack #{incident.incident_number}
-       To resolve: @#{robot.name} pager me resolve #{incident.incident_number}
+      To acknowledge: @#{robot.name} pager me ack #{incident_number}
+      To resolve: @#{robot.name} pager me resolve #{}
       """
     else if hookType == "incident.acknowledge"
       """
-      Incident # #{incident.incident_number} :
-      #{incident.status} and assigned to #{getUserForIncident(incident)}
+      Incident # #{incident_number} :
+      #{incident.status} and assigned to #{assigned_user}
        #{incident.html_url}
-      To resolve: @#{robot.name} pager me resolve #{incident.incident_number}
+      To resolve: @#{robot.name} pager me resolve #{incident_number}
       """
     else if hookType == "incident.resolve"
       """
-      Incident # #{incident.incident_number} has been resolved by #{getUserForIncident(incident)}
+      Incident # #{incident_number} has been resolved by #{assigned_user}
        #{incident.html_url}
       """
     else if hookType == "incident.unacknowledge"
       """
-      #{incident.status} , unacknowledged and assigned to #{getUserForIncident(incident)}
+      #{incident.status} , unacknowledged and assigned to #{assigned_user}
        #{incident.html_url}
-      To acknowledge: @#{robot.name} pager me ack #{incident.incident_number}
-       To resolve: @#{robot.name} pager me resolve #{incident.incident_number}
+      To acknowledge: @#{robot.name} pager me ack #{incident_number}
+       To resolve: @#{robot.name} pager me resolve #{incident_number}
       """
     else if hookType == "incident.assign"
       """
-      Incident # #{incident.incident_number} :
-      #{incident.status} , reassigned to #{getUserForIncident(incident)}
+      Incident # #{incident_number} :
+      #{incident.status} , reassigned to #{assigned_user}
        #{incident.html_url}
-      To resolve: @#{robot.name} pager me resolve #{incident.incident_number}
+      To resolve: @#{robot.name} pager me resolve #{incident_number}
       """
     else if hookType == "incident.escalate"
       """
-      Incident # #{incident.incident_number} :
-      #{incident.status} , was escalated and assigned to #{getUserForIncident(incident)}
+      Incident # #{incident_number} :
+      #{incident.status} , was escalated and assigned to #{assigned_user}
        #{incident.html_url}
-      To acknowledge: @#{robot.name} pager me ack #{incident.incident_number}
-       To resolve: @#{robot.name} pager me resolve #{incident.incident_number}
+      To acknowledge: @#{robot.name} pager me ack #{incident_number}
+      To resolve: @#{robot.name} pager me resolve #{incident_number}
       """
 
   parseIncidents = (messages) ->
