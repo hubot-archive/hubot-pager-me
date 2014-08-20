@@ -16,7 +16,7 @@
 #   # Incident Lifecycle
 #
 #   hubot pager incidents - return the current incidents
-#               sup
+#   hubot pager sup - return the current incidents
 #   hubot pager incident NNN - return the incident NNN
 #   hubot pager note <incident> <content> - add note to incident #<incident> with <content>
 #   hubot pager notes <incident> - show notes for incident #<incident>
@@ -74,7 +74,7 @@ module.exports = (robot) ->
 
 
     cmds = robot.helpCommands()
-    cmds = (cmd for cmd in cmds when cmd.match(/(pager me |who's on call)/))
+    cmds = (cmd for cmd in cmds when cmd.match(/(hubot pager|on call)/))
     msg.send cmds.join("\n")
 
   robot.respond /pager(?: me)? as (.*)$/i, (msg) ->
