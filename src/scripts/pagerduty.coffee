@@ -242,7 +242,7 @@ module.exports = (robot) ->
         msg.send 'No schedules found!'
 
 
-  robot.respond /(pager|major)( me)? (schedule|overrides)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (schedule|overrides)( (.+))?$$/i, (msg) ->
     query = {
       since: moment().format(),
       until: moment().add('days', 30).format(),
@@ -254,24 +254,33 @@ module.exports = (robot) ->
       thing = 'overrides'
       query['editable'] = 'true'
 
-    pagerDutyGet msg, "/schedules/#{pagerDutyScheduleId}/#{thing}", query, (json) ->
-      entries = json.entries || json.overrides
-      if entries
-        sortedEntries = entries.sort (a, b) ->
-          moment(a.start).unix() - moment(b.start).unix()
+    if !msg.match[5]
+      msg.reply "Please specify a schedule with 'pager schedule <name>.'' Use 'pager schedules' to list all schedules."
+      msg.finish
+      return
 
-        buffer = ""
-        for entry in sortedEntries
-          if entry.id
-            buffer += "* (#{entry.id}) #{entry.start} - #{entry.end} #{entry.user.name}\n"
+    withScheduleMatching msg, msg.match[5], (schedule) ->
+      scheduleId = schedule.id
+      return unless scheduleId
+
+      pagerDutyGet msg, "/schedules/#{scheduleId}/#{thing}", query, (json) ->
+        entries = json.entries || json.overrides
+        if entries
+          sortedEntries = entries.sort (a, b) ->
+            moment(a.start).unix() - moment(b.start).unix()
+
+          buffer = ""
+          for entry in sortedEntries
+            if entry.id
+              buffer += "* (#{entry.id}) #{entry.start} - #{entry.end} #{entry.user.name}\n"
+            else
+              buffer += "* #{entry.start} - #{entry.end} #{entry.user.name}\n"
+          if buffer == ""
+            msg.send "None found!"
           else
-            buffer += "* #{entry.start} - #{entry.end} #{entry.user.name}\n"
-        if buffer == ""
-          msg.send "None found!"
+            msg.send buffer
         else
-          msg.send buffer
-      else
-        msg.send "None found!"
+          msg.send "None found!"
 
   robot.respond /(pager|major)( me)? (override) ([\w\-:]*) - ([\w\-:]*)( (.*))?$/i, (msg) ->
     if msg.match[7]
