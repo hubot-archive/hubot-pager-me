@@ -33,6 +33,7 @@
 #   ## Scheduling
 #
 #   hubot pager schedules - list schedules
+#   hubot pager schedules <search> - list schedules matching <search>
 #   hubot pager schedule <schedule> - show <schedule>'s shifts for the upcoming month
 #   hubot pager me <schedule> 60 - take the pager for 60 minutes
 #   hubot pager override <schedule> <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
@@ -83,27 +84,37 @@ module.exports = (robot) ->
     msg.send "Okay, I'll remember your PagerDuty email is #{email}"
 
   # Assumes your Campfire usernames and PagerDuty names are identical
-  robot.respond /pager( me)? (\d+)/i, (msg) ->
+  robot.respond /pager( me)? (.+) (\d+)$/i, (msg) ->
     campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
 
       userId = user.id
       return unless userId
 
-      start     = moment().format()
-      minutes   = parseInt msg.match[2]
-      end       = moment().add('minutes', minutes).format()
-      override  = {
-        'start':     start,
-        'end':       end,
-        'user_id':   userId
-      }
-      withCurrentOncall msg, (old_username) ->
-        data = { 'override': override }
-        pagerDutyPost msg, "/schedules/#{pagerDutyScheduleId}/overrides", data, (json) ->
-          if json.override
-            start = moment(json.override.start)
-            end = moment(json.override.end)
-            msg.send "Rejoice, #{old_username}! #{json.override.user.name} has the pager until #{end.format()}"
+      if !msg.match[2] || msg.match[2] == 'me'
+        msg.reply "Please specify a schedule with 'pager me ops 60.'' Use 'pager schedules' to list all schedules."
+        msg.finish
+        return
+
+      withScheduleMatching msg, msg.match[2], (schedule) ->
+
+        scheduleId = schedule.id
+        return unless scheduleId
+
+        start     = moment().format()
+        minutes   = parseInt msg.match[3]
+        end       = moment().add('minutes', minutes).format()
+        override  = {
+          'start':     start,
+          'end':       end,
+          'user_id':   userId
+        }
+        withCurrentOncall msg, scheduleId, (old_username) ->
+          data = { 'override': override }
+          pagerDutyPost msg, "/schedules/#{scheduleId}/overrides", data, (json) ->
+            if json.override
+              start = moment(json.override.start)
+              end = moment(json.override.end)
+              msg.send "Rejoice, #{old_username}! #{json.override.user.name} has the pager on #{schedule.name} until #{end.format()}"
 
   robot.respond /(pager|major)( me)? incident (.*)$/, (msg) ->
     pagerDutyIncident msg, msg.match[3], (incident) ->
@@ -216,8 +227,11 @@ module.exports = (robot) ->
         else
           msg.send "Sorry, I couldn't do it :("
 
-  robot.respond /(pager|major)( me)? schedules/i, (msg) ->
-    pagerDutyGet msg, "/schedules", {}, (json) ->
+  robot.respond /(pager|major)( me)? schedules( (.+))?$/i, (msg) ->
+    query = {}
+    if msg.match[4]
+      query['query'] = msg.match[4]
+    pagerDutyGet msg, "/schedules", query, (json) ->
       buffer = ''
       schedules = json.schedules
       if schedules
@@ -434,7 +448,19 @@ module.exports = (robot) ->
             value = false
         cb value
 
-  withCurrentOncall = (msg, cb) ->
+  withScheduleMatching = (msg, q, cb) ->
+    query = {
+      query: q
+    }
+    pagerDutyGet msg, "/schedules", query, (json) ->
+      if json.schedules and json.schedules.length == 1
+        cb(json.schedules[0])
+      else
+        # maybe look for a specific name match here?
+        msg.send "#{q} matched #{json.schedules.length} schedules. Can you be more specific?"
+        return
+
+  withCurrentOncall = (msg, scheduleId, cb) ->
     oneHour = moment().add('hours', 1).format()
     now = moment().format()
 
@@ -443,7 +469,7 @@ module.exports = (robot) ->
       until: oneHour,
       overflow: 'true'
     }
-    pagerDutyGet msg, "/schedules/#{pagerDutyScheduleId}/entries", query, (json) ->
+    pagerDutyGet msg, "/schedules/#{scheduleId}/entries", query, (json) ->
       if json.entries and json.entries.length > 0
         cb(json.entries[0].user.name)
 
