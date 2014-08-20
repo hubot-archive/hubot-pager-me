@@ -240,7 +240,7 @@ module.exports = (robot) ->
       else
         msg.send 'No schedules found!'
 
-  robot.respond /(pager|major)( me)? (schedule|overrides)( (.+))?$$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (schedule|overrides)( ([\w\-]+))?$/i, (msg) ->
     query = {
       since: moment().format(),
       until: moment().add('days', 30).format(),
@@ -280,9 +280,9 @@ module.exports = (robot) ->
         else
           msg.send "None found!"
 
-  robot.respond /(pager|major)( me)? (override) ([\w\-:]*) - ([\w\-:]*)( (.*))?$/i, (msg) ->
-    if msg.match[7]
-      overrideUser = robot.brain.userForName(msg.match[7])
+  robot.respond /(pager|major)( me)? (override) ([\w\-]+) ([\w\-:]+) - ([\w\-:]+)( (.*))?$/i, (msg) ->
+    if msg.match[8]
+      overrideUser = robot.brain.userForName(msg.match[8])
 
       unless overrideUser
         msg.send "Sorry, I don't seem to know who that is. Are you sure they are in chat?"
@@ -294,32 +294,40 @@ module.exports = (robot) ->
       userId = user.id
       return unless userId
 
-      if moment(msg.match[4]).isValid() && moment(msg.match[5]).isValid()
-        start_time = moment(msg.match[4]).format()
-        end_time = moment(msg.match[5]).format()
+      withScheduleMatching msg, msg.match[4], (schedule) ->
+        scheduleId = schedule.id
+        return unless scheduleId
 
-        override  = {
-          'start':     start_time,
-          'end':       end_time,
-          'user_id':   userId
-        }
-        data = { 'override': override }
-        pagerDutyPost msg, "/schedules/#{pagerDutyScheduleId}/overrides", data, (json) ->
-          if json && json.override
-            start = moment(json.override.start)
-            end = moment(json.override.end)
-            msg.send "Override setup! #{json.override.user.name} has the pager from #{start.format()} until #{end.format()}"
-          else
-            msg.send "That didn't work. Check Hubot's logs for an error!"
-      else
-        msg.send "Please use a http://momentjs.com/ compatible date!"
+        if moment(msg.match[5]).isValid() && moment(msg.match[6]).isValid()
+          start_time = moment(msg.match[5]).format()
+          end_time = moment(msg.match[6]).format()
 
-  robot.respond /(pager|major)( me)? (override) (delete) (.*)$/i, (msg) ->
-    pagerDutyDelete msg, "/schedules/#{pagerDutyScheduleId}/overrides/#{msg.match[5]}", (success) ->
-      if success
-        msg.send ":boom:"
-      else
-        msg.send "Something went weird."
+          override  = {
+            'start':     start_time,
+            'end':       end_time,
+            'user_id':   userId
+          }
+          data = { 'override': override }
+          pagerDutyPost msg, "/schedules/#{scheduleId}/overrides", data, (json) ->
+            if json && json.override
+              start = moment(json.override.start)
+              end = moment(json.override.end)
+              msg.send "Override setup! #{json.override.user.name} has the pager from #{start.format()} until #{end.format()}"
+            else
+              msg.send "That didn't work. Check Hubot's logs for an error!"
+        else
+          msg.send "Please use a http://momentjs.com/ compatible date!"
+
+  robot.respond /(pager|major)( me)? (overrides?) ([\w\-]*) (delete) (.*)$/i, (msg) ->
+    withScheduleMatching msg, msg.match[4], (schedule) ->
+      scheduleId = schedule.id
+      return unless scheduleId
+
+      pagerDutyDelete msg, "/schedules/#{scheduleId}/overrides/#{msg.match[6]}", (success) ->
+        if success
+          msg.send ":boom:"
+        else
+          msg.send "Something went weird."
 
   # who is on call?
   robot.respond /who('s|s| is)? (on call|oncall)( for (.+))?/i, (msg) ->
@@ -456,7 +464,7 @@ module.exports = (robot) ->
       .delete() (err, res, body) ->
         json_body = null
         switch res.statusCode
-          when 204
+          when 204 || 200
             value = true
           else
             console.log res.statusCode
