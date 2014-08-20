@@ -1,29 +1,43 @@
 # Description:
-#   PagerDuty Integration for checking who's on call, making exceptions, ack, resolve, etc.
+#   Interact with PagerDuty services, schedules, and incidents with Hubot.
 #
 # Commands:
 #
-#   hubot who's on call - return the username of who's on call
-#   hubot pager me trigger <msg> - create a new incident with <msg>
-#   hubot pager me 60 - take the pager for 60 minutes
+#   # Triggering an incident
+#
+#   hubot who's on call - return a list of services and who is on call for them
+#   hubot who's on call for <search> - return the username of who's on call for any service matching <search>
+#   hubot pager trigger <service> <msg> - create a new incident with <msg> for whomever is on call for <service>
+#
+#   ## Setup
+#
 #   hubot pager me as <email> - remember your pager email is <email>
-#   hubot pager me incidents - return the current incidents
-#   hubot pager me incident NNN - return the incident NNN
-#   hubot pager me note <incident> <content> - add note to incident #<incident> with <content>
-#   hubot pager me notes <incident> - show notes for incident #<incident>
-#   hubot pager me problems - return all open incidents
-#   hubot pager me ack <incident> - ack incident #<incident>
-#   hubot pager me ack - ack triggered incidents assigned to you
-#   hubot pager me ack! - ack all triggered incidents, not just yours
-#   hubot pager me resolve <incident1> <incident2> ... <incidentN> - ack all specified incidents
-#   hubot pager me resolve <incident> - resolve incident #<incident>
-#   hubot pager me resolve <incident1> <incident2> ... <incidentN>- resolve all specified incidents
-#   hubot pager me resolve - resolve acknowledged incidents assigned to you
-#   hubot pager me resolve! - resolve all acknowledged, not just yours
-#   hubot pager me schedule - show the schedule, including overides, for the next month
-#   hubot pager me override <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
-#   hubot pager me overrides - show upcoming overrides for the next month
-#   hubot pager me override delete <id> - delete an override by its ID
+#
+#   # Incident Lifecycle
+#
+#   hubot pager incidents - return the current incidents
+#               sup
+#   hubot pager incident NNN - return the incident NNN
+#   hubot pager note <incident> <content> - add note to incident #<incident> with <content>
+#   hubot pager notes <incident> - show notes for incident #<incident>
+#   hubot pager problems - return all open incidents
+#   hubot pager ack <incident> - ack incident #<incident>
+#   hubot pager ack - ack triggered incidents assigned to you
+#   hubot pager ack! - ack all triggered incidents, not just yours
+#   hubot pager ack <incident1> <incident2> ... <incidentN> - ack all specified incidents
+#   hubot pager resolve <incident> - resolve incident #<incident>
+#   hubot pager resolve <incident1> <incident2> ... <incidentN>- resolve all specified incidents
+#   hubot pager resolve - resolve acknowledged incidents assigned to you
+#   hubot pager resolve! - resolve all acknowledged, not just yours
+#
+#   ## Scheduling
+#
+#   hubot pager schedules - list schedules
+#   hubot pager schedule <schedule> - show <schedule>'s shifts for the upcoming month
+#   hubot pager me <schedule> 60 - take the pager for 60 minutes
+#   hubot pager override <schedule> <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
+#   hubot pager overrides <schedule> - show upcoming overrides for the next month
+#   hubot pager override <schedule> delete <id> - delete an override by its ID
 #
 # Authors:
 #   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin
