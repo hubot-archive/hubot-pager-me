@@ -50,7 +50,6 @@ pagerDutyApiKey        = process.env.HUBOT_PAGERDUTY_API_KEY
 pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
 pagerDutyBaseUrl       = "https://#{pagerDutySubdomain}.pagerduty.com/api/v1"
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
-pagerDutyScheduleId    = process.env.HUBOT_PAGERDUTY_SCHEDULE_ID
 pagerRoom              = process.env.HUBOT_PAGERDUTY_ROOM
 # Webhook listener endpoint. Set it to whatever URL you want, and make sure it matches your pagerduty service settings
 pagerEndpoint          = process.env.HUBOT_PAGERDUTY_ENDPOINT || "/hook"
@@ -305,9 +304,6 @@ module.exports = (robot) ->
       missingAnything |= true
     unless pagerDutyApiKey?
       msg.send "PagerDuty API Key is missing:  Ensure that HUBOT_PAGERDUTY_API_KEY is set."
-      missingAnything |= true
-    unless pagerDutyScheduleId?
-      msg.send "PagerDuty Schedule ID is missing:  Ensure that HUBOT_PAGERDUTY_SCHEDULE_ID is set."
       missingAnything |= true
     missingAnything
 
