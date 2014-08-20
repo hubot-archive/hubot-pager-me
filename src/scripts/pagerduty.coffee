@@ -216,7 +216,19 @@ module.exports = (robot) ->
         else
           msg.send "Sorry, I couldn't do it :("
 
-  robot.respond /(pager|major)( me)? (schedule|overrides)/i, (msg) ->
+  robot.respond /(pager|major)( me)? schedules/i, (msg) ->
+    pagerDutyGet msg, "/schedules", {}, (json) ->
+      buffer = ''
+      schedules = json.schedules
+      if schedules
+        for schedule in schedules
+          buffer += "* #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}\n"
+        msg.send buffer
+      else
+        msg.send 'No schedules found!'
+
+
+  robot.respond /(pager|major)( me)? (schedule|overrides)$/i, (msg) ->
     query = {
       since: moment().format(),
       until: moment().add('days', 30).format(),
