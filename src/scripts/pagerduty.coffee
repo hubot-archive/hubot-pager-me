@@ -312,7 +312,7 @@ module.exports = (robot) ->
                   else
                     "#{user.name}"
 
-      msg.send "Sorry, I can't figure out #{possesive} email address :( Can #{addressee} tell me with `#{robot.name} pager me as you@yourdomain.com`?"
+      msg.send "Sorry, I can't figure out #{possessive} email address :( Can #{addressee} tell me with `#{robot.name} pager me as you@yourdomain.com`?"
       return
 
     pagerDutyGet msg, "/users", {query: email}, (json) ->
