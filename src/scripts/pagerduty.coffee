@@ -462,8 +462,20 @@ module.exports = (robot) ->
       query: q
     }
     pagerDutyGet msg, "/schedules", query, (json) ->
+      schedule = null
+      # Single result returned
       if json.schedules and json.schedules.length == 1
-        cb(json.schedules[0])
+        schedule = json.schedules[0]
+
+      # Multiple results returned and one is exact
+      if json.schedules and json.schedules.length > 1
+        matchingExactly = json.schedules.filter (s) ->
+          s.name == q
+        if matchingExactly.length == 1
+          schedule = matchingExactly[0]
+
+      if schedule
+        cb(schedule)
       else
         # maybe look for a specific name match here?
         msg.send "#{q} matched #{json.schedules.length} schedules. Can you be more specific?"
