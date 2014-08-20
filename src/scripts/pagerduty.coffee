@@ -92,7 +92,6 @@ module.exports = (robot) ->
 
       if !msg.match[2] || msg.match[2] == 'me'
         msg.reply "Please specify a schedule with 'pager me ops 60.'' Use 'pager schedules' to list all schedules."
-        msg.finish
         return
 
       withScheduleMatching msg, msg.match[2], (matchingSchedule) ->
@@ -253,8 +252,7 @@ module.exports = (robot) ->
       query['editable'] = 'true'
 
     if !msg.match[5]
-      msg.reply "Please specify a schedule with 'pager schedule <name>.'' Use 'pager schedules' to list all schedules."
-      msg.finish
+      msg.reply "Please specify a schedule with 'pager #{msg.match[3]} <name>.'' Use 'pager schedules' to list all schedules."
       return
 
     withScheduleMatching msg, msg.match[5], (schedule) ->
