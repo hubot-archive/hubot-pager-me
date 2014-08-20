@@ -6,8 +6,8 @@
 #   # Triggering an incident
 #
 #   hubot who's on call - return a list of services and who is on call for them
-#   hubot who's on call for <search> - return the username of who's on call for any service matching <search>
-#   hubot pager trigger <service> <msg> - create a new incident with <msg> for whomever is on call for <service>
+#   hubot who's on call for <search> - return the username of who's on call for any schedule matching <search>
+#   hubot pager trigger <msg> - create a new incident with <msg>
 #
 #   ## Setup
 #
