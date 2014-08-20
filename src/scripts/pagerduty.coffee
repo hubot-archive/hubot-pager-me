@@ -7,7 +7,7 @@
 #
 #   hubot who's on call - return a list of services and who is on call for them
 #   hubot who's on call for <search> - return the username of who's on call for any schedule matching <search>
-#   hubot pager trigger <msg> - create a new incident with <msg>
+#   hubot pager trigger <user> <msg> - create a new incident with <msg> and assign it to <user>
 #
 #   ## Setup
 #
@@ -133,13 +133,51 @@ module.exports = (robot) ->
       else
         msg.send "No open incidents"
 
-  robot.respond /(pager|major)( me)? (?:trigger|page) (.+)$/i, (msg) ->
-    user = msg.message.user.name
-    reason = msg.match[3]
+  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+) (.+)$/i, (msg) ->
+    fromUser       = msg.message.user.name
+    userOrSchedule = msg.match[3]
+    reason         = msg.match[4]
+    description    = "#{reason} - @#{fromUser}"
 
-    description = "#{reason} - @#{user}"
-    pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
-      msg.reply "#{json.status}, key: #{json.incident_key}"
+    if campfireUserToPage = robot.brain.userForName(msg.match[3])
+      campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
+
+        requesterId = user.id
+        return unless requesterId
+
+        pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
+          query = {
+            incident_key: json.incident_key
+          }
+          msg.reply ":page: triggered! now assigning it to #{userOrSchedule}..."
+          campfireUserToPagerDutyUser msg, campfireUserToPage, (userToPage) ->
+            setTimeout () ->
+              pagerDutyGet msg, "/incidents", query, (json) ->
+                if json?.incidents.length == 0
+                  console.log inspect query
+                  console.log inspect json
+                  msg.reply "Couldn't find the incident we just created to reassign :/"
+                else
+                  data = {
+                    requester_id: requesterId,
+                    incidents: json.incidents.map (incident) ->
+                      {
+                        'id':               incident.id,
+                        'assigned_to_user': userToPage.id
+                      }
+                  }
+
+                  pagerDutyPut msg, "/incidents", data , (json) ->
+                    if json?.incidents.length == 1
+                      msg.reply ":page: assigned to #{userOrSchedule}!"
+                    else
+                      console.log inspect data
+                      console.log inspect json
+                      msg.reply "Problem reassigning the newly created incident"
+            , 5000
+
+    else
+        msg.reply "Please specify a user to page like 'hubot pager pager jnewland omgwtfbbq the databass is down'"
 
   robot.respond /(?:pager|major)(?: me)? ack(?:nowledge)? (.+)$/i, (msg) ->
     incidentNumbers = parseIncidentNumbers(msg.match[1])
@@ -358,7 +396,7 @@ module.exports = (robot) ->
 
   campfireUserToPagerDutyUser = (msg, user, cb) ->
 
-    email  = user.pagerdutyEmail || user.email_address
+    email  = user.pagerdutyEmail || user.email_address || process.env.HUBOT_PAGERDUTY_TEST_EMAIL
     speakerEmail = msg.message.user.pagerdutyEmail || msg.message.user.email_address
     unless email
       possessive = if email is speakerEmail
