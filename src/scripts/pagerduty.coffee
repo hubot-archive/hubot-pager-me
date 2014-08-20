@@ -95,10 +95,9 @@ module.exports = (robot) ->
         msg.finish
         return
 
-      withScheduleMatching msg, msg.match[2], (schedule) ->
+      withScheduleMatching msg, msg.match[2], (matchingSchedule) ->
 
-        scheduleId = schedule.id
-        return unless scheduleId
+        return unless matchingSchedule.id
 
         start     = moment().format()
         minutes   = parseInt msg.match[3]
@@ -108,9 +107,9 @@ module.exports = (robot) ->
           'end':       end,
           'user_id':   userId
         }
-        withCurrentOncall msg, scheduleId, (old_username) ->
+        withCurrentOncall msg, matchingSchedule, (old_username, schedule) ->
           data = { 'override': override }
-          pagerDutyPost msg, "/schedules/#{scheduleId}/overrides", data, (json) ->
+          pagerDutyPost msg, "/schedules/#{schedule.id}/overrides", data, (json) ->
             if json.override
               start = moment(json.override.start)
               end = moment(json.override.end)
@@ -234,13 +233,12 @@ module.exports = (robot) ->
     pagerDutyGet msg, "/schedules", query, (json) ->
       buffer = ''
       schedules = json.schedules
-      if schedules
+      if schedules.length > 0
         for schedule in schedules
           buffer += "* #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}\n"
         msg.send buffer
       else
         msg.send 'No schedules found!'
-
 
   robot.respond /(pager|major)( me)? (schedule|overrides)( (.+))?$$/i, (msg) ->
     query = {
@@ -324,9 +322,18 @@ module.exports = (robot) ->
         msg.send "Something went weird."
 
   # who is on call?
-  robot.respond /who('s|s| is)? (on call|oncall)/i, (msg) ->
-    withCurrentOncall msg, (username) ->
-      msg.reply "#{username} is on call"
+  robot.respond /who('s|s| is)? (on call|oncall)( for (.+))?/i, (msg) ->
+    query = {}
+    if msg.match[4]
+      query['query'] = msg.match[4]
+    pagerDutyGet msg, "/schedules", query, (json) ->
+      schedules = json.schedules
+      if schedules.length > 0
+        for s in schedules
+          withCurrentOncall msg, s, (username, schedule) ->
+            msg.send "* #{username} is on call for #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}\n"
+      else
+        msg.send 'No schedules found!'
 
   parseIncidentNumbers = (match) ->
     match.split(/[ ,]+/).map (incidentNumber) ->
@@ -481,7 +488,7 @@ module.exports = (robot) ->
         msg.send "#{q} matched #{json.schedules.length} schedules. Can you be more specific?"
         return
 
-  withCurrentOncall = (msg, scheduleId, cb) ->
+  withCurrentOncall = (msg, schedule, cb) ->
     oneHour = moment().add('hours', 1).format()
     now = moment().format()
 
@@ -490,9 +497,9 @@ module.exports = (robot) ->
       until: oneHour,
       overflow: 'true'
     }
-    pagerDutyGet msg, "/schedules/#{scheduleId}/entries", query, (json) ->
+    pagerDutyGet msg, "/schedules/#{schedule.id}/entries", query, (json) ->
       if json.entries and json.entries.length > 0
-        cb(json.entries[0].user.name)
+        cb(json.entries[0].user.name, schedule)
 
   pagerDutyIncident = (msg, incident, cb) ->
     pagerDutyGet msg, "/incidents/#{encodeURIComponent incident}", {}, (json) ->
