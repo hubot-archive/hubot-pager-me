@@ -123,7 +123,7 @@ module.exports = (robot) ->
             query = {
               incident_key: json.incident_key
             }
-            msg.reply ":page: triggered! now assigning it to the right user..."
+            msg.reply ":pager: triggered! now assigning it to the right user..."
             setTimeout () ->
               pagerDutyGet msg, "/incidents", query, (json) ->
                 if json?.incidents.length == 0
@@ -142,7 +142,7 @@ module.exports = (robot) ->
 
                   pagerDutyPut msg, "/incidents", data , (json) ->
                     if json?.incidents.length == 1
-                      msg.reply ":page: assigned to #{userToPage.name}!"
+                      msg.reply ":pager: assigned to #{userToPage.name}!"
                     else
                       console.log inspect data
                       console.log inspect json
