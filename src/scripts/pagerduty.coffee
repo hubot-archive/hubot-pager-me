@@ -84,37 +84,6 @@ module.exports = (robot) ->
     msg.message.user.pagerdutyEmail = email
     msg.send "Okay, I'll remember your PagerDuty email is #{email}"
 
-  # Assumes your Campfire usernames and PagerDuty names are identical
-  robot.respond /pager( me)? (.+) (\d+)$/i, (msg) ->
-    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
-
-      userId = user.id
-      return unless userId
-
-      if !msg.match[2] || msg.match[2] == 'me'
-        msg.reply "Please specify a schedule with 'pager me ops 60.'' Use 'pager schedules' to list all schedules."
-        return
-
-      withScheduleMatching msg, msg.match[2], (matchingSchedule) ->
-
-        return unless matchingSchedule.id
-
-        start     = moment().format()
-        minutes   = parseInt msg.match[3]
-        end       = moment().add('minutes', minutes).format()
-        override  = {
-          'start':     start,
-          'end':       end,
-          'user_id':   userId
-        }
-        withCurrentOncall msg, matchingSchedule, (old_username, schedule) ->
-          data = { 'override': override }
-          pagerDutyPost msg, "/schedules/#{schedule.id}/overrides", data, (json) ->
-            if json.override
-              start = moment(json.override.start)
-              end = moment(json.override.end)
-              msg.send "Rejoice, #{old_username}! #{json.override.user.name} has the pager on #{schedule.name} until #{end.format()}"
-
   robot.respond /(pager|major)( me)? incident (.*)$/, (msg) ->
     pagerDutyIncident msg, msg.match[3], (incident) ->
       msg.send formatIncident(incident)
@@ -181,6 +150,7 @@ module.exports = (robot) ->
             , 5000
 
   robot.respond /(?:pager|major)(?: me)? ack(?:nowledge)? (.+)$/i, (msg) ->
+    msg.finish()
     incidentNumbers = parseIncidentNumbers(msg.match[1])
 
     # only acknowledge triggered things, since it doesn't make sense to re-acknowledge if it's already in re-acknowledge
@@ -211,6 +181,7 @@ module.exports = (robot) ->
       updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged')
 
   robot.respond /(?:pager|major)(?: me)? res(?:olve)?(?:d)? (.+)$/i, (msg) ->
+    msg.finish()
     incidentNumbers = parseIncidentNumbers(msg.match[1])
 
     # allow resolving of triggered and acknowedlge, since being explicit
@@ -238,6 +209,7 @@ module.exports = (robot) ->
       updateIncidents(msg, incidentNumbers, 'acknowledged', 'resolved')
 
   robot.respond /(pager|major)( me)? notes (.+)$/i, (msg) ->
+    msg.finish()
     incidentId = msg.match[3]
     pagerDutyGet msg, "/incidents/#{incidentId}/notes", {}, (json) ->
       buffer = ""
@@ -246,6 +218,8 @@ module.exports = (robot) ->
       msg.send buffer
 
   robot.respond /(pager|major)( me)? note ([\d\w]+) (.+)$/i, (msg) ->
+    msg.finish()
+
     incidentId = msg.match[3]
     content = msg.match[4]
 
@@ -365,6 +339,38 @@ module.exports = (robot) ->
           msg.send ":boom:"
         else
           msg.send "Something went weird."
+
+  robot.respond /pager( me)? (.+) (\d+)$/i, (msg) ->
+    msg.finish()
+    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
+
+      userId = user.id
+      return unless userId
+
+      if !msg.match[2] || msg.match[2] == 'me'
+        msg.reply "Please specify a schedule with 'pager me ops 60.'' Use 'pager schedules' to list all schedules."
+        return
+
+      withScheduleMatching msg, msg.match[2], (matchingSchedule) ->
+
+        return unless matchingSchedule.id
+
+        start     = moment().format()
+        minutes   = parseInt msg.match[3]
+        end       = moment().add('minutes', minutes).format()
+        override  = {
+          'start':     start,
+          'end':       end,
+          'user_id':   userId
+        }
+        withCurrentOncall msg, matchingSchedule, (old_username, schedule) ->
+          data = { 'override': override }
+          pagerDutyPost msg, "/schedules/#{schedule.id}/overrides", data, (json) ->
+            if json.override
+              start = moment(json.override.start)
+              end = moment(json.override.end)
+              msg.send "Rejoice, #{old_username}! #{json.override.user.name} has the pager on #{schedule.name} until #{end.format()}"
+
 
   # who is on call?
   robot.respond /who('s|s| is)? (on call|oncall)( for (.+))?/i, (msg) ->
@@ -516,11 +522,11 @@ module.exports = (robot) ->
     pagerDutyGet msg, "/schedules", query, (json) ->
       schedule = null
       # Single result returned
-      if json.schedules and json.schedules.length == 1
+      if json?.schedules?.length == 1
         schedule = json.schedules[0]
 
       # Multiple results returned and one is exact
-      if json.schedules and json.schedules.length > 1
+      if json?.schedules?.length > 1
         matchingExactly = json.schedules.filter (s) ->
           s.name == q
         if matchingExactly.length == 1
