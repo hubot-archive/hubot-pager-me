@@ -373,7 +373,7 @@ module.exports = (robot) ->
 
 
   # who is on call?
-  robot.respond /who('s|s| is)? (on call|oncall)( for (.+))?/i, (msg) ->
+  robot.respond /who('s|s| is|se)? (on call|oncall|on-call)( for (.+))?/i, (msg) ->
     query = {}
     if msg.match[4]
       query['query'] = msg.match[4]
