@@ -5,9 +5,10 @@
 #
 #   # Triggering an incident
 #
-#   hubot who's on call - return a list of services and who is on call for them
-#   hubot who's on call for <search> - return the username of who's on call for any schedule matching <search>
-#   hubot pager trigger <user> <msg> - create a new incident with <msg> and assign it to <user>
+#   hubot who's on call                  - return a list of services and who is on call for them
+#   hubot who's on call for <search>     - return the username of who's on call for any schedule matching <search>
+#   hubot pager trigger <user> <msg>     - create a new incident with <msg> and assign it to <user>
+#   hubot pager trigger <schedule> <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>
 #
 #   ## Setup
 #
@@ -134,32 +135,35 @@ module.exports = (robot) ->
         msg.send "No open incidents"
 
   robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+) (.+)$/i, (msg) ->
-    fromUser       = msg.message.user.name
+    fromUserName   = msg.message.user.name
     userOrSchedule = msg.match[3]
     reason         = msg.match[4]
-    description    = "#{reason} - @#{fromUser}"
+    description    = "#{reason} - @#{fromUserName}"
 
-    if campfireUserToPage = robot.brain.userForName(msg.match[3])
-      campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
+    # Figure out who we are
+    campfireUserToPagerDutyUser msg, msg.message.user, (triggerdByPagerDutyUser) ->
+      triggerdByPagerDutyUserId = triggerdByPagerDutyUser.id
+      return unless triggerdByPagerDutyUserId
 
-        requesterId = user.id
-        return unless requesterId
-
-        pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
-          query = {
-            incident_key: json.incident_key
-          }
-          msg.reply ":page: triggered! now assigning it to #{userOrSchedule}..."
-          campfireUserToPagerDutyUser msg, campfireUserToPage, (userToPage) ->
+      # Figure out what we're trying to page
+      pagerDutyUserFromNameOrSchedule msg, msg.match[3], (userToPage) ->
+        if !userToPage
+          msg.reply "Couldn't find a user or unique schedule matching #{userToPage} :/"
+        else
+          pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
+            query = {
+              incident_key: json.incident_key
+            }
+            msg.reply ":page: triggered! now assigning it to the right user..."
             setTimeout () ->
               pagerDutyGet msg, "/incidents", query, (json) ->
                 if json?.incidents.length == 0
                   console.log inspect query
                   console.log inspect json
-                  msg.reply "Couldn't find the incident we just created to reassign :/"
+                  msg.reply "Couldn't find the incident we just created to reassign. Please try again :/"
                 else
                   data = {
-                    requester_id: requesterId,
+                    requester_id: triggerdByPagerDutyUserId,
                     incidents: json.incidents.map (incident) ->
                       {
                         'id':               incident.id,
@@ -169,15 +173,12 @@ module.exports = (robot) ->
 
                   pagerDutyPut msg, "/incidents", data , (json) ->
                     if json?.incidents.length == 1
-                      msg.reply ":page: assigned to #{userOrSchedule}!"
+                      msg.reply ":page: assigned to #{userToPage.name}!"
                     else
                       console.log inspect data
                       console.log inspect json
-                      msg.reply "Problem reassigning the newly created incident"
+                      msg.reply "Problem reassigning the incident :/"
             , 5000
-
-    else
-        msg.reply "Please specify a user to page like 'hubot pager pager jnewland omgwtfbbq the databass is down'"
 
   robot.respond /(?:pager|major)(?: me)? ack(?:nowledge)? (.+)$/i, (msg) ->
     incidentNumbers = parseIncidentNumbers(msg.match[1])
@@ -508,7 +509,7 @@ module.exports = (robot) ->
             value = false
         cb value
 
-  withScheduleMatching = (msg, q, cb) ->
+  oneScheduleMatching = (msg, q, cb) ->
     query = {
       query: q
     }
@@ -524,7 +525,10 @@ module.exports = (robot) ->
           s.name == q
         if matchingExactly.length == 1
           schedule = matchingExactly[0]
+      cb(schedule)
 
+  withScheduleMatching = (msg, q, cb) ->
+    oneScheduleMatching msg, q, (schedule) ->
       if schedule
         cb(schedule)
       else
@@ -532,7 +536,23 @@ module.exports = (robot) ->
         msg.send "#{q} matched #{json.schedules.length} schedules. Can you be more specific?"
         return
 
+  pagerDutyUserFromNameOrSchedule = (msg, string, cb) ->
+    if campfireUser = robot.brain.userForName(string)
+      campfireUserToPagerDutyUser msg, campfireUser, (user) ->
+        cb(user)
+    else
+      oneScheduleMatching msg, string, (schedule) ->
+        if schedule
+          withCurrentOncallUser msg, schedule, (user, schedule) ->
+            cb(user)
+        else
+          cb()
+
   withCurrentOncall = (msg, schedule, cb) ->
+    withCurrentOncallUser msg, schedule, (user, s) ->
+      cb(user.name, s)
+
+  withCurrentOncallUser = (msg, schedule, cb) ->
     oneHour = moment().add('hours', 1).format()
     now = moment().format()
 
@@ -543,7 +563,7 @@ module.exports = (robot) ->
     }
     pagerDutyGet msg, "/schedules/#{schedule.id}/entries", query, (json) ->
       if json.entries and json.entries.length > 0
-        cb(json.entries[0].user.name, schedule)
+        cb(json.entries[0].user, schedule)
 
   pagerDutyIncident = (msg, incident, cb) ->
     pagerDutyGet msg, "/incidents/#{encodeURIComponent incident}", {}, (json) ->
