@@ -539,7 +539,7 @@ module.exports = (robot) ->
         cb(schedule)
       else
         # maybe look for a specific name match here?
-        msg.send "#{q} matched #{json.schedules.length} schedules. Can you be more specific?"
+        msg.send "I couldn't determine exactly which schedule you meant by #{q}. Can you be more specific?"
         return
 
   pagerDutyUserFromNameOrSchedule = (msg, string, cb) ->
