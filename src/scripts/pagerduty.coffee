@@ -348,7 +348,7 @@ module.exports = (robot) ->
       return unless userId
 
       if !msg.match[2] || msg.match[2] == 'me'
-        msg.reply "Please specify a schedule with 'pager me ops 60.'' Use 'pager schedules' to list all schedules."
+        msg.reply "Please specify a schedule with 'pager me ops 60'. Use 'pager schedules' to list all schedules."
         return
 
       withScheduleMatching msg, msg.match[2], (matchingSchedule) ->
