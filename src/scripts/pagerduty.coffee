@@ -109,6 +109,10 @@ module.exports = (robot) ->
     reason         = msg.match[4]
     description    = "#{reason} - @#{fromUserName}"
 
+    unless reason
+      msg.reply "Please include a user or schedule to page, like 'hubot pager ops everything is on fire'."
+      return
+
     # Figure out who we are
     campfireUserToPagerDutyUser msg, msg.message.user, (triggerdByPagerDutyUser) ->
       triggerdByPagerDutyUserId = triggerdByPagerDutyUser.id
