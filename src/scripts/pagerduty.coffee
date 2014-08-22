@@ -103,7 +103,11 @@ module.exports = (robot) ->
       else
         msg.send "No open incidents"
 
+  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/i, (msg) ->
+    msg.reply "Please include a user or schedule to page, like 'hubot pager ops everything is on fire'."
+
   robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+) (.+)$/i, (msg) ->
+    msg.finish()
     fromUserName   = msg.message.user.name
     userOrSchedule = msg.match[3]
     reason         = msg.match[4]
@@ -121,7 +125,7 @@ module.exports = (robot) ->
       # Figure out what we're trying to page
       pagerDutyUserFromNameOrSchedule msg, msg.match[3], (userToPage) ->
         if !userToPage
-          msg.reply "Couldn't find a user or unique schedule matching #{userToPage} :/"
+          msg.reply "Couldn't find a user or unique schedule matching #{userOrSchedule} :/"
         else
           pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
             query = {
