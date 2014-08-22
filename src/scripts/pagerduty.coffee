@@ -104,7 +104,7 @@ module.exports = (robot) ->
         msg.send "No open incidents"
 
   robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/i, (msg) ->
-    msg.reply "Please include a user or schedule to page, like 'hubot pager ops everything is on fire'."
+    msg.reply "Please include a user or schedule to page, like 'hubot pager infrastructure everything is on fire'."
 
   robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+) (.+)$/i, (msg) ->
     msg.finish()
@@ -112,10 +112,6 @@ module.exports = (robot) ->
     userOrSchedule = msg.match[3]
     reason         = msg.match[4]
     description    = "#{reason} - @#{fromUserName}"
-
-    unless reason
-      msg.reply "Please include a user or schedule to page, like 'hubot pager ops everything is on fire'."
-      return
 
     # Figure out who we are
     campfireUserToPagerDutyUser msg, msg.message.user, (triggerdByPagerDutyUser) ->
@@ -356,7 +352,7 @@ module.exports = (robot) ->
       return unless userId
 
       if !msg.match[2] || msg.match[2] == 'me'
-        msg.reply "Please specify a schedule with 'pager me ops 60'. Use 'pager schedules' to list all schedules."
+        msg.reply "Please specify a schedule with 'pager me infrastructure 60'. Use 'pager schedules' to list all schedules."
         return
 
       withScheduleMatching msg, msg.match[2], (matchingSchedule) ->
