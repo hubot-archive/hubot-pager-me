@@ -3,19 +3,11 @@
 #
 # Commands:
 #
-#   ## Setup
-#
 #   hubot pager me as <email>                                    remember your pager email is <email>
-#
-#   # Triggering an incident
-#
 #   hubot who's on call                                          return a list of services and who is on call for them
 #   hubot who's on call for <search>                             return the username of who's on call for any schedule matching <search>
 #   hubot pager trigger <user> <msg>                             create a new incident with <msg> and assign it to <user>
 #   hubot pager trigger <schedule> <msg>                         create a new incident with <msg> and assign it the user currently on call for <schedule>
-#
-#   # Incident Lifecycle
-#
 #   hubot pager incidents                                        return the current incidents
 #   hubot pager sup                                              return the current incidents
 #   hubot pager incident NNN                                     return the incident NNN
@@ -30,9 +22,6 @@
 #   hubot pager resolve <incident1> <incident2> ... <incidentN>  resolve all specified incidents
 #   hubot pager resolve                                          resolve acknowledged incidents assigned to you
 #   hubot pager resolve!                                         resolve all acknowledged, not just yours
-#
-#   ## Scheduling
-#
 #   hubot pager schedules                                        list schedules
 #   hubot pager schedules <search>                               list schedules matching <search>
 #   hubot pager schedule <schedule>                              show <schedule>'s shifts for the upcoming month
