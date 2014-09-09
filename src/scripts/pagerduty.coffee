@@ -35,7 +35,7 @@
 
 inspect = require('util').inspect
 
-moment = require('moment')
+moment = require('moment-timezone')
 
 pagerDutyApiKey        = process.env.HUBOT_PAGERDUTY_API_KEY
 pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
@@ -245,7 +245,7 @@ module.exports = (robot) ->
       else
         msg.send 'No schedules found!'
 
-  robot.respond /(pager|major)( me)? (schedule|overrides)( ([\w\-]+))?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (schedule|overrides)( ([\w\-]+))?( ([^ ]+))?$/i, (msg) ->
     query = {
       since: moment().format(),
       until: moment().add('days', 30).format(),
@@ -260,6 +260,10 @@ module.exports = (robot) ->
     if !msg.match[5]
       msg.reply "Please specify a schedule with 'pager #{msg.match[3]} <name>.'' Use 'pager schedules' to list all schedules."
       return
+    if msg.match[7]
+      timezone = msg.match[7]
+    else
+      timezone = 'UTC'
 
     withScheduleMatching msg, msg.match[5], (schedule) ->
       scheduleId = schedule.id
@@ -273,10 +277,12 @@ module.exports = (robot) ->
 
           buffer = ""
           for entry in sortedEntries
+            startTime = moment(entry.start).tz(timezone).format()
+            endTime   = moment(entry.end).tz(timezone).format()
             if entry.id
-              buffer += "* (#{entry.id}) #{entry.start} - #{entry.end} #{entry.user.name}\n"
+              buffer += "* (#{entry.id}) #{startTime} - #{endTime} #{entry.user.name}\n"
             else
-              buffer += "* #{entry.start} - #{entry.end} #{entry.user.name}\n"
+              buffer += "* #{startTime} - #{endTime} #{entry.user.name}\n"
           if buffer == ""
             msg.send "None found!"
           else
