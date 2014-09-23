@@ -290,7 +290,7 @@ module.exports = (robot) ->
         else
           msg.send "None found!"
 
-  robot.respond /(pager|major)( me)? (override) ([\w\-]+) ([\w\-:]+) - ([\w\-:]+)( (.*))?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (override) ([\w\-]+) ([\w\-:\+]+) - ([\w\-:\+]+)( (.*))?$/i, (msg) ->
     if msg.match[8]
       overrideUser = robot.brain.userForName(msg.match[8])
 
