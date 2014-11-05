@@ -63,7 +63,7 @@ hubot>
 
       Acknowledged:
       -------------
-      7: 2014-11-05T20:16:29Z test - @technicalpickles - assigned to jnewland
+      7: 2014-11-05T20:16:29Z omgwtfbbq - @technicalpickles - assigned to jnewland
 ```
 
 Acknowledge triggered alerts assigned to you:
