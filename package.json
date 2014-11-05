@@ -1,26 +1,25 @@
 {
   "name": "hubot-pager-me",
   "description": "PagerDuty integration for Hubot ",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "author": "Josh Nichols <technicalpickles@github.com>",
   "license": "MIT",
-
-  "keywords": ["hubot","hubot-scripts","pagerduty"],
-
+  "keywords": [
+    "hubot",
+    "hubot-scripts",
+    "pagerduty"
+  ],
   "repository": {
     "type": "git",
     "url": "git://github.com/hubot-scripts/hubot-pager-me.git"
   },
-
   "bugs": {
     "url": "https://github.com/hubot-scripts/hubot-pager-me/issues"
   },
-
   "dependencies": {
     "coffee-script": "~1.6",
     "moment-timezone": "~0.2.2"
   },
-
   "devDependencies": {
     "mocha": "*",
     "chai": "*",
@@ -31,9 +30,7 @@
     "matchdep": "~0.1.2",
     "grunt-contrib-watch": "~0.5.3"
   },
-
   "main": "index.coffee",
-
   "scripts": {
     "test": "grunt test"
   }
