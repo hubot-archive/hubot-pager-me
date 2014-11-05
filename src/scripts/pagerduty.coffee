@@ -1,42 +1,46 @@
 # Description:
-#   PagerDuty Integration for checking who's on call, making exceptions, ack, resolve, etc.
+#   Interact with PagerDuty services, schedules, and incidents with Hubot.
 #
 # Commands:
 #
-#   hubot who's on call - return the username of who's on call
-#   hubot pager me trigger <msg> - create a new incident with <msg>
-#   hubot pager me 60 - take the pager for 60 minutes
-#   hubot pager me as <email> - remember your pager email is <email>
-#   hubot pager me incidents - return the current incidents
-#   hubot pager me incident NNN - return the incident NNN
-#   hubot pager me note <incident> <content> - add note to incident #<incident> with <content>
-#   hubot pager me notes <incident> - show notes for incident #<incident>
-#   hubot pager me problems - return all open incidents
-#   hubot pager me ack <incident> - ack incident #<incident>
-#   hubot pager me ack - ack triggered incidents assigned to you
-#   hubot pager me ack! - ack all triggered incidents, not just yours
-#   hubot pager me resolve <incident1> <incident2> ... <incidentN> - ack all specified incidents
-#   hubot pager me resolve <incident> - resolve incident #<incident>
-#   hubot pager me resolve <incident1> <incident2> ... <incidentN>- resolve all specified incidents
-#   hubot pager me resolve - resolve acknowledged incidents assigned to you
-#   hubot pager me resolve! - resolve all acknowledged, not just yours
-#   hubot pager me schedule - show the schedule, including overides, for the next month
-#   hubot pager me override <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
-#   hubot pager me overrides - show upcoming overrides for the next month
-#   hubot pager me override delete <id> - delete an override by its ID
+#   hubot pager me as <email>                                    remember your pager email is <email>
+#   hubot who's on call                                          return a list of services and who is on call for them
+#   hubot who's on call for <schedule>                             return the username of who's on call for any schedule matching <search>
+#   hubot pager trigger <user> <msg>                             create a new incident with <msg> and assign it to <user>
+#   hubot pager trigger <schedule> <msg>                         create a new incident with <msg> and assign it the user currently on call for <schedule>
+#   hubot pager incidents                                        return the current incidents
+#   hubot pager sup                                              return the current incidents
+#   hubot pager incident <incident>                              return the incident NNN
+#   hubot pager note <incident> <content>                        add note to incident #<incident> with <content>
+#   hubot pager notes <incident>                                 show notes for incident #<incident>
+#   hubot pager problems                                         return all open incidents
+#   hubot pager ack <incident>                                   ack incident #<incident>
+#   hubot pager ack                                              ack triggered incidents assigned to you
+#   hubot pager ack!                                             ack all triggered incidents, not just yours
+#   hubot pager ack <incident1> <incident2> ... <incidentN>      ack all specified incidents
+#   hubot pager resolve <incident>                               resolve incident #<incident>
+#   hubot pager resolve <incident1> <incident2> ... <incidentN>  resolve all specified incidents
+#   hubot pager resolve                                          resolve acknowledged incidents assigned to you
+#   hubot pager resolve!                                         resolve all acknowledged, not just yours
+#   hubot pager schedules                                        list schedules
+#   hubot pager schedules <search>                               list schedules matching <search>
+#   hubot pager schedule <schedule>                              show <schedule>'s shifts for the upcoming month
+#   hubot pager me <schedule> <minutes>                          take the pager for <minutes> minutes
+#   hubot pager override <schedule> <start> - <end> [username]   Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
+#   hubot pager overrides <schedule>                             show upcoming overrides for the next month
+#   hubot pager override <schedule> delete <id>                  delete an override by its ID
 #
 # Authors:
 #   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin
 
 inspect = require('util').inspect
 
-moment = require('moment')
+moment = require('moment-timezone')
 
 pagerDutyApiKey        = process.env.HUBOT_PAGERDUTY_API_KEY
 pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
 pagerDutyBaseUrl       = "https://#{pagerDutySubdomain}.pagerduty.com/api/v1"
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
-pagerDutyScheduleId    = process.env.HUBOT_PAGERDUTY_SCHEDULE_ID
 pagerRoom              = process.env.HUBOT_PAGERDUTY_ROOM
 # Webhook listener endpoint. Set it to whatever URL you want, and make sure it matches your pagerduty service settings
 pagerEndpoint          = process.env.HUBOT_PAGERDUTY_ENDPOINT || "/hook"
@@ -58,39 +62,14 @@ module.exports = (robot) ->
       else
         msg.send "I couldn't find your user :( #{emailNote}"
 
-
-
     cmds = robot.helpCommands()
-    cmds = (cmd for cmd in cmds when cmd.match(/(pager me |who's on call)/))
+    cmds = (cmd for cmd in cmds when cmd.match(/hubot (pager |who's on call)/))
     msg.send cmds.join("\n")
 
   robot.respond /pager(?: me)? as (.*)$/i, (msg) ->
     email = msg.match[1]
     msg.message.user.pagerdutyEmail = email
     msg.send "Okay, I'll remember your PagerDuty email is #{email}"
-
-  # Assumes your Campfire usernames and PagerDuty names are identical
-  robot.respond /pager( me)? (\d+)/i, (msg) ->
-    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
-
-      userId = user.id
-      return unless userId
-
-      start     = moment().format()
-      minutes   = parseInt msg.match[2]
-      end       = moment().add('minutes', minutes).format()
-      override  = {
-        'start':     start,
-        'end':       end,
-        'user_id':   userId
-      }
-      withCurrentOncall msg, (old_username) ->
-        data = { 'override': override }
-        pagerDutyPost msg, "/schedules/#{pagerDutyScheduleId}/overrides", data, (json) ->
-          if json.override
-            start = moment(json.override.start)
-            end = moment(json.override.end)
-            msg.send "Rejoice, #{old_username}! #{json.override.user.name} has the pager until #{end.format()}"
 
   robot.respond /(pager|major)( me)? incident (.*)$/, (msg) ->
     pagerDutyIncident msg, msg.match[3], (incident) ->
@@ -111,15 +90,57 @@ module.exports = (robot) ->
       else
         msg.send "No open incidents"
 
-  robot.respond /(pager|major)( me)? (?:trigger|page) (.+)$/i, (msg) ->
-    user = msg.message.user.name
-    reason = msg.match[3]
+  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/i, (msg) ->
+    msg.reply "Please include a user or schedule to page, like 'hubot pager infrastructure everything is on fire'."
 
-    description = "#{reason} - @#{user}"
-    pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
-      msg.reply "#{json.status}, key: #{json.incident_key}"
+  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+) (.+)$/i, (msg) ->
+    msg.finish()
+    fromUserName   = msg.message.user.name
+    query          = msg.match[3]
+    reason         = msg.match[4]
+    description    = "#{reason} - @#{fromUserName}"
+
+    # Figure out who we are
+    campfireUserToPagerDutyUser msg, msg.message.user, (triggerdByPagerDutyUser) ->
+      triggerdByPagerDutyUserId = triggerdByPagerDutyUser.id
+      return unless triggerdByPagerDutyUserId
+
+      # Figure out what we're trying to page
+      reassignmentParametersForUserOrScheduleOrEscalationPolicy msg, query, (results) ->
+        if not (results.assigned_to_user or results.escalation_policy)
+          msg.reply "Couldn't find a user or unique schedule or escalation policy matching #{query} :/"
+          return
+
+        pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
+          query =
+            incident_key: json.incident_key
+
+          msg.reply ":pager: triggered! now assigning it to the right user..."
+
+          setTimeout () ->
+            pagerDutyGet msg, "/incidents", query, (json) ->
+              if json?.incidents.length == 0
+                msg.reply "Couldn't find the incident we just created to reassign. Please try again :/"
+              else
+                data = {
+                  requester_id: triggerdByPagerDutyUserId,
+                  incidents: json.incidents.map (incident) ->
+                    {
+                      id:                incident.id
+                      assigned_to_user:  results.assigned_to_user
+                      escalation_policy: results.escalation_policy
+                    }
+                }
+
+                pagerDutyPut msg, "/incidents", data , (json) ->
+                  if json?.incidents.length == 1
+                    msg.reply ":pager: assigned to #{results.name}!"
+                  else
+                    msg.reply "Problem reassigning the incident :/"
+          , 5000
 
   robot.respond /(?:pager|major)(?: me)? ack(?:nowledge)? (.+)$/i, (msg) ->
+    msg.finish()
     incidentNumbers = parseIncidentNumbers(msg.match[1])
 
     # only acknowledge triggered things, since it doesn't make sense to re-acknowledge if it's already in re-acknowledge
@@ -150,6 +171,7 @@ module.exports = (robot) ->
       updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged')
 
   robot.respond /(?:pager|major)(?: me)? res(?:olve)?(?:d)? (.+)$/i, (msg) ->
+    msg.finish()
     incidentNumbers = parseIncidentNumbers(msg.match[1])
 
     # allow resolving of triggered and acknowedlge, since being explicit
@@ -177,6 +199,7 @@ module.exports = (robot) ->
       updateIncidents(msg, incidentNumbers, 'acknowledged', 'resolved')
 
   robot.respond /(pager|major)( me)? notes (.+)$/i, (msg) ->
+    msg.finish()
     incidentId = msg.match[3]
     pagerDutyGet msg, "/incidents/#{incidentId}/notes", {}, (json) ->
       buffer = ""
@@ -185,6 +208,8 @@ module.exports = (robot) ->
       msg.send buffer
 
   robot.respond /(pager|major)( me)? note ([\d\w]+) (.+)$/i, (msg) ->
+    msg.finish()
+
     incidentId = msg.match[3]
     content = msg.match[4]
 
@@ -203,7 +228,21 @@ module.exports = (robot) ->
         else
           msg.send "Sorry, I couldn't do it :("
 
-  robot.respond /(pager|major)( me)? (schedule|overrides)/i, (msg) ->
+  robot.respond /(pager|major)( me)? schedules( (.+))?$/i, (msg) ->
+    query = {}
+    if msg.match[4]
+      query['query'] = msg.match[4]
+    pagerDutyGet msg, "/schedules", query, (json) ->
+      buffer = ''
+      schedules = json.schedules
+      if schedules.length > 0
+        for schedule in schedules
+          buffer += "* #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}\n"
+        msg.send buffer
+      else
+        msg.send 'No schedules found!'
+
+  robot.respond /(pager|major)( me)? (schedule|overrides)( ([\w\-]+))?( ([^ ]+))?$/i, (msg) ->
     query = {
       since: moment().format(),
       until: moment().add('days', 30).format(),
@@ -215,28 +254,42 @@ module.exports = (robot) ->
       thing = 'overrides'
       query['editable'] = 'true'
 
-    pagerDutyGet msg, "/schedules/#{pagerDutyScheduleId}/#{thing}", query, (json) ->
-      entries = json.entries || json.overrides
-      if entries
-        sortedEntries = entries.sort (a, b) ->
-          moment(a.start).unix() - moment(b.start).unix()
-
-        buffer = ""
-        for entry in sortedEntries
-          if entry.id
-            buffer += "* (#{entry.id}) #{entry.start} - #{entry.end} #{entry.user.name}\n"
-          else
-            buffer += "* #{entry.start} - #{entry.end} #{entry.user.name}\n"
-        if buffer == ""
-          msg.send "None found!"
-        else
-          msg.send buffer
-      else
-        msg.send "None found!"
-
-  robot.respond /(pager|major)( me)? (override) ([\w\-:]*) - ([\w\-:]*)( (.*))?$/i, (msg) ->
+    if !msg.match[5]
+      msg.reply "Please specify a schedule with 'pager #{msg.match[3]} <name>.'' Use 'pager schedules' to list all schedules."
+      return
     if msg.match[7]
-      overrideUser = robot.brain.userForName(msg.match[7])
+      timezone = msg.match[7]
+    else
+      timezone = 'UTC'
+
+    withScheduleMatching msg, msg.match[5], (schedule) ->
+      scheduleId = schedule.id
+      return unless scheduleId
+
+      pagerDutyGet msg, "/schedules/#{scheduleId}/#{thing}", query, (json) ->
+        entries = json.entries || json.overrides
+        if entries
+          sortedEntries = entries.sort (a, b) ->
+            moment(a.start).unix() - moment(b.start).unix()
+
+          buffer = ""
+          for entry in sortedEntries
+            startTime = moment(entry.start).tz(timezone).format()
+            endTime   = moment(entry.end).tz(timezone).format()
+            if entry.id
+              buffer += "* (#{entry.id}) #{startTime} - #{endTime} #{entry.user.name}\n"
+            else
+              buffer += "* #{startTime} - #{endTime} #{entry.user.name}\n"
+          if buffer == ""
+            msg.send "None found!"
+          else
+            msg.send buffer
+        else
+          msg.send "None found!"
+
+  robot.respond /(pager|major)( me)? (override) ([\w\-]+) ([\w\-:\+]+) - ([\w\-:\+]+)( (.*))?$/i, (msg) ->
+    if msg.match[8]
+      overrideUser = robot.brain.userForName(msg.match[8])
 
       unless overrideUser
         msg.send "Sorry, I don't seem to know who that is. Are you sure they are in chat?"
@@ -248,37 +301,91 @@ module.exports = (robot) ->
       userId = user.id
       return unless userId
 
-      if moment(msg.match[4]).isValid() && moment(msg.match[5]).isValid()
-        start_time = moment(msg.match[4]).format()
-        end_time = moment(msg.match[5]).format()
+      withScheduleMatching msg, msg.match[4], (schedule) ->
+        scheduleId = schedule.id
+        return unless scheduleId
 
+        if moment(msg.match[5]).isValid() && moment(msg.match[6]).isValid()
+          start_time = moment(msg.match[5]).format()
+          end_time = moment(msg.match[6]).format()
+
+          override  = {
+            'start':     start_time,
+            'end':       end_time,
+            'user_id':   userId
+          }
+          data = { 'override': override }
+          pagerDutyPost msg, "/schedules/#{scheduleId}/overrides", data, (json) ->
+            if json && json.override
+              start = moment(json.override.start)
+              end = moment(json.override.end)
+              msg.send "Override setup! #{json.override.user.name} has the pager from #{start.format()} until #{end.format()}"
+            else
+              msg.send "That didn't work. Check Hubot's logs for an error!"
+        else
+          msg.send "Please use a http://momentjs.com/ compatible date!"
+
+  robot.respond /(pager|major)( me)? (overrides?) ([\w\-]*) (delete) (.*)$/i, (msg) ->
+    withScheduleMatching msg, msg.match[4], (schedule) ->
+      scheduleId = schedule.id
+      return unless scheduleId
+
+      pagerDutyDelete msg, "/schedules/#{scheduleId}/overrides/#{msg.match[6]}", (success) ->
+        if success
+          msg.send ":boom:"
+        else
+          msg.send "Something went weird."
+
+  robot.respond /pager( me)? (.+) (\d+)$/i, (msg) ->
+    msg.finish()
+    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
+
+      userId = user.id
+      return unless userId
+
+      if !msg.match[2] || msg.match[2] == 'me'
+        msg.reply "Please specify a schedule with 'pager me infrastructure 60'. Use 'pager schedules' to list all schedules."
+        return
+
+      withScheduleMatching msg, msg.match[2], (matchingSchedule) ->
+
+        return unless matchingSchedule.id
+
+        start     = moment().format()
+        minutes   = parseInt msg.match[3]
+        end       = moment().add('minutes', minutes).format()
         override  = {
-          'start':     start_time,
-          'end':       end_time,
+          'start':     start,
+          'end':       end,
           'user_id':   userId
         }
-        data = { 'override': override }
-        pagerDutyPost msg, "/schedules/#{pagerDutyScheduleId}/overrides", data, (json) ->
-          if json && json.override
-            start = moment(json.override.start)
-            end = moment(json.override.end)
-            msg.send "Override setup! #{json.override.user.name} has the pager from #{start.format()} until #{end.format()}"
-          else
-            msg.send "That didn't work. Check Hubot's logs for an error!"
-      else
-        msg.send "Please use a http://momentjs.com/ compatible date!"
+        withCurrentOncall msg, matchingSchedule, (old_username, schedule) ->
+          data = { 'override': override }
+          pagerDutyPost msg, "/schedules/#{schedule.id}/overrides", data, (json) ->
+            if json.override
+              start = moment(json.override.start)
+              end = moment(json.override.end)
+              msg.send "Rejoice, #{old_username}! #{json.override.user.name} has the pager on #{schedule.name} until #{end.format()}"
 
-  robot.respond /(pager|major)( me)? (override) (delete) (.*)$/i, (msg) ->
-    pagerDutyDelete msg, "/schedules/#{pagerDutyScheduleId}/overrides/#{msg.match[5]}", (success) ->
-      if success
-        msg.send ":boom:"
-      else
-        msg.send "Something went weird."
 
   # who is on call?
-  robot.respond /who('s|s| is)? (on call|oncall)/i, (msg) ->
-    withCurrentOncall msg, (username) ->
-      msg.reply "#{username} is on call"
+  robot.respond /who('s|s| is|se)? (on call|oncall|on-call)( (?:for )?(.+))?/i, (msg) ->
+    scheduleName = msg.match[4]
+
+    displaySchedule = (s) ->
+      withCurrentOncall msg, s, (username, schedule) ->
+        msg.send "* #{username} is on call for #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}\n"
+
+    if scheduleName?
+      withScheduleMatching msg, scheduleName, displaySchedule
+    else
+      pagerDutyGet msg, "/schedules", {}, (json) ->
+        schedules = json.schedules
+        if schedules.length > 0
+          for s in schedules
+            displaySchedule(s)
+        else
+          msg.send 'No schedules found!'
 
   parseIncidentNumbers = (match) ->
     match.split(/[ ,]+/).map (incidentNumber) ->
@@ -292,15 +399,12 @@ module.exports = (robot) ->
     unless pagerDutyApiKey?
       msg.send "PagerDuty API Key is missing:  Ensure that HUBOT_PAGERDUTY_API_KEY is set."
       missingAnything |= true
-    unless pagerDutyScheduleId?
-      msg.send "PagerDuty Schedule ID is missing:  Ensure that HUBOT_PAGERDUTY_SCHEDULE_ID is set."
-      missingAnything |= true
     missingAnything
 
 
   campfireUserToPagerDutyUser = (msg, user, cb) ->
 
-    email  = user.pagerdutyEmail || user.email_address
+    email  = user.pagerdutyEmail || user.email_address || process.env.HUBOT_PAGERDUTY_TEST_EMAIL
     speakerEmail = msg.message.user.pagerdutyEmail || msg.message.user.email_address
     unless email
       possessive = if email is speakerEmail
@@ -404,7 +508,7 @@ module.exports = (robot) ->
       .delete() (err, res, body) ->
         json_body = null
         switch res.statusCode
-          when 204
+          when 204, 200
             value = true
           else
             console.log res.statusCode
@@ -412,7 +516,64 @@ module.exports = (robot) ->
             value = false
         cb value
 
-  withCurrentOncall = (msg, cb) ->
+  oneScheduleMatching = (msg, q, cb) ->
+    query = {
+      query: q
+    }
+    pagerDutyGet msg, "/schedules", query, (json) ->
+      schedule = null
+      # Single result returned
+      if json?.schedules?.length == 1
+        schedule = json.schedules[0]
+
+      # Multiple results returned and one is exact
+      if json?.schedules?.length > 1
+        matchingExactly = json.schedules.filter (s) ->
+          s.name == q
+        if matchingExactly.length == 1
+          schedule = matchingExactly[0]
+      cb(schedule)
+
+  withScheduleMatching = (msg, q, cb) ->
+    oneScheduleMatching msg, q, (schedule) ->
+      if schedule
+        cb(schedule)
+      else
+        # maybe look for a specific name match here?
+        msg.send "I couldn't determine exactly which schedule you meant by #{q}. Can you be more specific?"
+        return
+
+  reassignmentParametersForUserOrScheduleOrEscalationPolicy = (msg, string, cb) ->
+    if campfireUser = robot.brain.userForName(string)
+      campfireUserToPagerDutyUser msg, campfireUser, (user) ->
+        cb(assigned_to_user: user.id,  name: user.name)
+    else
+      pagerDutyGet msg, "/escalation_policies", query: string, (json) ->
+        escalationPolicy = null
+
+        if json?.escalation_policies?.length == 1
+          escalationPolicy = json.escalation_policies[0]
+        else if json?.escalation_policies?.length > 1
+          matchingExactly = json.escalation_policies.filter (es) ->
+            es.name == q
+          if matchingExactly.length == 1
+            escalationPolicy = matchingExactly[0]
+
+        if escalationPolicy?
+          cb(escalation_policy: escalationPolicy.id, name: escalationPolicy.name)
+        else
+          oneScheduleMatching msg, string, (schedule) ->
+            if schedule
+              withCurrentOncallUser msg, schedule, (user, schedule) ->
+                cb(assigned_to_user: user.id,  name: user.name)
+            else
+              cb()
+
+  withCurrentOncall = (msg, schedule, cb) ->
+    withCurrentOncallUser msg, schedule, (user, s) ->
+      cb(user.name, s)
+
+  withCurrentOncallUser = (msg, schedule, cb) ->
     oneHour = moment().add('hours', 1).format()
     now = moment().format()
 
@@ -421,9 +582,9 @@ module.exports = (robot) ->
       until: oneHour,
       overflow: 'true'
     }
-    pagerDutyGet msg, "/schedules/#{pagerDutyScheduleId}/entries", query, (json) ->
+    pagerDutyGet msg, "/schedules/#{schedule.id}/entries", query, (json) ->
       if json.entries and json.entries.length > 0
-        cb(json.entries[0].user.name)
+        cb(json.entries[0].user, schedule)
 
   pagerDutyIncident = (msg, incident, cb) ->
     pagerDutyGet msg, "/incidents/#{encodeURIComponent incident}", {}, (json) ->
