@@ -3,7 +3,9 @@
 
 * Add support for multiple schedules
   * HUBOT_PAGERDUTY_SCHEDULE_ID is no longer used. Instead, the schedule name is given as part of the command
+* Update `pager trigger` to be assigned to users, escalation policies, or schedules
 * Add support for viewing schedules in a given timezone
+* Update README with more example interactions
 
 1.2.0
 =====
