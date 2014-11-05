@@ -40,13 +40,13 @@ Check up coming schedule, and schedule shift overrides on it:
 ```
 technicalpickles> hubot pager schedules
 hubot> * Ops - https://urcompany.pagerduty.com/schedules#DEADBEE
-technicalpickles> hubot pager schedule Ops
+technicalpickles> hubot pager schedule ops
 hubot> * 2014-06-24T09:06:45-07:00 - 2014-06-25T03:00:00-07:00 technicalpickles
        * 2014-06-25T03:00:00-07:00 - 2014-06-26T03:00:00-07:00 jnewland
        * 2014-06-26T03:00:00-07:00 - 2014-06-27T03:00:00-07:00 technicalpickles
        * 2014-06-27T03:00:00-07:00 - 2014-06-28T03:00:00-07:00 jnewland
        * 2014-06-28T03:00:00-07:00 - 2014-06-29T03:00:00-07:00 technicalpickles
-technicalpickles> hubot pager override Ops 2014-06-25T03:00:00-07:00 - 2014-06-26T03:00:00-07:00 chrislundquist
+technicalpickles> hubot pager override ops 2014-06-25T03:00:00-07:00 - 2014-06-26T03:00:00-07:00 chrislundquist
 hubot> Override setup! chrislundquist has the pager from 2014-06-25T06:00:00-04:00 until 2014-06-26T06:00:00-04:00
 technicalpickles> hubot pager schedule
 hubot> * 2014-06-24T09:06:45-07:00 - 2014-06-25T03:00:00-07:00 technicalpickles
