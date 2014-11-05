@@ -62,10 +62,8 @@ module.exports = (robot) ->
       else
         msg.send "I couldn't find your user :( #{emailNote}"
 
-
-
     cmds = robot.helpCommands()
-    cmds = (cmd for cmd in cmds when cmd.match(/(hubot pager|on call)/))
+    cmds = (cmd for cmd in cmds when cmd.match(/hubot (pager |who's on call)/))
     msg.send cmds.join("\n")
 
   robot.respond /pager(?: me)? as (.*)$/i, (msg) ->
