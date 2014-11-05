@@ -35,6 +35,51 @@ the service settings of your Pagerduty accounts. You also need to define the roo
 
 ## Example interactions
 
+Trigger an incident assigned to a specific user:
+
+```
+technicalpickles> hubotjpager trigger jnewland omgwtfbbq
+hubot> technicalpickles: :pager: triggered! now assigning it to the right user...
+hubot> technicalpickles: :pager: assigned to jnewland!
+```
+
+Trigger an incident assigned to an escalation policy:
+
+
+```
+technicalpickles> hubot pager trigger ops site is down
+hubot> Shell: :pager: triggered! now assigning it to the right user...
+hubot> Shell: :pager: assigned to ops!
+```
+
+Check on open incidents:
+
+```
+technicalpickles> hubot pager sup
+hubot>
+      Triggered:
+      ----------
+      8: 2014-11-05T20:17:50Z site is down - @technicalpickles - assigned to jnewland
+
+      Acknowledged:
+      -------------
+      7: 2014-11-05T20:16:29Z test - @technicalpickles - assigned to jnewland
+```
+
+Acknowledge triggered alerts assigned to you:
+
+```
+jnewland> /pager ack
+hubot> jnewland: Incident 9 acknowledged
+```
+
+Resolve acknowledged alerts assigned to you:
+
+```
+jnewland> /pager resolve
+hubot> jnewland: Incident 9 resolved
+```
+
 Check up coming schedule, and schedule shift overrides on it:
 
 ```
