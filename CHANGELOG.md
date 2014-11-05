@@ -1,3 +1,10 @@
+2.0.0
+=====
+
+* Add support for multiple schedules
+  * HUBOT_PAGERDUTY_SCHEDULE_ID is no longer used. Instead, the schedule name is given as part of the command
+* Add support for viewing schedules in a given timezone
+
 1.2.0
 =====
 
