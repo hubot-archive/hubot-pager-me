@@ -372,18 +372,26 @@ module.exports = (robot) ->
 
 
   # who is on call?
-  robot.respond /who('s|s| is|se)? (on call|oncall|on-call)( for (.+))?/i, (msg) ->
+  robot.respond /who('s|s| is|se)? (on call|oncall|on-call)( (?:for )?(.+))?/i, (msg) ->
+    scheduleName = msg.match[4]
+
     query = {}
-    if msg.match[4]
-      query['query'] = msg.match[4]
-    pagerDutyGet msg, "/schedules", query, (json) ->
-      schedules = json.schedules
-      if schedules.length > 0
-        for s in schedules
-          withCurrentOncall msg, s, (username, schedule) ->
-            msg.send "* #{username} is on call for #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}\n"
-      else
-        msg.send 'No schedules found!'
+    query['query'] = scheduleName if scheduleName?
+
+    displaySchedule = (s) ->
+      withCurrentOncall msg, s, (username, schedule) ->
+        msg.send "* #{username} is on call for #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}\n"
+
+    if scheduleName?
+      withScheduleMatching msg, scheduleName, displaySchedule
+    else
+      pagerDutyGet msg, "/schedules", query, (json) ->
+        schedules = json.schedules
+        if schedules.length > 0
+          for s in schedules
+            displaySchedule(s)
+        else
+          msg.send 'No schedules found!'
 
   parseIncidentNumbers = (match) ->
     match.split(/[ ,]+/).map (incidentNumber) ->
