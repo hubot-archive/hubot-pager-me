@@ -506,7 +506,7 @@ module.exports = (robot) ->
       .delete() (err, res, body) ->
         json_body = null
         switch res.statusCode
-          when 204 || 200
+          when 204, 200
             value = true
           else
             console.log res.statusCode
