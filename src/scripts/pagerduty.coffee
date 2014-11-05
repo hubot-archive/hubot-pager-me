@@ -96,7 +96,7 @@ module.exports = (robot) ->
   robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+) (.+)$/i, (msg) ->
     msg.finish()
     fromUserName   = msg.message.user.name
-    userOrSchedule = msg.match[3]
+    query          = msg.match[3]
     reason         = msg.match[4]
     description    = "#{reason} - @#{fromUserName}"
 
@@ -106,39 +106,38 @@ module.exports = (robot) ->
       return unless triggerdByPagerDutyUserId
 
       # Figure out what we're trying to page
-      pagerDutyUserFromNameOrSchedule msg, msg.match[3], (userToPage) ->
-        if !userToPage
-          msg.reply "Couldn't find a user or unique schedule matching #{userOrSchedule} :/"
-        else
-          pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
-            query = {
-              incident_key: json.incident_key
-            }
-            msg.reply ":pager: triggered! now assigning it to the right user..."
-            setTimeout () ->
-              pagerDutyGet msg, "/incidents", query, (json) ->
-                if json?.incidents.length == 0
-                  console.log inspect query
-                  console.log inspect json
-                  msg.reply "Couldn't find the incident we just created to reassign. Please try again :/"
-                else
-                  data = {
-                    requester_id: triggerdByPagerDutyUserId,
-                    incidents: json.incidents.map (incident) ->
-                      {
-                        'id':               incident.id,
-                        'assigned_to_user': userToPage.id
-                      }
-                  }
+      reassignmentParametersForUserOrScheduleOrEscalationPolicy msg, query, (results) ->
+        if not (results.assigned_to_user or results.escalation_policy)
+          msg.reply "Couldn't find a user or unique schedule or escalation policy matching #{query} :/"
+          return
 
-                  pagerDutyPut msg, "/incidents", data , (json) ->
-                    if json?.incidents.length == 1
-                      msg.reply ":pager: assigned to #{userToPage.name}!"
-                    else
-                      console.log inspect data
-                      console.log inspect json
-                      msg.reply "Problem reassigning the incident :/"
-            , 5000
+        pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
+          query =
+            incident_key: json.incident_key
+
+          msg.reply ":pager: triggered! now assigning it to the right user..."
+
+          setTimeout () ->
+            pagerDutyGet msg, "/incidents", query, (json) ->
+              if json?.incidents.length == 0
+                msg.reply "Couldn't find the incident we just created to reassign. Please try again :/"
+              else
+                data = {
+                  requester_id: triggerdByPagerDutyUserId,
+                  incidents: json.incidents.map (incident) ->
+                    {
+                      id:                incident.id
+                      assigned_to_user:  results.assigned_to_user
+                      escalation_policy: results.escalation_policy
+                    }
+                }
+
+                pagerDutyPut msg, "/incidents", data , (json) ->
+                  if json?.incidents.length == 1
+                    msg.reply ":pager: assigned to #{results.name}!"
+                  else
+                    msg.reply "Problem reassigning the incident :/"
+          , 5000
 
   robot.respond /(?:pager|major)(?: me)? ack(?:nowledge)? (.+)$/i, (msg) ->
     msg.finish()
@@ -539,17 +538,31 @@ module.exports = (robot) ->
         msg.send "I couldn't determine exactly which schedule you meant by #{q}. Can you be more specific?"
         return
 
-  pagerDutyUserFromNameOrSchedule = (msg, string, cb) ->
+  reassignmentParametersForUserOrScheduleOrEscalationPolicy = (msg, string, cb) ->
     if campfireUser = robot.brain.userForName(string)
       campfireUserToPagerDutyUser msg, campfireUser, (user) ->
-        cb(user)
+        cb(assigned_to_user: user.id,  name: user.name)
     else
-      oneScheduleMatching msg, string, (schedule) ->
-        if schedule
-          withCurrentOncallUser msg, schedule, (user, schedule) ->
-            cb(user)
+      pagerDutyGet msg, "/escalation_policies", query: string, (json) ->
+        escalationPolicy = null
+
+        if json?.escalation_policies?.length == 1
+          escalationPolicy = json.escalation_policies[0]
+        else if json?.escalation_policies?.length > 1
+          matchingExactly = json.escalation_policies.filter (es) ->
+            es.name == q
+          if matchingExactly.length == 1
+            escalationPolicy = matchingExactly[0]
+
+        if escalationPolicy?
+          cb(escalation_policy: escalationPolicy.id, name: escalationPolicy.name)
         else
-          cb()
+          oneScheduleMatching msg, string, (schedule) ->
+            if schedule
+              withCurrentOncallUser msg, schedule, (user, schedule) ->
+                cb(assigned_to_user: user.id,  name: user.name)
+            else
+              cb()
 
   withCurrentOncall = (msg, schedule, cb) ->
     withCurrentOncallUser msg, schedule, (user, s) ->
