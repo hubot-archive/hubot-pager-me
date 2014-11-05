@@ -56,6 +56,20 @@ hubot> * 2014-06-24T09:06:45-07:00 - 2014-06-25T03:00:00-07:00 technicalpickles
        * 2014-06-28T03:00:00-07:00 - 2014-06-29T03:00:00-07:00 technicalpickles
 ```
 
+## Development
+
+Fork this repository, and clone it locally. To start using with an existing hubot for testing:
+
+* Run `npm install` in hubot-pager-me repository
+* Run `npm link` in hubot-pager-me repository
+* Run `npm link hubot-pager-me` in your hubot directory
+* NOTE: if you are using something like [nodenv](https://github.com/wfarr/nodenv) or similar, make sure your `npm link` from the same node version
+
+There's a few environment variables useful for testing:
+
+* HUBOT_PAGERDUTY_NOOP: don't actually make POST/PUT HTTP requests
+* HUBOT_PAGERDUTY_TEST_EMAIL: force email of address to this for testing
+
 ## Resources
 
 * http://developer.pagerduty.com/documentation/rest/webhooks
