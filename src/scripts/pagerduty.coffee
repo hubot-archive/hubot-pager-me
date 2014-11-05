@@ -375,9 +375,6 @@ module.exports = (robot) ->
   robot.respond /who('s|s| is|se)? (on call|oncall|on-call)( (?:for )?(.+))?/i, (msg) ->
     scheduleName = msg.match[4]
 
-    query = {}
-    query['query'] = scheduleName if scheduleName?
-
     displaySchedule = (s) ->
       withCurrentOncall msg, s, (username, schedule) ->
         msg.send "* #{username} is on call for #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}\n"
@@ -385,7 +382,7 @@ module.exports = (robot) ->
     if scheduleName?
       withScheduleMatching msg, scheduleName, displaySchedule
     else
-      pagerDutyGet msg, "/schedules", query, (json) ->
+      pagerDutyGet msg, "/schedules", {}, (json) ->
         schedules = json.schedules
         if schedules.length > 0
           for s in schedules
