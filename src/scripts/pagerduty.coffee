@@ -106,7 +106,7 @@ module.exports = (robot) ->
       return unless triggerdByPagerDutyUserId
 
       # Figure out what we're trying to page
-      pagerDutyUserFromNameOrSchedule msg, msg.match[3], (userToPage) ->
+      pagerDutyUserFromNameOrSchedule msg, userOrSchedule, (userToPage) ->
         if !userToPage
           msg.reply "Couldn't find a user or unique schedule matching #{userOrSchedule} :/"
         else
