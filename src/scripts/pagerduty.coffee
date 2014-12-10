@@ -555,7 +555,7 @@ module.exports = (robot) ->
           escalationPolicy = json.escalation_policies[0]
         else if json?.escalation_policies?.length > 1
           matchingExactly = json.escalation_policies.filter (es) ->
-            es.name == q
+            es.name == string
           if matchingExactly.length == 1
             escalationPolicy = matchingExactly[0]
 
