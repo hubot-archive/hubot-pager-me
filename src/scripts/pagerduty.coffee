@@ -4,6 +4,7 @@
 # Commands:
 #
 #   hubot pager me as <email>                                    remember your pager email is <email>
+#   hubot pager forget me                                        forget your pager email
 #   hubot who's on call                                          return a list of services and who is on call for them
 #   hubot who's on call for <schedule>                             return the username of who's on call for any schedule matching <search>
 #   hubot pager trigger <user> <msg>                             create a new incident with <msg> and assign it to <user>
@@ -70,6 +71,10 @@ module.exports = (robot) ->
     email = msg.match[1]
     msg.message.user.pagerdutyEmail = email
     msg.send "Okay, I'll remember your PagerDuty email is #{email}"
+
+  robot.respond /pager forget me$/i, (msg) ->
+    msg.message.user.pagerdutyEmail = undefined
+    msg.send "Okay, I've forgotten your PagerDuty email"
 
   robot.respond /(pager|major)( me)? incident (.*)$/, (msg) ->
     pagerDutyIncident msg, msg.match[3], (incident) ->
