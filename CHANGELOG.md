@@ -1,3 +1,8 @@
+2.0.1
+=====
+
+* Allow `/pager trigger` to work if user hasn't configured PagerDuty
+
 2.0.0
 =====
 
