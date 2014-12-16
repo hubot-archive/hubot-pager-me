@@ -69,7 +69,7 @@ module.exports = (robot) ->
     msg.send cmds.join("\n")
 
   robot.respond /pager(?: me)? as (.*)$/i, (msg) ->
-    email = msg.match[1]
+    email = sanitizeEmail(msg.match[1])
     msg.message.user.pagerdutyEmail = email
     msg.send "Okay, I'll remember your PagerDuty email is #{email}"
 
@@ -401,6 +401,11 @@ module.exports = (robot) ->
   parseIncidentNumbers = (match) ->
     match.split(/[ ,]+/).map (incidentNumber) ->
       parseInt(incidentNumber)
+
+  sanitizeEmail = (email) ->
+    if email.match(/^<mailto:(.*)\|.*>$/)
+      return email.match(/^<mailto:(.*)\|.*>$/)[1]
+    return email
 
   missingEnvironmentForApi = (msg) ->
     missingAnything = false
