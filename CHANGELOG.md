@@ -1,3 +1,8 @@
+2.0.2
+=====
+
+* Allow `/pager trigger` to work if user has configured PagerDuty email, but it doesn't match a PagerDuty user
+
 2.0.1
 =====
 
