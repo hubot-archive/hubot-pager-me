@@ -2,6 +2,7 @@
 =====
 
 * Allow `/pager trigger` to work if user hasn't configured PagerDuty
+* Fix exactly matching an escalation policy
 
 2.0.0
 =====
