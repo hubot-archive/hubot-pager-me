@@ -4,6 +4,7 @@
 # Commands:
 #
 #   hubot pager me as <email>                                    remember your pager email is <email>
+#   hubot pager forget me                                        forget your pager email
 #   hubot who's on call                                          return a list of services and who is on call for them
 #   hubot who's on call for <schedule>                             return the username of who's on call for any schedule matching <search>
 #   hubot pager trigger <user> <msg>                             create a new incident with <msg> and assign it to <user>
@@ -37,6 +38,7 @@ inspect = require('util').inspect
 
 moment = require('moment-timezone')
 
+pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
 pagerDutyApiKey        = process.env.HUBOT_PAGERDUTY_API_KEY
 pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
 pagerDutyBaseUrl       = "https://#{pagerDutySubdomain}.pagerduty.com/api/v1"
@@ -71,6 +73,10 @@ module.exports = (robot) ->
     msg.message.user.pagerdutyEmail = email
     msg.send "Okay, I'll remember your PagerDuty email is #{email}"
 
+  robot.respond /pager forget me$/i, (msg) ->
+    msg.message.user.pagerdutyEmail = undefined
+    msg.send "Okay, I've forgotten your PagerDuty email"
+
   robot.respond /(pager|major)( me)? incident (.*)$/, (msg) ->
     pagerDutyIncident msg, msg.match[3], (incident) ->
       msg.send formatIncident(incident)
@@ -101,9 +107,14 @@ module.exports = (robot) ->
     description    = "#{reason} - @#{fromUserName}"
 
     # Figure out who we are
-    campfireUserToPagerDutyUser msg, msg.message.user, (triggerdByPagerDutyUser) ->
-      triggerdByPagerDutyUserId = triggerdByPagerDutyUser.id
-      return unless triggerdByPagerDutyUserId
+    campfireUserToPagerDutyUser msg, msg.message.user, false, (triggerdByPagerDutyUser) ->
+      triggerdByPagerDutyUserId = if triggerdByPagerDutyUser?
+                                    triggerdByPagerDutyUser.id
+                                  else if pagerDutyUserId
+                                    pagerDutyUserId
+      unless triggerdByPagerDutyUserId
+        msg.send "Sorry, I can't figure your PagerDuty account, and I don't have my own :( Can you tell me your PagerDuty email with `#{robot.name} pager me as you@yourdomain.com` or make sure you've set the HUBOT_PAGERDUTY_USER_ID environment variable?"
+        return
 
       # Figure out what we're trying to page
       reassignmentParametersForUserOrScheduleOrEscalationPolicy msg, query, (results) ->
@@ -402,22 +413,30 @@ module.exports = (robot) ->
     missingAnything
 
 
-  campfireUserToPagerDutyUser = (msg, user, cb) ->
+  campfireUserToPagerDutyUser = (msg, user, required, cb) ->
+
+    if typeof required is 'function'
+      cb = required
+      required = true
 
     email  = user.pagerdutyEmail || user.email_address || process.env.HUBOT_PAGERDUTY_TEST_EMAIL
     speakerEmail = msg.message.user.pagerdutyEmail || msg.message.user.email_address
-    unless email
-      possessive = if email is speakerEmail
-                    "your"
-                   else
-                    "#{user.name}'s"
-      addressee = if email is speakerEmail
-                    "you"
-                  else
-                    "#{user.name}"
+    if not email
+      if not required
+        cb null
+        return
+      else
+        possessive = if email is speakerEmail
+                      "your"
+                     else
+                      "#{user.name}'s"
+        addressee = if email is speakerEmail
+                      "you"
+                    else
+                      "#{user.name}"
 
-      msg.send "Sorry, I can't figure out #{possessive} email address :( Can #{addressee} tell me with `#{robot.name} pager me as you@yourdomain.com`?"
-      return
+        msg.send "Sorry, I can't figure out #{possessive} email address :( Can #{addressee} tell me with `#{robot.name} pager me as you@yourdomain.com`?"
+        return
 
     pagerDutyGet msg, "/users", {query: email}, (json) ->
       if json.users.length isnt 1
