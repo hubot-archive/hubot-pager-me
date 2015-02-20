@@ -677,7 +677,7 @@ module.exports = (robot) ->
             foundIncidents.push(incident)
 
         if foundIncidents.length == 0
-          msg.reply "Couldn't find incidents #{incidentNumbers.join(', ')} in #{inspect incidents}"
+          msg.reply "Couldn't find incident(s) #{incidentNumbers.join(', ')}. Use `#{robot.name} pager incidents` for listing."
         else
           # loljson
           data = {
