@@ -1,3 +1,9 @@
+2.0.3
+=====
+
+* Update chat response to be less noisy if an incident isn't found
+* Add support for restricting which services are displayed through an environment variable
+
 2.0.2
 =====
 
