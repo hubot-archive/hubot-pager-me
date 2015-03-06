@@ -43,6 +43,7 @@ pagerDutyApiKey        = process.env.HUBOT_PAGERDUTY_API_KEY
 pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
 pagerDutyBaseUrl       = "https://#{pagerDutySubdomain}.pagerduty.com/api/v1"
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
+pagerDutyServices      = process.env.HUBOT_PAGERDUTY_SERVICES
 pagerRoom              = process.env.HUBOT_PAGERDUTY_ROOM
 # Webhook listener endpoint. Set it to whatever URL you want, and make sure it matches your pagerduty service settings
 pagerEndpoint          = process.env.HUBOT_PAGERDUTY_ENDPOINT || "/hook"
@@ -453,6 +454,9 @@ module.exports = (robot) ->
   pagerDutyGet = (msg, url, query, cb) ->
     if missingEnvironmentForApi(msg)
       return
+
+    if pagerDutyServices? && url.match /\/incidents/
+      query['service'] = pagerDutyServices
 
     auth = "Token token=#{pagerDutyApiKey}"
     msg.http(pagerDutyBaseUrl + url)
