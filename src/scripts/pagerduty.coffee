@@ -78,7 +78,7 @@ module.exports = (robot) ->
     msg.message.user.pagerdutyEmail = undefined
     msg.send "Okay, I've forgotten your PagerDuty email"
 
-  robot.respond /(pager|major)( me)? incident (.*)$/, (msg) ->
+  robot.respond /(pager|major)( me)? incident (.*)$/i, (msg) ->
     pagerDutyIncident msg, msg.match[3], (incident) ->
       msg.send formatIncident(incident)
 
