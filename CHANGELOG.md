@@ -1,5 +1,5 @@
-Unreleased
-==========
+2.1.1
+=====
 
 * check for errors when making HTTP calls, and use hubot's error handling when they do happen
 
