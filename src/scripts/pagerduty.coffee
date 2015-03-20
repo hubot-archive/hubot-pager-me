@@ -645,15 +645,15 @@ module.exports = (robot) ->
      #   HOSTSTATE: 'UP' },
 
     summary = if inc.trigger_summary_data
-              # email services
-              if inc.trigger_summary_data.subject
-                inc.trigger_summary_data.subject
-              else if inc.trigger_summary_data.description
-                inc.trigger_summary_data.description
-              else if inc.trigger_summary_data.pd_nagios_object == 'service'
+              if inc.trigger_summary_data.pd_nagios_object == 'service'
                  "#{inc.trigger_summary_data.HOSTNAME}/#{inc.trigger_summary_data.SERVICEDESC}"
               else if inc.trigger_summary_data.pd_nagios_object == 'host'
                  "#{inc.trigger_summary_data.HOSTNAME}/#{inc.trigger_summary_data.HOSTSTATE}"
+              # email services
+              else if inc.trigger_summary_data.subject
+                inc.trigger_summary_data.subject
+              else if inc.trigger_summary_data.description
+                inc.trigger_summary_data.description
               else
                 ""
             else
