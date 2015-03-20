@@ -500,6 +500,8 @@ module.exports = (robot) ->
       .query(query)
       .headers(Authorization: auth, Accept: 'application/json')
       .get() (err, res, body) ->
+        if err?
+          return robot.emit 'error', err, msg
         json_body = null
         switch res.statusCode
           when 200 then json_body = JSON.parse(body)
@@ -524,6 +526,8 @@ module.exports = (robot) ->
       .header("content-type","application/json")
       .header("content-length",json.length)
       .put(json) (err, res, body) ->
+        if err?
+          return robot.emit 'error', err, msg
         json_body = null
         switch res.statusCode
           when 200 then json_body = JSON.parse(body)
@@ -548,6 +552,8 @@ module.exports = (robot) ->
       .header("content-type","application/json")
       .header("content-length",json.length)
       .post(json) (err, res, body) ->
+        if err?
+          return robot.emit 'error', err, msg
         json_body = null
         switch res.statusCode
           when 201 then json_body = JSON.parse(body)
@@ -570,6 +576,8 @@ module.exports = (robot) ->
       .headers(Authorization: auth, Accept: 'application/json')
       .header("content-length",0)
       .delete() (err, res, body) ->
+        if err?
+          return robot.emit 'error', err, msg
         json_body = null
         switch res.statusCode
           when 204, 200
