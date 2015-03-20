@@ -1,3 +1,15 @@
+2.1.0
+=====
+
+* fix formatting of Nagios incidents
+* add support for listing services and creating maintenance windows
+
+
+2.0.4
+=====
+
+* fix `/pager incident` case-sensitivity
+
 2.0.3
 =====
 
