@@ -259,7 +259,7 @@ module.exports = (robot) ->
   robot.respond /(pager|major)( me)? (schedule|overrides)( ([\w\-]+))?( ([^ ]+))?$/i, (msg) ->
     query = {
       since: moment().format(),
-      until: moment().add('days', 30).format(),
+      until: moment().add(30, 'days').format(),
       overflow: 'true'
     }
 
@@ -367,7 +367,7 @@ module.exports = (robot) ->
 
         start     = moment().format()
         minutes   = parseInt msg.match[3]
-        end       = moment().add('minutes', minutes).format()
+        end       = moment().add(minutes, 'minutes').format()
         override  = {
           'start':     start,
           'end':       end,
@@ -646,7 +646,7 @@ module.exports = (robot) ->
       cb(user.name, s)
 
   withCurrentOncallUser = (msg, schedule, cb) ->
-    oneHour = moment().add('hours', 1).format()
+    oneHour = moment().add(1, 'hours').format()
     now = moment().format()
 
     query = {
