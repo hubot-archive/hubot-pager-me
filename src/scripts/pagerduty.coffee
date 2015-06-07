@@ -598,10 +598,10 @@ module.exports = (robot) ->
       if json?.schedules?.length == 1
         schedule = json.schedules[0]
 
-      # Multiple results returned and one is exact
+      # Multiple results returned and one is exact (case-insensitive)
       if json?.schedules?.length > 1
         matchingExactly = json.schedules.filter (s) ->
-          s.name == q
+          s.name.toLowerCase() == q.toLowerCase()
         if matchingExactly.length == 1
           schedule = matchingExactly[0]
       cb(schedule)
@@ -625,9 +625,10 @@ module.exports = (robot) ->
 
         if json?.escalation_policies?.length == 1
           escalationPolicy = json.escalation_policies[0]
+        # Multiple results returned and one is exact (case-insensitive)
         else if json?.escalation_policies?.length > 1
           matchingExactly = json.escalation_policies.filter (es) ->
-            es.name == string
+            es.name.toLowerCase() == string.toLowerCase()
           if matchingExactly.length == 1
             escalationPolicy = matchingExactly[0]
 
