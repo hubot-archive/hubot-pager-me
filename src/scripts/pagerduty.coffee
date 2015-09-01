@@ -382,7 +382,7 @@ module.exports = (robot) ->
 
 
   # who is on call?
-  robot.respond /who('s|s| is|se)? (on call|oncall|on-call)( (?:for )?(.+))?/i, (msg) ->
+  robot.respond /who(’s|'s|s| is|se)? (on call|oncall|on-call)( (?:for )?(.+))?/i, (msg) ->
     scheduleName = msg.match[4]
 
     displaySchedule = (s) ->
