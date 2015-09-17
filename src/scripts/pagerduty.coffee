@@ -4,6 +4,7 @@
 # Commands:
 #   hubot pager me as <email> - remember your pager email is <email>
 #   hubot pager forget me - forget your pager email
+#   hubot Am I on call - return if I'm currently on call or not
 #   hubot who's on call - return a list of services and who is on call for them
 #   hubot who's on call for <schedule> - return the username of who's on call for any schedule matching <search>
 #   hubot pager trigger <user> <msg> - create a new incident with <msg> and assign it to <user>
@@ -25,6 +26,7 @@
 #   hubot pager schedules - list schedules
 #   hubot pager schedules <search> - list schedules matching <search>
 #   hubot pager schedule <schedule> - show <schedule>'s shifts for the upcoming month
+#   hubot pager my schedule - show my on call shifts for the upcoming month in all schedules
 #   hubot pager me <schedule> <minutes> - take the pager for <minutes> minutes
 #   hubot pager override <schedule> <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
 #   hubot pager overrides <schedule> - show upcoming overrides for the next month
@@ -300,6 +302,55 @@ module.exports = (robot) ->
         else
           msg.send "None found!"
 
+  robot.respond /(pager|major)( me)? my schedule( ([^ ]+))?$/i, (msg) ->
+
+    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
+      userId = user.id
+
+      query = {
+        since: moment().format(),
+        until: moment().add(30, 'days').format(),
+        overflow: 'true'
+      }
+
+      if msg.match[4]
+        timezone = msg.match[4]
+      else
+        timezone = 'UTC'
+
+      scheduleQuery = {}
+      pagerDutyGet msg, "/schedules", scheduleQuery, (json) ->
+        schedules = json.schedules
+        if schedules.length > 0
+          for schedule in schedules
+            withScheduleMatching msg, schedule.name, (schedule) ->
+              scheduleId = schedule.id
+              return unless scheduleId
+
+              pagerDutyGet msg, "/schedules/#{scheduleId}/entries", query, (json) ->
+                entries = json.entries
+
+                if entries
+                  sortedEntries = entries.sort (a, b) ->
+                    moment(a.start).unix() - moment(b.start).unix()
+
+                  buffer = ""
+                  for entry in sortedEntries
+                    if userId == entry.user.id
+                      startTime = moment(entry.start).tz(timezone).format()
+                      endTime   = moment(entry.end).tz(timezone).format()
+
+                      buffer += "* #{startTime} - #{endTime} #{entry.user.name} (#{schedule.name})\n"
+
+                  if buffer == ""
+                    msg.send "None found!"
+                  else
+                    msg.send buffer
+                else
+                  msg.send "None found!"
+        else
+          msg.send 'No schedules found!'
+
   robot.respond /(pager|major)( me)? (override) ([\w\-]+) ([\w\-:\+]+) - ([\w\-:\+]+)( (.*))?$/i, (msg) ->
     if msg.match[8]
       overrideUser = robot.brain.userForName(msg.match[8])
@@ -380,6 +431,29 @@ module.exports = (robot) ->
               end = moment(json.override.end)
               msg.send "Rejoice, #{old_username}! #{json.override.user.name} has the pager on #{schedule.name} until #{end.format()}"
 
+  # Am I on call?
+  robot.respond /am i (on call|oncall|on-call)(.+)?/i, (msg) ->
+    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
+      userId = user.id
+
+      displaySchedule = (s) ->
+        withCurrentOncallId msg, s, (oncallUserid, oncallUsername, schedule) ->
+          if userId == oncallUserid
+            msg.send "* Yes, you are on call for #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}\n"
+          else
+            msg.send "* No, you are NOT on call for #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}"
+            msg.send "* #{oncallUsername} is on call for #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}\n"
+
+      if !userId?
+        msg.send "Couldn't figure out the pagerduty user connected to your account."
+      else
+        pagerDutyGet msg, "/schedules", {}, (json) ->
+          schedules = json.schedules
+          if schedules.length > 0
+            for s in schedules
+              displaySchedule(s)
+          else
+            msg.send 'No schedules found!'
 
   # who is on call?
   robot.respond /who(’s|'s|s| is|se)? (on call|oncall|on-call)( (?:for )?(.+))?/i, (msg) ->
@@ -644,6 +718,10 @@ module.exports = (robot) ->
   withCurrentOncall = (msg, schedule, cb) ->
     withCurrentOncallUser msg, schedule, (user, s) ->
       cb(user.name, s)
+
+  withCurrentOncallId = (msg, schedule, cb) ->
+    withCurrentOncallUser msg, schedule, (user, s) ->
+      cb(user.id, user.name, s)
 
   withCurrentOncallUser = (msg, schedule, cb) ->
     oneHour = moment().add(1, 'hours').format()
