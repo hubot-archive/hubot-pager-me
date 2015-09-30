@@ -127,6 +127,7 @@ module.exports = (robot) ->
     pagerDutyPut: pagerDutyPut
     put: pagerDutyPut
     pagerDutyPost: pagerDutyPost
+    post: pagerDutyPost
     pagerDutyDelete: pagerDutyDelete
   return pagerduty
   return
