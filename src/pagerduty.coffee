@@ -19,9 +19,6 @@ module.exports = (robot) ->
       .headers(Authorization: "Token token=#{pagerDutyApiKey}", Accept: 'application/json')
 
   pagerDutyGet = (msg, url, query, cb) ->
-    if missingEnvironmentForApi(msg)
-      return
-
     if pagerDutyServices? && url.match /\/incidents/
       query['service'] = pagerDutyServices
 
@@ -50,9 +47,6 @@ module.exports = (robot) ->
     missingAnything
 
   pagerDutyPut = (msg, url, data, cb) ->
-    if missingEnvironmentForApi(msg)
-      return
-
     if pagerNoop
       msg.send "Would have PUT #{url}: #{inspect data}"
       return
@@ -74,9 +68,6 @@ module.exports = (robot) ->
         cb json_body
 
   pagerDutyPost = (msg, url, data, cb) ->
-    if missingEnvironmentForApi(msg)
-      return
-
     if pagerNoop
       msg.send "Would have POST #{url}: #{inspect data}"
       return
@@ -98,9 +89,6 @@ module.exports = (robot) ->
         cb json_body
 
   pagerDutyDelete = (msg, url, cb) ->
-    if missingEnvironmentForApi(msg)
-      return
-
     if pagerNoop
       msg.send "Would have DELETE #{url}"
       return

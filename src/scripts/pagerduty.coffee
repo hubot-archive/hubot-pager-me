@@ -84,6 +84,9 @@ module.exports = (robot) ->
     msg.send "Okay, I've forgotten your PagerDuty email"
 
   robot.respond /(pager|major)( me)? incident (.*)$/i, (msg) ->
+    if missingEnvironmentForApi(msg)
+      return
+
     pagerduty.getIncident msg, msg.match[3], (incident) ->
       msg.send formatIncident(incident)
 
@@ -107,6 +110,10 @@ module.exports = (robot) ->
 
   robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+) (.+)$/i, (msg) ->
     msg.finish()
+
+    if missingEnvironmentForApi(msg)
+      return
+
     fromUserName   = msg.message.user.name
     query          = msg.match[3]
     reason         = msg.match[4]
@@ -158,6 +165,9 @@ module.exports = (robot) ->
 
   robot.respond /(?:pager|major)(?: me)? ack(?:nowledge)? (.+)$/i, (msg) ->
     msg.finish()
+    if missingEnvironmentForApi(msg)
+      return
+
     incidentNumbers = parseIncidentNumbers(msg.match[1])
 
     # only acknowledge triggered things, since it doesn't make sense to re-acknowledge if it's already in re-acknowledge
@@ -165,6 +175,9 @@ module.exports = (robot) ->
     updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged')
 
   robot.respond /(pager|major)( me)? ack(nowledge)?(!)?$/i, (msg) ->
+    if missingEnvironmentForApi(msg)
+      return
+
     force = msg.match[4]?
 
     pagerduty.getIncidents msg, 'triggered,acknwowledged', (incidents) ->
@@ -189,12 +202,19 @@ module.exports = (robot) ->
 
   robot.respond /(?:pager|major)(?: me)? res(?:olve)?(?:d)? (.+)$/i, (msg) ->
     msg.finish()
+
+    if missingEnvironmentForApi(msg)
+      return
+
     incidentNumbers = parseIncidentNumbers(msg.match[1])
 
     # allow resolving of triggered and acknowedlge, since being explicit
     updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'resolved')
 
   robot.respond /(pager|major)( me)? res(olve)?(d)?(!)?$/i, (msg) ->
+    if missingEnvironmentForApi(msg)
+      return
+
     force = msg.match[5]?
     pagerduty.getIncidents msg, "acknowledged", (incidents) ->
       email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
@@ -217,6 +237,10 @@ module.exports = (robot) ->
 
   robot.respond /(pager|major)( me)? notes (.+)$/i, (msg) ->
     msg.finish()
+
+    if missingEnvironmentForApi(msg)
+      return
+
     incidentId = msg.match[3]
     pagerduty.get msg, "/incidents/#{incidentId}/notes", {}, (json) ->
       buffer = ""
@@ -226,6 +250,9 @@ module.exports = (robot) ->
 
   robot.respond /(pager|major)( me)? note ([\d\w]+) (.+)$/i, (msg) ->
     msg.finish()
+
+    if missingEnvironmentForApi(msg)
+      return
 
     incidentId = msg.match[3]
     content = msg.match[4]
@@ -249,6 +276,10 @@ module.exports = (robot) ->
     query = {}
     if msg.match[4]
       query['query'] = msg.match[4]
+
+    if missingEnvironmentForApi(msg)
+      return
+
     pagerduty.get msg, "/schedules", query, (json) ->
       buffer = ''
       schedules = json.schedules
@@ -279,6 +310,9 @@ module.exports = (robot) ->
     else
       timezone = 'UTC'
 
+    if missingEnvironmentForApi(msg)
+      return
+
     withScheduleMatching msg, msg.match[5], (schedule) ->
       scheduleId = schedule.id
       return unless scheduleId
@@ -305,6 +339,9 @@ module.exports = (robot) ->
           msg.send "None found!"
 
   robot.respond /(pager|major)( me)? my schedule( ([^ ]+))?$/i, (msg) ->
+    if missingEnvironmentForApi(msg)
+      return
+
 
     campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
       userId = user.id
@@ -354,6 +391,9 @@ module.exports = (robot) ->
           msg.send 'No schedules found!'
 
   robot.respond /(pager|major)( me)? (override) ([\w\-]+) ([\w\-:\+]+) - ([\w\-:\+]+)( (.*))?$/i, (msg) ->
+    if missingEnvironmentForApi(msg)
+      return
+
     if msg.match[8]
       overrideUser = robot.brain.userForName(msg.match[8])
 
@@ -392,6 +432,9 @@ module.exports = (robot) ->
           msg.send "Please use a http://momentjs.com/ compatible date!"
 
   robot.respond /(pager|major)( me)? (overrides?) ([\w\-]*) (delete) (.*)$/i, (msg) ->
+    if missingEnvironmentForApi(msg)
+      return
+
     withScheduleMatching msg, msg.match[4], (schedule) ->
       scheduleId = schedule.id
       return unless scheduleId
@@ -404,6 +447,10 @@ module.exports = (robot) ->
 
   robot.respond /pager( me)? (.+) (\d+)$/i, (msg) ->
     msg.finish()
+
+    if missingEnvironmentForApi(msg)
+      return
+
     campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
 
       userId = user.id
@@ -435,6 +482,9 @@ module.exports = (robot) ->
 
   # Am I on call?
   robot.respond /am i (on call|oncall|on-call)(.+)?/i, (msg) ->
+    if missingEnvironmentForApi(msg)
+      return
+
     campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
       userId = user.id
 
@@ -459,6 +509,9 @@ module.exports = (robot) ->
 
   # who is on call?
   robot.respond /who(’s|'s|s| is|se)? (on call|oncall|on-call)( (?:for )?(.+))?/i, (msg) ->
+    if missingEnvironmentForApi(msg)
+      return
+
     scheduleName = msg.match[4]
 
     displaySchedule = (s) ->
@@ -477,6 +530,9 @@ module.exports = (robot) ->
           msg.send 'No schedules found!'
 
   robot.respond /(pager|major)( me)? services$/i, (msg) ->
+    if missingEnvironmentForApi(msg)
+      return
+
     pagerduty.get msg, "/services", {}, (json) ->
       buffer = ''
       services = json.services
@@ -488,6 +544,9 @@ module.exports = (robot) ->
         msg.send 'No services found!'
 
   robot.respond /(pager|major)( me)? maintenance (\d+) (.+)$/i, (msg) ->
+    if missingEnvironmentForApi(msg)
+      return
+
     campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
       requester_id = user.id
       return unless requester_id
@@ -515,16 +574,7 @@ module.exports = (robot) ->
     match.split(/[ ,]+/).map (incidentNumber) ->
       parseInt(incidentNumber)
 
-  missingEnvironmentForApi = (msg) ->
-    missingAnything = false
-    unless pagerDutySubdomain?
-      msg.send "PagerDuty Subdomain is missing:  Ensure that HUBOT_PAGERDUTY_SUBDOMAIN is set."
-      missingAnything |= true
-    unless pagerDutyApiKey?
-      msg.send "PagerDuty API Key is missing:  Ensure that HUBOT_PAGERDUTY_API_KEY is set."
-      missingAnything |= true
-    missingAnything
-
+  missingEnvironmentForApi = pagerduty.missingEnvironmentForApi
 
   campfireUserToPagerDutyUser = (msg, user, required, cb) ->
 
