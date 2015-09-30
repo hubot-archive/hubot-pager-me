@@ -312,13 +312,12 @@ module.exports = (robot) ->
     if missingEnvironmentForApi(msg)
       return
 
-    pagerduty.get msg, "/schedules", query, (err, json) ->
+    pagerduty.getSchedules msg, query, (err, schedules) ->
       if err?
         robot.emit 'error', err, msg
         return
 
       buffer = ''
-      schedules = json.schedules
       if schedules.length > 0
         for schedule in schedules
           buffer += "* #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}\n"
@@ -398,12 +397,11 @@ module.exports = (robot) ->
         timezone = 'UTC'
 
       scheduleQuery = {}
-      pagerduty.get msg, "/schedules", scheduleQuery, (err, json) ->
+      pagerduty.getSchedules msg, scheduleQuery, (err, schedules) ->
         if err?
           robot.emit 'error', err, msg
           return
 
-        schedules = json.schedules
         if schedules.length > 0
           for schedule in schedules
             withScheduleMatching msg, schedule.name, (schedule) ->
@@ -555,12 +553,11 @@ module.exports = (robot) ->
       if !userId?
         msg.send "Couldn't figure out the pagerduty user connected to your account."
       else
-        pagerduty.get msg, "/schedules", {}, (err, json) ->
+        pagerduty.getSchedules msg, {}, (err, schedules) ->
           if err?
             robot.emit 'error', err, msg
             return
 
-          schedules = json.schedules
           if schedules.length > 0
             for s in schedules
               displaySchedule(s)
@@ -581,12 +578,11 @@ module.exports = (robot) ->
     if scheduleName?
       withScheduleMatching msg, scheduleName, displaySchedule
     else
-      pagerduty.get msg, "/schedules", {}, (err, json) ->
+      pagerduty.getSchedules msg, {}, (err, schedules) ->
         if err?
           robot.emit 'error', err, msg
           return
 
-        schedules = json.schedules
         if schedules.length > 0
           for s in schedules
             displaySchedule(s)
@@ -692,18 +688,17 @@ module.exports = (robot) ->
     query = {
       query: q
     }
-    pagerduty.get msg, "/schedules", query, (err, json) ->
+    pagerduty.getSchedules msg, query, (err, schedules) ->
       if err?
         robot.emit 'error', err, msg
         return
 
-      schedule = null
       # Single result returned
-      if json?.schedules?.length == 1
+      if schedules?.length == 1
         schedule = json.schedules[0]
 
       # Multiple results returned and one is exact (case-insensitive)
-      if json?.schedules?.length > 1
+      if schedules?.length > 1
         matchingExactly = json.schedules.filter (s) ->
           s.name.toLowerCase() == q.toLowerCase()
         if matchingExactly.length == 1

@@ -140,6 +140,14 @@ module.exports = (robot) ->
         return
       cb(null, json.incidents)
 
+  getSchedules = (msg, query, cb) ->
+    pagerDutyGet msg, "/schedules", query, (err, json) ->
+      if err?
+        cb(err)
+        return
+
+      cb(null, json.schedules)
+
   pagerduty =
     missingEnvironmentForApi: missingEnvironmentForApi
     get: pagerDutyGet
@@ -148,4 +156,5 @@ module.exports = (robot) ->
     delete: pagerDutyDelete
     getIncident: getIncident
     getIncidents: getIncidents
+    getSchedules: getSchedules
   return pagerduty
