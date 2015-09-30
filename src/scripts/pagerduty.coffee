@@ -38,6 +38,7 @@
 #   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin, Michael Warkentin
 
 pagerduty = require('../pagerduty')
+async = require('async')
 inspect = require('util').inspect
 moment = require('moment-timezone')
 
@@ -563,11 +564,14 @@ module.exports = (robot) ->
 
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
-        cb "* #{username} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
+        cb null, "* #{username} is on call for #{schedule.name} - https://#{pagerduty.domain}.pagerduty.com/schedules##{schedule.id}"
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, (s) ->
-        renderSchedule s, (text) ->
+        renderSchedule s, (err, text) ->
+          if err?
+            robot.emit 'error'
+            return
           msg.send text
     else
       pagerduty.getSchedules (err, schedules) ->
@@ -576,9 +580,11 @@ module.exports = (robot) ->
           return
 
         if schedules.length > 0
-          for s in schedules
-            renderSchedule s, (text) ->
-              msg.send text
+          async.map schedules, renderSchedule, (err, results) ->
+            if err?
+              robot.emit 'error', err, msg
+              return
+            msg.send results.join("\n")
         else
           msg.send 'No schedules found!'
 
