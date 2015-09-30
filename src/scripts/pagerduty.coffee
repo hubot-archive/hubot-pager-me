@@ -87,7 +87,11 @@ module.exports = (robot) ->
     if missingEnvironmentForApi(msg)
       return
 
-    pagerduty.getIncident msg, msg.match[3], (incident) ->
+    pagerduty.getIncident msg, msg.match[3], (err, incident) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+
       msg.send formatIncident(incident)
 
   robot.respond /(pager|major)( me)? (inc|incidents|sup|problems)$/i, (msg) ->

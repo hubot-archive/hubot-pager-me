@@ -125,8 +125,12 @@ module.exports = (robot) ->
         cb value
 
   getIncident = (msg, incident, cb) ->
-    pagerDutyGet msg, "/incidents/#{encodeURIComponent incident}", {}, (json) ->
-      cb(json)
+    pagerDutyGet msg, "/incidents/#{encodeURIComponent incident}", {}, (err, json) ->
+      if err?
+        cb(err)
+        return
+
+      cb(null, json)
 
   getIncidents = (msg, status, cb) ->
     query =
