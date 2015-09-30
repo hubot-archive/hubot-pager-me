@@ -149,7 +149,7 @@ module.exports = (robot) ->
                     }
                 }
 
-                pagerDutyPut msg, "/incidents", data , (json) ->
+                pagerduty.put msg, "/incidents", data , (json) ->
                   if json?.incidents.length == 1
                     msg.reply ":pager: assigned to #{results.name}!"
                   else
@@ -562,7 +562,6 @@ module.exports = (robot) ->
 
       cb(json.users[0])
 
-  pagerDutyPut = pagerduty.pagerDutyPut
   pagerDutyPost = pagerduty.pagerDutyPost
   pagerDutyDelete = pagerduty.pagerDutyDelete
 
@@ -721,7 +720,7 @@ module.exports = (robot) ->
               }
           }
 
-          pagerDutyPut msg, "/incidents", data , (json) ->
+          pagerduty.put msg, "/incidents", data , (json) ->
             if json?.incidents
               buffer = "Incident"
               buffer += "s" if json.incidents.length > 1
