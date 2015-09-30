@@ -133,13 +133,9 @@ module.exports = (robot) ->
       cb(json.incidents)
 
   pagerduty =
-    pagerDutyGet: pagerDutyGet
     get: pagerDutyGet
-    pagerDutyPut: pagerDutyPut
     put: pagerDutyPut
-    pagerDutyPost: pagerDutyPost
     post: pagerDutyPost
-    pagerDutyDelete: pagerDutyDelete
     delete: pagerDutyDelete
     getIncident: getIncident
     getIncidents: getIncidents
