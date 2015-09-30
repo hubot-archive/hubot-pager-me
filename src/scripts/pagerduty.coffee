@@ -564,32 +564,8 @@ module.exports = (robot) ->
 
 
   pagerDutyGet = pagerduty.pagerDutyGet
+  pagerDutyPut = pagerduty.pagerDutyPut
 
-  pagerDutyPut = (msg, url, data, cb) ->
-    if missingEnvironmentForApi(msg)
-      return
-
-    if pagerNoop
-      msg.send "Would have PUT #{url}: #{inspect data}"
-      return
-
-    json = JSON.stringify(data)
-    auth = "Token token=#{pagerDutyApiKey}"
-    msg.http(pagerDutyBaseUrl + url)
-      .headers(Authorization: auth, Accept: 'application/json')
-      .header("content-type","application/json")
-      .header("content-length",json.length)
-      .put(json) (err, res, body) ->
-        if err?
-          return robot.emit 'error', err, msg
-        json_body = null
-        switch res.statusCode
-          when 200 then json_body = JSON.parse(body)
-          else
-            console.log res.statusCode
-            console.log body
-            json_body = null
-        cb json_body
 
   pagerDutyPost = (msg, url, data, cb) ->
     if missingEnvironmentForApi(msg)
