@@ -48,7 +48,7 @@ module.exports = (robot) ->
 
   pagerDutyPut = (msg, url, data, cb) ->
     if pagerNoop
-      msg.send "Would have PUT #{url}: #{inspect data}"
+      console.log "Would have PUT #{url}: #{inspect data}"
       return
 
     json = JSON.stringify(data)
@@ -69,7 +69,7 @@ module.exports = (robot) ->
 
   pagerDutyPost = (msg, url, data, cb) ->
     if pagerNoop
-      msg.send "Would have POST #{url}: #{inspect data}"
+      console.log "Would have POST #{url}: #{inspect data}"
       return
 
     json = JSON.stringify(data)
@@ -90,7 +90,7 @@ module.exports = (robot) ->
 
   pagerDutyDelete = (msg, url, cb) ->
     if pagerNoop
-      msg.send "Would have DELETE #{url}"
+      console.log "Would have DELETE #{url}"
       return
 
     auth = "Token token=#{pagerDutyApiKey}"
