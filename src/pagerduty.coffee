@@ -96,4 +96,29 @@ module.exports = (robot) ->
             json_body = null
         cb json_body
 
-  return pagerDutyGet: pagerDutyGet, pagerDutyPut: pagerDutyPut, pagerDutyPost: pagerDutyPost
+  pagerDutyDelete = (msg, url, cb) ->
+    if missingEnvironmentForApi(msg)
+      return
+
+    if pagerNoop
+      msg.send "Would have DELETE #{url}"
+      return
+
+    auth = "Token token=#{pagerDutyApiKey}"
+    msg.http(pagerDutyBaseUrl + url)
+      .headers(Authorization: auth, Accept: 'application/json')
+      .header("content-length",0)
+      .delete() (err, res, body) ->
+        if err?
+          return robot.emit 'error', err, msg
+        json_body = null
+        switch res.statusCode
+          when 204, 200
+            value = true
+          else
+            console.log res.statusCode
+            console.log body
+            value = false
+        cb value
+
+  return pagerDutyGet: pagerDutyGet, pagerDutyPut: pagerDutyPut, pagerDutyPost: pagerDutyPost, pagerDutyDelete: pagerDutyDelete
