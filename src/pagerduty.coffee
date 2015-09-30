@@ -29,27 +29,15 @@ module.exports = (robot) ->
       .query(query)
       .get() (err, res, body) ->
         if err?
-          if cb.length is 1
-            robot.emit 'error', err, msg
-          else
-            cb(err)
+          cb(err)
           return
         json_body = null
         switch res.statusCode
           when 200 then json_body = JSON.parse(body)
           else
-            if cb.length is 1
-              console.log res.statusCode
-              console.log body
-              json_body = null
-            else
-              cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
-              return
+            cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
 
-        if cb.length is 1
-          cb json_body
-        else
-          cb null, json_body
+        cb null, json_body
 
   missingEnvironmentForApi = (msg) ->
     missingAnything = false
