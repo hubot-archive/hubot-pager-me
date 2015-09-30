@@ -84,11 +84,11 @@ module.exports = (robot) ->
     msg.send "Okay, I've forgotten your PagerDuty email"
 
   robot.respond /(pager|major)( me)? incident (.*)$/i, (msg) ->
-    pagerDutyIncident msg, msg.match[3], (incident) ->
+    pagerduty.getIncident msg, msg.match[3], (incident) ->
       msg.send formatIncident(incident)
 
   robot.respond /(pager|major)( me)? (inc|incidents|sup|problems)$/i, (msg) ->
-    pagerDutyIncidents msg, "triggered,acknowledged", (incidents) ->
+    pagerduty.getIncidents msg, "triggered,acknowledged", (incidents) ->
       if incidents.length > 0
         buffer = "Triggered:\n----------\n"
         for junk, incident of incidents.reverse()
@@ -167,7 +167,7 @@ module.exports = (robot) ->
   robot.respond /(pager|major)( me)? ack(nowledge)?(!)?$/i, (msg) ->
     force = msg.match[4]?
 
-    pagerDutyIncidents msg, 'triggered,acknwowledged', (incidents) ->
+    pagerduty.getIncidents msg, 'triggered,acknwowledged', (incidents) ->
       email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
       filteredIncidents = if force
                             incidents # don't filter at all
@@ -196,7 +196,7 @@ module.exports = (robot) ->
 
   robot.respond /(pager|major)( me)? res(olve)?(d)?(!)?$/i, (msg) ->
     force = msg.match[5]?
-    pagerDutyIncidents msg, "acknowledged", (incidents) ->
+    pagerduty.getIncidents msg, "acknowledged", (incidents) ->
       email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
       filteredIncidents = if force
                             incidents # don't filter at all
@@ -637,17 +637,6 @@ module.exports = (robot) ->
       if json.entries and json.entries.length > 0
         cb(json.entries[0].user, schedule)
 
-  pagerDutyIncident = (msg, incident, cb) ->
-    pagerduty.get msg, "/incidents/#{encodeURIComponent incident}", {}, (json) ->
-      cb(json)
-
-  pagerDutyIncidents = (msg, status, cb) ->
-    query =
-      status:  status
-      sort_by: "incident_number:asc"
-    pagerduty.get msg, "/incidents", query, (json) ->
-      cb(json.incidents)
-
   pagerDutyIntegrationAPI = (msg, cmd, description, cb) ->
     unless pagerDutyServiceApiKey?
       msg.send "PagerDuty API service key is missing."
@@ -697,7 +686,7 @@ module.exports = (robot) ->
       requesterId = user.id
       return unless requesterId
 
-      pagerDutyIncidents msg, statusFilter, (incidents) ->
+      pagerduty.getIncidents msg, statusFilter, (incidents) ->
         foundIncidents = []
         for incident in incidents
           # FIXME this isn't working very consistently

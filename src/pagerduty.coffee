@@ -121,6 +121,17 @@ module.exports = (robot) ->
             value = false
         cb value
 
+  getIncident = (msg, incident, cb) ->
+    pagerDutyGet msg, "/incidents/#{encodeURIComponent incident}", {}, (json) ->
+      cb(json)
+
+  getIncidents = (msg, status, cb) ->
+    query =
+      status:  status
+      sort_by: "incident_number:asc"
+    pagerduty.get msg, "/incidents", query, (json) ->
+      cb(json.incidents)
+
   pagerduty =
     pagerDutyGet: pagerDutyGet
     get: pagerDutyGet
@@ -130,4 +141,6 @@ module.exports = (robot) ->
     post: pagerDutyPost
     pagerDutyDelete: pagerDutyDelete
     delete: pagerDutyDelete
+    getIncident: getIncident
+    getIncidents: getIncidents
   return pagerduty
