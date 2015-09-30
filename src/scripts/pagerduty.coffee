@@ -647,7 +647,7 @@ module.exports = (robot) ->
     switch cmd
       when "trigger"
         data = JSON.stringify { service_key: pagerDutyServiceApiKey, event_type: "trigger", description: description}
-        pagerDutyIntergrationPost msg, data, (json) ->
+        pagerDutyIntegrationPost msg, data, (json) ->
           cb(json)
 
   formatIncident = (inc) ->
@@ -718,7 +718,7 @@ module.exports = (robot) ->
               msg.reply "Problem updating incidents #{incidentNumbers.join(',')}"
 
 
-  pagerDutyIntergrationPost = (msg, json, cb) ->
+  pagerDutyIntegrationPost = (msg, json, cb) ->
     msg.http('https://events.pagerduty.com/generic/2010-04-15/create_event.json')
       .header("content-type","application/json")
       .header("content-length", json.length)
