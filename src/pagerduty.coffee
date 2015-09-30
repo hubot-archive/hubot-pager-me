@@ -13,6 +13,9 @@ pagerNoop              = process.env.HUBOT_PAGERDUTY_NOOP
 pagerNoop               = false if pagerNoop is "false" or pagerNoop  is "off"
 
 module.exports = (robot) ->
+
+  class PagerDutyError extends Error
+
   http = (path) ->
     auth =
     HttpClient.create("#{pagerDutyBaseUrl}#{path}")
@@ -26,15 +29,27 @@ module.exports = (robot) ->
       .query(query)
       .get() (err, res, body) ->
         if err?
-          return robot.emit 'error', err, msg
+          if cb.length is 1
+            robot.emit 'error', err, msg
+          else
+            cb(err)
+          return
         json_body = null
         switch res.statusCode
           when 200 then json_body = JSON.parse(body)
           else
-            console.log res.statusCode
-            console.log body
-            json_body = null
-        cb json_body
+            if cb.length is 1
+              console.log res.statusCode
+              console.log body
+              json_body = null
+            else
+              cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
+              return
+
+        if cb.length is 1
+          cb json_body
+        else
+          cb null, json_body
 
   missingEnvironmentForApi = (msg) ->
     missingAnything = false
@@ -117,7 +132,9 @@ module.exports = (robot) ->
     query =
       status:  status
       sort_by: "incident_number:asc"
-    pagerduty.get msg, "/incidents", query, (json) ->
+    pagerduty.get msg, "/incidents", query, (err, json) ->
+      if err?
+        return
       cb(json.incidents)
 
   pagerduty =
