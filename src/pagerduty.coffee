@@ -121,4 +121,11 @@ module.exports = (robot) ->
             value = false
         cb value
 
-  return pagerDutyGet: pagerDutyGet, pagerDutyPut: pagerDutyPut, pagerDutyPost: pagerDutyPost, pagerDutyDelete: pagerDutyDelete
+  pagerduty =
+    pagerDutyGet: pagerDutyGet
+    get: pagerDutyGet
+    pagerDutyPut: pagerDutyPut
+    pagerDutyPost: pagerDutyPost
+    pagerDutyDelete: pagerDutyDelete
+  return pagerduty
+  return

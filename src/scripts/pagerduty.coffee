@@ -135,7 +135,7 @@ module.exports = (robot) ->
           msg.reply ":pager: triggered! now assigning it to the right user..."
 
           setTimeout () ->
-            pagerDutyGet msg, "/incidents", query, (json) ->
+            pagerduty.get msg, "/incidents", query, (json) ->
               if json?.incidents.length == 0
                 msg.reply "Couldn't find the incident we just created to reassign. Please try again :/"
               else
@@ -218,7 +218,7 @@ module.exports = (robot) ->
   robot.respond /(pager|major)( me)? notes (.+)$/i, (msg) ->
     msg.finish()
     incidentId = msg.match[3]
-    pagerDutyGet msg, "/incidents/#{incidentId}/notes", {}, (json) ->
+    pagerduty.get msg, "/incidents/#{incidentId}/notes", {}, (json) ->
       buffer = ""
       for note in json.notes
         buffer += "#{note.created_at} #{note.user.name}: #{note.content}\n"
@@ -249,7 +249,7 @@ module.exports = (robot) ->
     query = {}
     if msg.match[4]
       query['query'] = msg.match[4]
-    pagerDutyGet msg, "/schedules", query, (json) ->
+    pagerduty.get msg, "/schedules", query, (json) ->
       buffer = ''
       schedules = json.schedules
       if schedules.length > 0
@@ -283,7 +283,7 @@ module.exports = (robot) ->
       scheduleId = schedule.id
       return unless scheduleId
 
-      pagerDutyGet msg, "/schedules/#{scheduleId}/#{thing}", query, (json) ->
+      pagerduty.get msg, "/schedules/#{scheduleId}/#{thing}", query, (json) ->
         entries = json.entries || json.overrides
         if entries
           sortedEntries = entries.sort (a, b) ->
@@ -321,7 +321,7 @@ module.exports = (robot) ->
         timezone = 'UTC'
 
       scheduleQuery = {}
-      pagerDutyGet msg, "/schedules", scheduleQuery, (json) ->
+      pagerduty.get msg, "/schedules", scheduleQuery, (json) ->
         schedules = json.schedules
         if schedules.length > 0
           for schedule in schedules
@@ -329,7 +329,7 @@ module.exports = (robot) ->
               scheduleId = schedule.id
               return unless scheduleId
 
-              pagerDutyGet msg, "/schedules/#{scheduleId}/entries", query, (json) ->
+              pagerduty.get msg, "/schedules/#{scheduleId}/entries", query, (json) ->
                 entries = json.entries
 
                 if entries
@@ -449,7 +449,7 @@ module.exports = (robot) ->
       if !userId?
         msg.send "Couldn't figure out the pagerduty user connected to your account."
       else
-        pagerDutyGet msg, "/schedules", {}, (json) ->
+        pagerduty.get msg, "/schedules", {}, (json) ->
           schedules = json.schedules
           if schedules.length > 0
             for s in schedules
@@ -468,7 +468,7 @@ module.exports = (robot) ->
     if scheduleName?
       withScheduleMatching msg, scheduleName, displaySchedule
     else
-      pagerDutyGet msg, "/schedules", {}, (json) ->
+      pagerduty.get msg, "/schedules", {}, (json) ->
         schedules = json.schedules
         if schedules.length > 0
           for s in schedules
@@ -477,7 +477,7 @@ module.exports = (robot) ->
           msg.send 'No schedules found!'
 
   robot.respond /(pager|major)( me)? services$/i, (msg) ->
-    pagerDutyGet msg, "/services", {}, (json) ->
+    pagerduty.get msg, "/services", {}, (json) ->
       buffer = ''
       services = json.services
       if services.length > 0
@@ -551,7 +551,7 @@ module.exports = (robot) ->
         msg.send "Sorry, I can't figure out #{possessive} email address :( Can #{addressee} tell me with `#{robot.name} pager me as you@yourdomain.com`?"
         return
 
-    pagerDutyGet msg, "/users", {query: email}, (json) ->
+    pagerduty.get msg, "/users", {query: email}, (json) ->
       if json.users.length isnt 1
         if json.users.length is 0 and not required
           cb null
@@ -562,8 +562,6 @@ module.exports = (robot) ->
 
       cb(json.users[0])
 
-
-  pagerDutyGet = pagerduty.pagerDutyGet
   pagerDutyPut = pagerduty.pagerDutyPut
   pagerDutyPost = pagerduty.pagerDutyPost
   pagerDutyDelete = pagerduty.pagerDutyDelete
@@ -572,7 +570,7 @@ module.exports = (robot) ->
     query = {
       query: q
     }
-    pagerDutyGet msg, "/schedules", query, (json) ->
+    pagerduty.get msg, "/schedules", query, (json) ->
       schedule = null
       # Single result returned
       if json?.schedules?.length == 1
@@ -600,7 +598,7 @@ module.exports = (robot) ->
       campfireUserToPagerDutyUser msg, campfireUser, (user) ->
         cb(assigned_to_user: user.id,  name: user.name)
     else
-      pagerDutyGet msg, "/escalation_policies", query: string, (json) ->
+      pagerduty.get msg, "/escalation_policies", query: string, (json) ->
         escalationPolicy = null
 
         if json?.escalation_policies?.length == 1
@@ -639,19 +637,19 @@ module.exports = (robot) ->
       until: oneHour,
       overflow: 'true'
     }
-    pagerDutyGet msg, "/schedules/#{schedule.id}/entries", query, (json) ->
+    pagerduty.get msg, "/schedules/#{schedule.id}/entries", query, (json) ->
       if json.entries and json.entries.length > 0
         cb(json.entries[0].user, schedule)
 
   pagerDutyIncident = (msg, incident, cb) ->
-    pagerDutyGet msg, "/incidents/#{encodeURIComponent incident}", {}, (json) ->
+    pagerduty.get msg, "/incidents/#{encodeURIComponent incident}", {}, (json) ->
       cb(json)
 
   pagerDutyIncidents = (msg, status, cb) ->
     query =
       status:  status
       sort_by: "incident_number:asc"
-    pagerDutyGet msg, "/incidents", query, (json) ->
+    pagerduty.get msg, "/incidents", query, (json) ->
       cb(json.incidents)
 
   pagerDutyIntegrationAPI = (msg, cmd, description, cb) ->
