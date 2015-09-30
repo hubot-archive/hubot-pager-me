@@ -121,6 +121,7 @@ module.exports = (robot) ->
       cb(json.incidents)
 
   pagerduty =
+    missingEnvironmentForApi: missingEnvironmentForApi
     get: pagerDutyGet
     put: pagerDutyPut
     post: pagerDutyPost

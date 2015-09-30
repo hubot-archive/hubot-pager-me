@@ -291,6 +291,9 @@ module.exports = (robot) ->
         msg.send 'No schedules found!'
 
   robot.respond /(pager|major)( me)? (schedule|overrides)( ([\w\-]+))?( ([^ ]+))?$/i, (msg) ->
+    if missingEnvironmentForApi(msg)
+      return
+
     query = {
       since: moment().format(),
       until: moment().add(30, 'days').format(),
@@ -309,9 +312,6 @@ module.exports = (robot) ->
       timezone = msg.match[7]
     else
       timezone = 'UTC'
-
-    if missingEnvironmentForApi(msg)
-      return
 
     withScheduleMatching msg, msg.match[5], (schedule) ->
       scheduleId = schedule.id
