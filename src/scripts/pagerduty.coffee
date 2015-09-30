@@ -42,16 +42,10 @@ inspect = require('util').inspect
 moment = require('moment-timezone')
 
 pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
-pagerDutyApiKey        = process.env.HUBOT_PAGERDUTY_API_KEY
-pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
-pagerDutyBaseUrl       = "https://#{pagerDutySubdomain}.pagerduty.com/api/v1"
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
-pagerDutyServices      = process.env.HUBOT_PAGERDUTY_SERVICES
 pagerRoom              = process.env.HUBOT_PAGERDUTY_ROOM
 # Webhook listener endpoint. Set it to whatever URL you want, and make sure it matches your pagerduty service settings
 pagerEndpoint          = process.env.HUBOT_PAGERDUTY_ENDPOINT || "/hook"
-pagerNoop              = process.env.HUBOT_PAGERDUTY_NOOP
-pagerNoop               = false if pagerNoop is "false" or pagerNoop  is "off"
 
 module.exports = (robot) ->
   pagerduty = require('../pagerduty')(robot)
@@ -66,7 +60,7 @@ module.exports = (robot) ->
                   else if msg.message.user.email_address
                     "I'm assuming your PagerDuty email is #{msg.message.user.email_address}. Change it with `#{robot.name} pager me as you@yourdomain.com`"
       if user
-        msg.send "I found your PagerDuty user https://#{pagerDutySubdomain}.pagerduty.com#{user.user_url}, #{emailNote}"
+        msg.send "I found your PagerDuty user https://#{pagerduty.subdomain}.pagerduty.com#{user.user_url}, #{emailNote}"
       else
         msg.send "I couldn't find your user :( #{emailNote}"
 
@@ -320,7 +314,7 @@ module.exports = (robot) ->
       buffer = ''
       if schedules.length > 0
         for schedule in schedules
-          buffer += "* #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}\n"
+          buffer += "* #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}\n"
         msg.send buffer
       else
         msg.send 'No schedules found!'
@@ -545,10 +539,10 @@ module.exports = (robot) ->
       displaySchedule = (s) ->
         withCurrentOncallId msg, s, (oncallUserid, oncallUsername, schedule) ->
           if userId == oncallUserid
-            msg.send "* Yes, you are on call for #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}\n"
+            msg.send "* Yes, you are on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}\n"
           else
-            msg.send "* No, you are NOT on call for #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}"
-            msg.send "* #{oncallUsername} is on call for #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}\n"
+            msg.send "* No, you are NOT on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
+            msg.send "* #{oncallUsername} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}\n"
 
       if !userId?
         msg.send "Couldn't figure out the pagerduty user connected to your account."
@@ -573,7 +567,7 @@ module.exports = (robot) ->
 
     displaySchedule = (s) ->
       withCurrentOncall msg, s, (username, schedule) ->
-        msg.send "* #{username} is on call for #{schedule.name} - https://#{pagerDutySubdomain}.pagerduty.com/schedules##{schedule.id}\n"
+        msg.send "* #{username} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}\n"
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, displaySchedule
@@ -602,7 +596,7 @@ module.exports = (robot) ->
       services = json.services
       if services.length > 0
         for service in services
-          buffer += "* #{service.id}: #{service.name} (#{service.status}) - https://#{pagerDutySubdomain}.pagerduty.com/services/#{service.id}\n"
+          buffer += "* #{service.id}: #{service.name} (#{service.status}) - https://#{pagerduty.subdomain}.pagerduty.com/services/#{service.id}\n"
         msg.send buffer
       else
         msg.send 'No services found!'

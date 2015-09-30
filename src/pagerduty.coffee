@@ -1,14 +1,9 @@
 HttpClient = require 'scoped-http-client'
 
-pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
 pagerDutyApiKey        = process.env.HUBOT_PAGERDUTY_API_KEY
 pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
 pagerDutyBaseUrl       = "https://#{pagerDutySubdomain}.pagerduty.com/api/v1"
-pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
 pagerDutyServices      = process.env.HUBOT_PAGERDUTY_SERVICES
-pagerRoom              = process.env.HUBOT_PAGERDUTY_ROOM
-# Webhook listener endpoint. Set it to whatever URL you want, and make sure it matches your pagerduty service settings
-pagerEndpoint          = process.env.HUBOT_PAGERDUTY_ENDPOINT || "/hook"
 pagerNoop              = process.env.HUBOT_PAGERDUTY_NOOP
 pagerNoop               = false if pagerNoop is "false" or pagerNoop  is "off"
 
@@ -157,4 +152,5 @@ module.exports = (robot) ->
     getIncident: getIncident
     getIncidents: getIncidents
     getSchedules: getSchedules
+    subdomain: pagerDutySubdomain
   return pagerduty
