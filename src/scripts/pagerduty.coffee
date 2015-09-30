@@ -396,7 +396,7 @@ module.exports = (robot) ->
       scheduleId = schedule.id
       return unless scheduleId
 
-      pagerDutyDelete msg, "/schedules/#{scheduleId}/overrides/#{msg.match[6]}", (success) ->
+      pagerduty.delete msg, "/schedules/#{scheduleId}/overrides/#{msg.match[6]}", (success) ->
         if success
           msg.send ":boom:"
         else
@@ -561,8 +561,6 @@ module.exports = (robot) ->
           return
 
       cb(json.users[0])
-
-  pagerDutyDelete = pagerduty.pagerDutyDelete
 
   oneScheduleMatching = (msg, q, cb) ->
     query = {
