@@ -54,6 +54,8 @@ pagerNoop              = process.env.HUBOT_PAGERDUTY_NOOP
 pagerNoop               = false if pagerNoop is "false" or pagerNoop  is "off"
 
 module.exports = (robot) ->
+  pagerduty = require('../pagerduty')(robot)
+
   robot.respond /pager( me)?$/i, (msg) ->
     if missingEnvironmentForApi(msg)
       return
@@ -561,28 +563,7 @@ module.exports = (robot) ->
       cb(json.users[0])
 
 
-  pagerDutyGet = (msg, url, query, cb) ->
-    if missingEnvironmentForApi(msg)
-      return
-
-    if pagerDutyServices? && url.match /\/incidents/
-      query['service'] = pagerDutyServices
-
-    auth = "Token token=#{pagerDutyApiKey}"
-    msg.http(pagerDutyBaseUrl + url)
-      .query(query)
-      .headers(Authorization: auth, Accept: 'application/json')
-      .get() (err, res, body) ->
-        if err?
-          return robot.emit 'error', err, msg
-        json_body = null
-        switch res.statusCode
-          when 200 then json_body = JSON.parse(body)
-          else
-            console.log res.statusCode
-            console.log body
-            json_body = null
-        cb json_body
+  pagerDutyGet = pagerduty.pagerDutyGet
 
   pagerDutyPut = (msg, url, data, cb) ->
     if missingEnvironmentForApi(msg)
