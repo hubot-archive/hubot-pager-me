@@ -70,4 +70,30 @@ module.exports = (robot) ->
             json_body = null
         cb json_body
 
-  return pagerDutyGet: pagerDutyGet, pagerDutyPut: pagerDutyPut
+  pagerDutyPost = (msg, url, data, cb) ->
+    if missingEnvironmentForApi(msg)
+      return
+
+    if pagerNoop
+      msg.send "Would have POST #{url}: #{inspect data}"
+      return
+
+    json = JSON.stringify(data)
+    auth = "Token token=#{pagerDutyApiKey}"
+    msg.http(pagerDutyBaseUrl + url)
+      .headers(Authorization: auth, Accept: 'application/json')
+      .header("content-type","application/json")
+      .header("content-length",json.length)
+      .post(json) (err, res, body) ->
+        if err?
+          return robot.emit 'error', err, msg
+        json_body = null
+        switch res.statusCode
+          when 201 then json_body = JSON.parse(body)
+          else
+            console.log res.statusCode
+            console.log body
+            json_body = null
+        cb json_body
+
+  return pagerDutyGet: pagerDutyGet, pagerDutyPut: pagerDutyPut, pagerDutyPost: pagerDutyPost
