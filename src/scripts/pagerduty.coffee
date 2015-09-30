@@ -459,7 +459,7 @@ module.exports = (robot) ->
       scheduleId = schedule.id
       return unless scheduleId
 
-      pagerduty.delete msg, "/schedules/#{scheduleId}/overrides/#{msg.match[6]}", (success) ->
+      pagerduty.delete msg, "/schedules/#{scheduleId}/overrides/#{msg.match[6]}", (err, success) ->
         if success
           msg.send ":boom:"
         else

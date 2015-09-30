@@ -121,7 +121,7 @@ module.exports = (robot) ->
       .header("content-length",0)
       .delete() (err, res, body) ->
         if err?
-          return robot.emit 'error', err, msg
+          return cb(err)
         json_body = null
         switch res.statusCode
           when 204, 200
@@ -130,7 +130,7 @@ module.exports = (robot) ->
             console.log res.statusCode
             console.log body
             value = false
-        cb value
+        cb null, value
 
   getIncident = (msg, incident, cb) ->
     pagerDutyGet msg, "/incidents/#{encodeURIComponent incident}", {}, (err, json) ->
