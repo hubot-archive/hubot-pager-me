@@ -72,7 +72,12 @@ module.exports = (robot) ->
       .header("content-length",json.length)
       .put(json) (err, res, body) ->
         if err?
-          return robot.emit 'error', err, msg
+          if cb.length is 1
+            robot.emit 'error', err, msg
+          else
+            callback(err)
+          return
+
         json_body = null
         switch res.statusCode
           when 200 then json_body = JSON.parse(body)
@@ -80,7 +85,10 @@ module.exports = (robot) ->
             console.log res.statusCode
             console.log body
             json_body = null
-        cb json_body
+        if cb.length is 1
+          cb json_body
+        else
+          cb null, json_body
 
   pagerDutyPost = (msg, url, data, cb) ->
     if pagerNoop
