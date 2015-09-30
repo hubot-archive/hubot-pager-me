@@ -82,9 +82,12 @@ module.exports = (robot) ->
         switch res.statusCode
           when 200 then json_body = JSON.parse(body)
           else
-            console.log res.statusCode
-            console.log body
-            json_body = null
+            if cb.length is 1
+              console.log res.statusCode
+              console.log body
+              json_body = null
+            else
+              return cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
         if cb.length is 1
           cb json_body
         else
@@ -101,15 +104,14 @@ module.exports = (robot) ->
       .header("content-length",json.length)
       .post(json) (err, res, body) ->
         if err?
-          return robot.emit 'error', err, msg
+          return cb(err)
+
         json_body = null
         switch res.statusCode
           when 201 then json_body = JSON.parse(body)
           else
-            console.log res.statusCode
-            console.log body
-            json_body = null
-        cb json_body
+            return cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
+        cb null, json_body
 
   pagerDutyDelete = (msg, url, cb) ->
     if pagerNoop

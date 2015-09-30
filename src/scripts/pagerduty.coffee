@@ -286,7 +286,11 @@ module.exports = (robot) ->
           content: content
         requester_id: userId
 
-      pagerduty.post msg, "/incidents/#{incidentId}/notes", data, (json) ->
+      pagerduty.post msg, "/incidents/#{incidentId}/notes", data, (err, json) ->
+        if err?
+          robot.emit 'error', err, msg
+          return
+
         if json && json.note
           msg.send "Got it! Note created: #{json.note.content}"
         else
@@ -441,7 +445,11 @@ module.exports = (robot) ->
             'user_id':   userId
           }
           data = { 'override': override }
-          pagerduty.post msg, "/schedules/#{scheduleId}/overrides", data, (json) ->
+          pagerduty.post msg, "/schedules/#{scheduleId}/overrides", data, (err, json) ->
+            if err?
+              robot.emit 'error', err, msg
+              return
+
             if json && json.override
               start = moment(json.override.start)
               end = moment(json.override.end)
@@ -494,7 +502,11 @@ module.exports = (robot) ->
         }
         withCurrentOncall msg, matchingSchedule, (old_username, schedule) ->
           data = { 'override': override }
-          pagerduty.post msg, "/schedules/#{schedule.id}/overrides", data, (json) ->
+          pagerduty.post msg, "/schedules/#{schedule.id}/overrides", data, (err, json) ->
+            if err?
+              robot.emit 'error', err, msg
+              return
+
             if json.override
               start = moment(json.override.start)
               end = moment(json.override.end)
@@ -584,7 +596,11 @@ module.exports = (robot) ->
       data = { 'maintenance_window': maintenance_window, 'requester_id': requester_id }
 
       msg.send "Opening maintenance window for: #{service_ids}"
-      pagerduty.post msg, "/maintenance_windows", data, (json) ->
+      pagerduty.post msg, "/maintenance_windows", data, (err, json) ->
+        if err?
+          robot.emit 'error', err, msg
+          return
+
         if json && json.maintenance_window
           msg.send "Maintenance window created! ID: #{json.maintenance_window.id} Ends: #{json.maintenance_window.end_time}"
         else
