@@ -1,3 +1,5 @@
+HttpClient = require 'scoped-http-client'
+
 pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
 pagerDutyApiKey        = process.env.HUBOT_PAGERDUTY_API_KEY
 pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
@@ -11,6 +13,11 @@ pagerNoop              = process.env.HUBOT_PAGERDUTY_NOOP
 pagerNoop               = false if pagerNoop is "false" or pagerNoop  is "off"
 
 module.exports = (robot) ->
+  http = (path) ->
+    auth =
+    HttpClient.create("#{pagerDutyBaseUrl}#{path}")
+      .headers(Authorization: "Token token=#{pagerDutyApiKey}", Accept: 'application/json')
+
   pagerDutyGet = (msg, url, query, cb) ->
     if missingEnvironmentForApi(msg)
       return
@@ -18,10 +25,8 @@ module.exports = (robot) ->
     if pagerDutyServices? && url.match /\/incidents/
       query['service'] = pagerDutyServices
 
-    auth = "Token token=#{pagerDutyApiKey}"
-    msg.http(pagerDutyBaseUrl + url)
+    http(url)
       .query(query)
-      .headers(Authorization: auth, Accept: 'application/json')
       .get() (err, res, body) ->
         if err?
           return robot.emit 'error', err, msg
@@ -53,9 +58,7 @@ module.exports = (robot) ->
       return
 
     json = JSON.stringify(data)
-    auth = "Token token=#{pagerDutyApiKey}"
-    msg.http(pagerDutyBaseUrl + url)
-      .headers(Authorization: auth, Accept: 'application/json')
+    http(url)
       .header("content-type","application/json")
       .header("content-length",json.length)
       .put(json) (err, res, body) ->
@@ -79,9 +82,7 @@ module.exports = (robot) ->
       return
 
     json = JSON.stringify(data)
-    auth = "Token token=#{pagerDutyApiKey}"
-    msg.http(pagerDutyBaseUrl + url)
-      .headers(Authorization: auth, Accept: 'application/json')
+    http(url)
       .header("content-type","application/json")
       .header("content-length",json.length)
       .post(json) (err, res, body) ->
@@ -105,8 +106,7 @@ module.exports = (robot) ->
       return
 
     auth = "Token token=#{pagerDutyApiKey}"
-    msg.http(pagerDutyBaseUrl + url)
-      .headers(Authorization: auth, Accept: 'application/json')
+    http(url)
       .header("content-length",0)
       .delete() (err, res, body) ->
         if err?
