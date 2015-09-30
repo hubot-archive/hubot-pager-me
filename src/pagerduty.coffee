@@ -134,8 +134,9 @@ module.exports = (robot) ->
       sort_by: "incident_number:asc"
     pagerduty.get msg, "/incidents", query, (err, json) ->
       if err?
+        cb(err)
         return
-      cb(json.incidents)
+      cb(null, json.incidents)
 
   pagerduty =
     missingEnvironmentForApi: missingEnvironmentForApi

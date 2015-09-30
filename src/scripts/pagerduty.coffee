@@ -91,7 +91,11 @@ module.exports = (robot) ->
       msg.send formatIncident(incident)
 
   robot.respond /(pager|major)( me)? (inc|incidents|sup|problems)$/i, (msg) ->
-    pagerduty.getIncidents msg, "triggered,acknowledged", (incidents) ->
+    pagerduty.getIncidents msg, "triggered,acknowledged", (err, incidents) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+
       if incidents.length > 0
         buffer = "Triggered:\n----------\n"
         for junk, incident of incidents.reverse()
@@ -180,7 +184,11 @@ module.exports = (robot) ->
 
     force = msg.match[4]?
 
-    pagerduty.getIncidents msg, 'triggered,acknwowledged', (incidents) ->
+    pagerduty.getIncidents msg, 'triggered,acknwowledged', (err, incidents) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+
       email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
       filteredIncidents = if force
                             incidents # don't filter at all
@@ -216,7 +224,11 @@ module.exports = (robot) ->
       return
 
     force = msg.match[5]?
-    pagerduty.getIncidents msg, "acknowledged", (incidents) ->
+    pagerduty.getIncidents msg, "acknowledged", (err, incidents) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+
       email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
       filteredIncidents = if force
                             incidents # don't filter at all
@@ -736,7 +748,11 @@ module.exports = (robot) ->
       requesterId = user.id
       return unless requesterId
 
-      pagerduty.getIncidents msg, statusFilter, (incidents) ->
+      pagerduty.getIncidents msg, statusFilter, (err, incidents) ->
+        if err?
+          robot.emit 'error', err, msg
+          return
+
         foundIncidents = []
         for incident in incidents
           # FIXME this isn't working very consistently
