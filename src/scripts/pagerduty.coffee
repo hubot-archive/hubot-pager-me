@@ -38,6 +38,7 @@
 #   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin, Michael Warkentin
 
 pagerduty = require('../pagerduty')
+async = require('async')
 inspect = require('util').inspect
 moment = require('moment-timezone')
 
@@ -371,7 +372,6 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-
     campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
       userId = user.id
 
@@ -386,43 +386,38 @@ module.exports = (robot) ->
       else
         timezone = 'UTC'
 
-      scheduleQuery = {}
-      pagerduty.getSchedules scheduleQuery, (err, schedules) ->
+      pagerduty.getSchedules (err, schedules) ->
         if err?
           robot.emit 'error', err, msg
           return
 
         if schedules.length > 0
-          for schedule in schedules
-            withScheduleMatching msg, schedule.name, (schedule) ->
-              scheduleId = schedule.id
-              return unless scheduleId
+          renderSchedule = (schedule, cb) ->
+            pagerduty.get "/schedules/#{schedule.id}/entries", query, (err, json) ->
+              if err?
+                cb(err)
 
-              pagerduty.get "/schedules/#{scheduleId}/entries", query, (err, json) ->
-                if err?
-                  robot.emit 'error', err, msg
-                  return
+              entries = json.entries
 
-                entries = json.entries
+              if entries
+                sortedEntries = entries.sort (a, b) ->
+                  moment(a.start).unix() - moment(b.start).unix()
 
-                if entries
-                  sortedEntries = entries.sort (a, b) ->
-                    moment(a.start).unix() - moment(b.start).unix()
+                buffer = ""
+                for entry in sortedEntries
+                  if userId == entry.user.id
+                    startTime = moment(entry.start).tz(timezone).format()
+                    endTime   = moment(entry.end).tz(timezone).format()
 
-                  buffer = ""
-                  for entry in sortedEntries
-                    if userId == entry.user.id
-                      startTime = moment(entry.start).tz(timezone).format()
-                      endTime   = moment(entry.end).tz(timezone).format()
+                    buffer += "* #{startTime} - #{endTime} #{entry.user.name} (#{schedule.name})\n"
+                cb(null, buffer)
 
-                      buffer += "* #{startTime} - #{endTime} #{entry.user.name} (#{schedule.name})\n"
+          async.map schedules, renderSchedule, (err, results) ->
+            if err?
+              robot.emit 'error', err, msg
+              return
+            msg.send results.join("")
 
-                  if buffer == ""
-                    msg.send "None found!"
-                  else
-                    msg.send buffer
-                else
-                  msg.send "None found!"
         else
           msg.send 'No schedules found!'
 
@@ -525,20 +520,19 @@ module.exports = (robot) ->
               msg.send "Rejoice, #{old_username}! #{json.override.user.name} has the pager on #{schedule.name} until #{end.format()}"
 
   # Am I on call?
-  robot.respond /am i (on call|oncall|on-call)(.+)?/i, (msg) ->
+  robot.respond /am i on (call|oncall|on-call)/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
     campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
       userId = user.id
 
-      displaySchedule = (s) ->
+      renderSchedule = (s, cb) ->
         withCurrentOncallId msg, s, (oncallUserid, oncallUsername, schedule) ->
           if userId == oncallUserid
-            msg.send "* Yes, you are on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}\n"
+            cb null, "* Yes, you are on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
           else
-            msg.send "* No, you are NOT on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
-            msg.send "* #{oncallUsername} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}\n"
+            cb null, "* No, you are NOT on call for #{schedule.name} (but #{oncallUsername} is)- https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
 
       if !userId?
         msg.send "Couldn't figure out the pagerduty user connected to your account."
@@ -549,8 +543,11 @@ module.exports = (robot) ->
             return
 
           if schedules.length > 0
-            for s in schedules
-              displaySchedule(s)
+            async.map schedules, renderSchedule, (err, results) ->
+              if err?
+                robot.emit 'error', err, msg
+                return
+              msg.send results.join("\n")
           else
             msg.send 'No schedules found!'
 
@@ -561,12 +558,17 @@ module.exports = (robot) ->
 
     scheduleName = msg.match[4]
 
-    displaySchedule = (s) ->
+    renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
-        msg.send "* #{username} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}\n"
+        cb null, "* #{username} is on call for #{schedule.name} - https://#{pagerduty.domain}.pagerduty.com/schedules##{schedule.id}"
 
     if scheduleName?
-      withScheduleMatching msg, scheduleName, displaySchedule
+      withScheduleMatching msg, scheduleName, (s) ->
+        renderSchedule s, (err, text) ->
+          if err?
+            robot.emit 'error'
+            return
+          msg.send text
     else
       pagerduty.getSchedules (err, schedules) ->
         if err?
@@ -574,8 +576,11 @@ module.exports = (robot) ->
           return
 
         if schedules.length > 0
-          for s in schedules
-            displaySchedule(s)
+          async.map schedules, renderSchedule, (err, results) ->
+            if err?
+              robot.emit 'error', err, msg
+              return
+            msg.send results.join("\n")
         else
           msg.send 'No schedules found!'
 
@@ -683,7 +688,7 @@ module.exports = (robot) ->
 
       # Single result returned
       if schedules?.length == 1
-        schedule = json.schedules[0]
+        schedule = schedules[0]
 
       # Multiple results returned and one is exact (case-insensitive)
       if schedules?.length > 1
