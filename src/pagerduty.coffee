@@ -14,6 +14,10 @@ module.exports =
       .headers(Authorization: "Token token=#{pagerDutyApiKey}", Accept: 'application/json')
 
   get: (url, query, cb) ->
+    if typeof(query) is 'function'
+      cb = query
+      query = {}
+
     if pagerDutyServices? && url.match /\/incidents/
       query['service'] = pagerDutyServices
 
@@ -122,6 +126,10 @@ module.exports =
       cb(null, json.incidents)
 
   getSchedules: (query, cb) ->
+    if typeof(query) is 'function'
+      cb = query
+      query = {}
+
     @get "/schedules", query, (err, json) ->
       if err?
         cb(err)

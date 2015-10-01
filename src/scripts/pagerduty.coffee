@@ -546,7 +546,7 @@ module.exports = (robot) ->
       if !userId?
         msg.send "Couldn't figure out the pagerduty user connected to your account."
       else
-        pagerduty.getSchedules {}, (err, schedules) ->
+        pagerduty.getSchedules (err, schedules) ->
           if err?
             robot.emit 'error', err, msg
             return
@@ -571,7 +571,7 @@ module.exports = (robot) ->
     if scheduleName?
       withScheduleMatching msg, scheduleName, displaySchedule
     else
-      pagerduty.getSchedules {}, (err, schedules) ->
+      pagerduty.getSchedules (err, schedules) ->
         if err?
           robot.emit 'error', err, msg
           return
