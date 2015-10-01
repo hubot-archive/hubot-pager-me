@@ -526,20 +526,19 @@ module.exports = (robot) ->
               msg.send "Rejoice, #{old_username}! #{json.override.user.name} has the pager on #{schedule.name} until #{end.format()}"
 
   # Am I on call?
-  robot.respond /am i (on call|oncall|on-call)(.+)?/i, (msg) ->
+  robot.respond /am i on (call|oncall|on-call)/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
     campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
       userId = user.id
 
-      displaySchedule = (s) ->
+      renderSchedule = (s, cb) ->
         withCurrentOncallId msg, s, (oncallUserid, oncallUsername, schedule) ->
           if userId == oncallUserid
-            msg.send "* Yes, you are on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}\n"
+            cb null, "* Yes, you are on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
           else
-            msg.send "* No, you are NOT on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
-            msg.send "* #{oncallUsername} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}\n"
+            cb null, "* No, you are NOT on call for #{schedule.name} (but #{oncallUsername} is)- https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
 
       if !userId?
         msg.send "Couldn't figure out the pagerduty user connected to your account."
@@ -550,8 +549,11 @@ module.exports = (robot) ->
             return
 
           if schedules.length > 0
-            for s in schedules
-              displaySchedule(s)
+            async.map schedules, renderSchedule, (err, results) ->
+              if err?
+                robot.emit 'error', err, msg
+                return
+              msg.send results.join("\n")
           else
             msg.send 'No schedules found!'
 
@@ -692,7 +694,7 @@ module.exports = (robot) ->
 
       # Single result returned
       if schedules?.length == 1
-        schedule = json.schedules[0]
+        schedule = schedules[0]
 
       # Multiple results returned and one is exact (case-insensitive)
       if schedules?.length > 1
