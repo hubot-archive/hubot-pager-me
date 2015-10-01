@@ -372,7 +372,6 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-
     campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
       userId = user.id
 
@@ -387,43 +386,38 @@ module.exports = (robot) ->
       else
         timezone = 'UTC'
 
-      scheduleQuery = {}
-      pagerduty.getSchedules scheduleQuery, (err, schedules) ->
+      pagerduty.getSchedules (err, schedules) ->
         if err?
           robot.emit 'error', err, msg
           return
 
         if schedules.length > 0
-          for schedule in schedules
-            withScheduleMatching msg, schedule.name, (schedule) ->
-              scheduleId = schedule.id
-              return unless scheduleId
+          renderSchedule = (schedule, cb) ->
+            pagerduty.get "/schedules/#{schedule.id}/entries", query, (err, json) ->
+              if err?
+                cb(err)
 
-              pagerduty.get "/schedules/#{scheduleId}/entries", query, (err, json) ->
-                if err?
-                  robot.emit 'error', err, msg
-                  return
+              entries = json.entries
 
-                entries = json.entries
+              if entries
+                sortedEntries = entries.sort (a, b) ->
+                  moment(a.start).unix() - moment(b.start).unix()
 
-                if entries
-                  sortedEntries = entries.sort (a, b) ->
-                    moment(a.start).unix() - moment(b.start).unix()
+                buffer = ""
+                for entry in sortedEntries
+                  if userId == entry.user.id
+                    startTime = moment(entry.start).tz(timezone).format()
+                    endTime   = moment(entry.end).tz(timezone).format()
 
-                  buffer = ""
-                  for entry in sortedEntries
-                    if userId == entry.user.id
-                      startTime = moment(entry.start).tz(timezone).format()
-                      endTime   = moment(entry.end).tz(timezone).format()
+                    buffer += "* #{startTime} - #{endTime} #{entry.user.name} (#{schedule.name})\n"
+                cb(null, buffer)
 
-                      buffer += "* #{startTime} - #{endTime} #{entry.user.name} (#{schedule.name})\n"
+          async.map schedules, renderSchedule, (err, results) ->
+            if err?
+              robot.emit 'error', err, msg
+              return
+            msg.send results.join("")
 
-                  if buffer == ""
-                    msg.send "None found!"
-                  else
-                    msg.send buffer
-                else
-                  msg.send "None found!"
         else
           msg.send 'No schedules found!'
 
