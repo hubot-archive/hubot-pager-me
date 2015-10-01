@@ -55,22 +55,14 @@ module.exports = (robot) ->
       .header("content-length",json.length)
       .put(json) (err, res, body) ->
         if err?
-          if cb.length is 1
-            robot.emit 'error', err, msg
-          else
-            callback(err)
+          callback(err)
           return
 
         json_body = null
         switch res.statusCode
           when 200 then json_body = JSON.parse(body)
           else
-            if cb.length is 1
-              console.log res.statusCode
-              console.log body
-              json_body = null
-            else
-              return cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
+            return cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
         if cb.length is 1
           cb json_body
         else
