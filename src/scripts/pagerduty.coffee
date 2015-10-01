@@ -65,16 +65,16 @@ module.exports = (robot) ->
     cmds = (cmd for cmd in cmds when cmd.match(/hubot (pager |who's on call)/))
     msg.send cmds.join("\n")
 
-  robot.respond /pager(?: me)? as (.*)$/i, (msg) ->
+  robot.respond /pager(?: me)? as (.*)$/i, id: 'pager.remember', (msg) ->
     email = msg.match[1]
     msg.message.user.pagerdutyEmail = email
     msg.send "Okay, I'll remember your PagerDuty email is #{email}"
 
-  robot.respond /pager forget me$/i, (msg) ->
+  robot.respond /pager forget me$/i, id: 'pager.forget', (msg) ->
     msg.message.user.pagerdutyEmail = undefined
     msg.send "Okay, I've forgotten your PagerDuty email"
 
-  robot.respond /(pager|major)( me)? incident (.*)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? incident (.*)$/i, id: 'pager.incident', (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
@@ -85,7 +85,7 @@ module.exports = (robot) ->
 
       msg.send formatIncident(incident)
 
-  robot.respond /(pager|major)( me)? (inc|incidents|sup|problems)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (inc|incidents|sup|problems)$/i, id: 'pager.incidents', (msg) ->
     pagerduty.getIncidents "triggered,acknowledged", (err, incidents) ->
       if err?
         robot.emit 'error', err, msg
@@ -104,10 +104,10 @@ module.exports = (robot) ->
       else
         msg.send "No open incidents"
 
-  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/i, id: 'pager.trigger.prompt', (msg) ->
     msg.reply "Please include a user or schedule to page, like 'hubot pager infrastructure everything is on fire'."
 
-  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+) (.+)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+) (.+)$/i, id: 'pager.trigger', (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
@@ -170,7 +170,7 @@ module.exports = (robot) ->
                     msg.reply "Problem reassigning the incident :/"
           , 5000
 
-  robot.respond /(?:pager|major)(?: me)? ack(?:nowledge)? (.+)$/i, (msg) ->
+  robot.respond /(?:pager|major)(?: me)? ack(?:nowledge)? (.+)$/i, id: 'pager.acknowledge.single', (msg) ->
     msg.finish()
     if pagerduty.missingEnvironmentForApi(msg)
       return
@@ -181,7 +181,7 @@ module.exports = (robot) ->
     # if it ever doesn't need acknowledge again, it means it's timed out and has become 'triggered' again anyways
     updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged')
 
-  robot.respond /(pager|major)( me)? ack(nowledge)?(!)?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? ack(nowledge)?(!)?$/i, id: 'pager.acknowledge.all', (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
@@ -211,7 +211,7 @@ module.exports = (robot) ->
       # only acknowledge triggered things
       updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged')
 
-  robot.respond /(?:pager|major)(?: me)? res(?:olve)?(?:d)? (.+)$/i, (msg) ->
+  robot.respond /(?:pager|major)(?: me)? res(?:olve)?(?:d)? (.+)$/i, id: 'pager.resolve.single', (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
@@ -222,7 +222,7 @@ module.exports = (robot) ->
     # allow resolving of triggered and acknowedlge, since being explicit
     updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'resolved')
 
-  robot.respond /(pager|major)( me)? res(olve)?(d)?(!)?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? res(olve)?(d)?(!)?$/i, id: 'pager.resolve.all', (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
@@ -250,7 +250,7 @@ module.exports = (robot) ->
       # only resolve things that are acknowledged
       updateIncidents(msg, incidentNumbers, 'acknowledged', 'resolved')
 
-  robot.respond /(pager|major)( me)? notes (.+)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? notes (.+)$/i, id: 'pager.notes', (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
@@ -267,7 +267,7 @@ module.exports = (robot) ->
         buffer += "#{note.created_at} #{note.user.name}: #{note.content}\n"
       msg.send buffer
 
-  robot.respond /(pager|major)( me)? note ([\d\w]+) (.+)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? note ([\d\w]+) (.+)$/i, id: 'pager.note', (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
@@ -295,7 +295,7 @@ module.exports = (robot) ->
         else
           msg.send "Sorry, I couldn't do it :("
 
-  robot.respond /(pager|major)( me)? schedules( (.+))?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? schedules( (.+))?$/i, id: 'pager.schedules', (msg) ->
     query = {}
     if msg.match[4]
       query['query'] = msg.match[4]
@@ -316,7 +316,7 @@ module.exports = (robot) ->
       else
         msg.send 'No schedules found!'
 
-  robot.respond /(pager|major)( me)? (schedule|overrides)( ([\w\-]+))?( ([^ ]+))?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (schedule|overrides)( ([\w\-]+))?( ([^ ]+))?$/i, id: 'pager.schedules-and-overrides', (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
@@ -368,7 +368,7 @@ module.exports = (robot) ->
         else
           msg.send "None found!"
 
-  robot.respond /(pager|major)( me)? my schedule( ([^ ]+))?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? my schedule( ([^ ]+))?$/i, id: 'pager.my-schedule', (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
@@ -421,7 +421,7 @@ module.exports = (robot) ->
         else
           msg.send 'No schedules found!'
 
-  robot.respond /(pager|major)( me)? (override) ([\w\-]+) ([\w\-:\+]+) - ([\w\-:\+]+)( (.*))?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (override) ([\w\-]+) ([\w\-:\+]+) - ([\w\-:\+]+)( (.*))?$/i, id: 'pager.override', (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
@@ -466,7 +466,7 @@ module.exports = (robot) ->
         else
           msg.send "Please use a http://momentjs.com/ compatible date!"
 
-  robot.respond /(pager|major)( me)? (overrides?) ([\w\-]*) (delete) (.*)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (overrides?) ([\w\-]*) (delete) (.*)$/i, id: 'pager.override.delete', (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
@@ -480,7 +480,7 @@ module.exports = (robot) ->
         else
           msg.send "Something went weird."
 
-  robot.respond /pager( me)? (.+) (\d+)$/i, (msg) ->
+  robot.respond /pager( me)? (.+) (\d+)$/i, id: 'pager.override.quick', (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
@@ -520,7 +520,7 @@ module.exports = (robot) ->
               msg.send "Rejoice, #{old_username}! #{json.override.user.name} has the pager on #{schedule.name} until #{end.format()}"
 
   # Am I on call?
-  robot.respond /am i on (call|oncall|on-call)/i, (msg) ->
+  robot.respond /am i on (call|oncall|on-call)/i, id: 'pager.am-i-on-call', (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
@@ -552,7 +552,7 @@ module.exports = (robot) ->
             msg.send 'No schedules found!'
 
   # who is on call?
-  robot.respond /who(’s|'s|s| is|se)? (on call|oncall|on-call)( (?:for )?(.+))?/i, (msg) ->
+  robot.respond /who(’s|'s|s| is|se)? (on call|oncall|on-call)( (?:for )?(.+))?/i, id: 'pager.whos-on-call', (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
@@ -584,7 +584,7 @@ module.exports = (robot) ->
         else
           msg.send 'No schedules found!'
 
-  robot.respond /(pager|major)( me)? services$/i, (msg) ->
+  robot.respond /(pager|major)( me)? services$/i, id: 'pager.services', (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
@@ -602,7 +602,7 @@ module.exports = (robot) ->
       else
         msg.send 'No services found!'
 
-  robot.respond /(pager|major)( me)? maintenance (\d+) (.+)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? maintenance (\d+) (.+)$/i, id: 'pager.maintenance.create', (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
