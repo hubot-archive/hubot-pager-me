@@ -37,8 +37,8 @@
 # Authors:
 #   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin, Michael Warkentin
 
+pagerduty = require('../pagerduty')
 inspect = require('util').inspect
-
 moment = require('moment-timezone')
 
 pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
@@ -48,7 +48,6 @@ pagerRoom              = process.env.HUBOT_PAGERDUTY_ROOM
 pagerEndpoint          = process.env.HUBOT_PAGERDUTY_ENDPOINT || "/hook"
 
 module.exports = (robot) ->
-  pagerduty = require('../pagerduty')(robot)
 
   robot.respond /pager( me)?$/i, (msg) ->
     if missingEnvironmentForApi(msg)

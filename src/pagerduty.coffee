@@ -7,20 +7,17 @@ pagerDutyServices      = process.env.HUBOT_PAGERDUTY_SERVICES
 pagerNoop              = process.env.HUBOT_PAGERDUTY_NOOP
 pagerNoop               = false if pagerNoop is "false" or pagerNoop  is "off"
 
-module.exports = (robot) ->
-
-  class PagerDutyError extends Error
-
-  http = (path) ->
-    auth =
+class PagerDutyError extends Error
+module.exports =
+  http: (path) ->
     HttpClient.create("#{pagerDutyBaseUrl}#{path}")
       .headers(Authorization: "Token token=#{pagerDutyApiKey}", Accept: 'application/json')
 
-  pagerDutyGet = (url, query, cb) ->
+  get: (url, query, cb) ->
     if pagerDutyServices? && url.match /\/incidents/
       query['service'] = pagerDutyServices
 
-    http(url)
+    @http(url)
       .query(query)
       .get() (err, res, body) ->
         if err?
@@ -34,7 +31,7 @@ module.exports = (robot) ->
 
         cb null, json_body
 
-  missingEnvironmentForApi = (msg) ->
+  missingEnvironmentForApi: (msg) ->
     missingAnything = false
     unless pagerDutySubdomain?
       msg.send "PagerDuty Subdomain is missing:  Ensure that HUBOT_PAGERDUTY_SUBDOMAIN is set."
@@ -44,13 +41,13 @@ module.exports = (robot) ->
       missingAnything |= true
     missingAnything
 
-  pagerDutyPut = (url, data, cb) ->
+  put: (url, data, cb) ->
     if pagerNoop
       console.log "Would have PUT #{url}: #{inspect data}"
       return
 
     json = JSON.stringify(data)
-    http(url)
+    @http(url)
       .header("content-type","application/json")
       .header("content-length",json.length)
       .put(json) (err, res, body) ->
@@ -63,18 +60,15 @@ module.exports = (robot) ->
           when 200 then json_body = JSON.parse(body)
           else
             return cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
-        if cb.length is 1
-          cb json_body
-        else
-          cb null, json_body
+        cb null, json_body
 
-  pagerDutyPost = (url, data, cb) ->
+  post: (url, data, cb) ->
     if pagerNoop
       console.log "Would have POST #{url}: #{inspect data}"
       return
 
     json = JSON.stringify(data)
-    http(url)
+    @http(url)
       .header("content-type","application/json")
       .header("content-length",json.length)
       .post(json) (err, res, body) ->
@@ -88,7 +82,7 @@ module.exports = (robot) ->
             return cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
         cb null, json_body
 
-  pagerDutyDelete = (url, cb) ->
+  delete: (url, cb) ->
     if pagerNoop
       console.log "Would have DELETE #{url}"
       return
@@ -109,40 +103,28 @@ module.exports = (robot) ->
             value = false
         cb null, value
 
-  getIncident = (incident, cb) ->
-    pagerDutyGet "/incidents/#{encodeURIComponent incident}", {}, (err, json) ->
+  getIncident: (incident, cb) ->
+    @get "/incidents/#{encodeURIComponent incident}", {}, (err, json) ->
       if err?
         cb(err)
         return
 
       cb(null, json)
 
-  getIncidents = (status, cb) ->
+  getIncidents: (status, cb) ->
     query =
       status:  status
       sort_by: "incident_number:asc"
-    pagerduty.get "/incidents", query, (err, json) ->
+    @get "/incidents", query, (err, json) ->
       if err?
         cb(err)
         return
       cb(null, json.incidents)
 
-  getSchedules = (query, cb) ->
-    pagerDutyGet "/schedules", query, (err, json) ->
+  getSchedules: (query, cb) ->
+    @get "/schedules", query, (err, json) ->
       if err?
         cb(err)
         return
 
       cb(null, json.schedules)
-
-  pagerduty =
-    missingEnvironmentForApi: missingEnvironmentForApi
-    get: pagerDutyGet
-    put: pagerDutyPut
-    post: pagerDutyPost
-    delete: pagerDutyDelete
-    getIncident: getIncident
-    getIncidents: getIncidents
-    getSchedules: getSchedules
-    subdomain: pagerDutySubdomain
-  return pagerduty
