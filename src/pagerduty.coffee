@@ -13,6 +13,16 @@ module.exports =
     HttpClient.create("#{pagerDutyBaseUrl}#{path}")
       .headers(Authorization: "Token token=#{pagerDutyApiKey}", Accept: 'application/json')
 
+  missingEnvironmentForApi: (msg) ->
+    missingAnything = false
+    unless pagerDutySubdomain?
+      msg.send "PagerDuty Subdomain is missing:  Ensure that HUBOT_PAGERDUTY_SUBDOMAIN is set."
+      missingAnything |= true
+    unless pagerDutyApiKey?
+      msg.send "PagerDuty API Key is missing:  Ensure that HUBOT_PAGERDUTY_API_KEY is set."
+      missingAnything |= true
+    missingAnything
+
   get: (url, query, cb) ->
     if typeof(query) is 'function'
       cb = query
@@ -34,16 +44,6 @@ module.exports =
             cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
 
         cb null, json_body
-
-  missingEnvironmentForApi: (msg) ->
-    missingAnything = false
-    unless pagerDutySubdomain?
-      msg.send "PagerDuty Subdomain is missing:  Ensure that HUBOT_PAGERDUTY_SUBDOMAIN is set."
-      missingAnything |= true
-    unless pagerDutyApiKey?
-      msg.send "PagerDuty API Key is missing:  Ensure that HUBOT_PAGERDUTY_API_KEY is set."
-      missingAnything |= true
-    missingAnything
 
   put: (url, data, cb) ->
     if pagerNoop
