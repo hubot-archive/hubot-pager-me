@@ -16,7 +16,7 @@ module.exports = (robot) ->
     HttpClient.create("#{pagerDutyBaseUrl}#{path}")
       .headers(Authorization: "Token token=#{pagerDutyApiKey}", Accept: 'application/json')
 
-  pagerDutyGet = (msg, url, query, cb) ->
+  pagerDutyGet = (url, query, cb) ->
     if pagerDutyServices? && url.match /\/incidents/
       query['service'] = pagerDutyServices
 
@@ -44,7 +44,7 @@ module.exports = (robot) ->
       missingAnything |= true
     missingAnything
 
-  pagerDutyPut = (msg, url, data, cb) ->
+  pagerDutyPut = (url, data, cb) ->
     if pagerNoop
       console.log "Would have PUT #{url}: #{inspect data}"
       return
@@ -76,7 +76,7 @@ module.exports = (robot) ->
         else
           cb null, json_body
 
-  pagerDutyPost = (msg, url, data, cb) ->
+  pagerDutyPost = (url, data, cb) ->
     if pagerNoop
       console.log "Would have POST #{url}: #{inspect data}"
       return
@@ -96,7 +96,7 @@ module.exports = (robot) ->
             return cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
         cb null, json_body
 
-  pagerDutyDelete = (msg, url, cb) ->
+  pagerDutyDelete = (url, cb) ->
     if pagerNoop
       console.log "Would have DELETE #{url}"
       return
@@ -117,26 +117,26 @@ module.exports = (robot) ->
             value = false
         cb null, value
 
-  getIncident = (msg, incident, cb) ->
-    pagerDutyGet msg, "/incidents/#{encodeURIComponent incident}", {}, (err, json) ->
+  getIncident = (incident, cb) ->
+    pagerDutyGet "/incidents/#{encodeURIComponent incident}", {}, (err, json) ->
       if err?
         cb(err)
         return
 
       cb(null, json)
 
-  getIncidents = (msg, status, cb) ->
+  getIncidents = (status, cb) ->
     query =
       status:  status
       sort_by: "incident_number:asc"
-    pagerduty.get msg, "/incidents", query, (err, json) ->
+    pagerduty.get "/incidents", query, (err, json) ->
       if err?
         cb(err)
         return
       cb(null, json.incidents)
 
-  getSchedules = (msg, query, cb) ->
-    pagerDutyGet msg, "/schedules", query, (err, json) ->
+  getSchedules = (query, cb) ->
+    pagerDutyGet "/schedules", query, (err, json) ->
       if err?
         cb(err)
         return

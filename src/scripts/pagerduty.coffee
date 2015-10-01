@@ -81,7 +81,7 @@ module.exports = (robot) ->
     if missingEnvironmentForApi(msg)
       return
 
-    pagerduty.getIncident msg, msg.match[3], (err, incident) ->
+    pagerduty.getIncident msg.match[3], (err, incident) ->
       if err?
         robot.emit 'error', err, msg
         return
@@ -89,7 +89,7 @@ module.exports = (robot) ->
       msg.send formatIncident(incident)
 
   robot.respond /(pager|major)( me)? (inc|incidents|sup|problems)$/i, (msg) ->
-    pagerduty.getIncidents msg, "triggered,acknowledged", (err, incidents) ->
+    pagerduty.getIncidents "triggered,acknowledged", (err, incidents) ->
       if err?
         robot.emit 'error', err, msg
         return
@@ -144,7 +144,7 @@ module.exports = (robot) ->
           msg.reply ":pager: triggered! now assigning it to the right user..."
 
           setTimeout () ->
-            pagerduty.get msg, "/incidents", query, (err, json) ->
+            pagerduty.get "/incidents", query, (err, json) ->
               if err?
                 robot.emit 'error', err, msg
                 return
@@ -162,7 +162,7 @@ module.exports = (robot) ->
                     }
                 }
 
-                pagerduty.put msg, "/incidents", data , (err, json) ->
+                pagerduty.put "/incidents", data , (err, json) ->
                   if err?
                     robot.emit 'error', err, msg
                     return
@@ -190,7 +190,7 @@ module.exports = (robot) ->
 
     force = msg.match[4]?
 
-    pagerduty.getIncidents msg, 'triggered,acknwowledged', (err, incidents) ->
+    pagerduty.getIncidents 'triggered,acknwowledged', (err, incidents) ->
       if err?
         robot.emit 'error', err, msg
         return
@@ -230,7 +230,7 @@ module.exports = (robot) ->
       return
 
     force = msg.match[5]?
-    pagerduty.getIncidents msg, "acknowledged", (err, incidents) ->
+    pagerduty.getIncidents "acknowledged", (err, incidents) ->
       if err?
         robot.emit 'error', err, msg
         return
@@ -260,7 +260,7 @@ module.exports = (robot) ->
       return
 
     incidentId = msg.match[3]
-    pagerduty.get msg, "/incidents/#{incidentId}/notes", {}, (err, json) ->
+    pagerduty.get "/incidents/#{incidentId}/notes", {}, (err, json) ->
       if err?
         robot.emit 'error', err, msg
         return
@@ -288,7 +288,7 @@ module.exports = (robot) ->
           content: content
         requester_id: userId
 
-      pagerduty.post msg, "/incidents/#{incidentId}/notes", data, (err, json) ->
+      pagerduty.post "/incidents/#{incidentId}/notes", data, (err, json) ->
         if err?
           robot.emit 'error', err, msg
           return
@@ -306,7 +306,7 @@ module.exports = (robot) ->
     if missingEnvironmentForApi(msg)
       return
 
-    pagerduty.getSchedules msg, query, (err, schedules) ->
+    pagerduty.getSchedules query, (err, schedules) ->
       if err?
         robot.emit 'error', err, msg
         return
@@ -346,7 +346,7 @@ module.exports = (robot) ->
       scheduleId = schedule.id
       return unless scheduleId
 
-      pagerduty.get msg, "/schedules/#{scheduleId}/#{thing}", query, (err, json) ->
+      pagerduty.get "/schedules/#{scheduleId}/#{thing}", query, (err, json) ->
         if err?
           robot.emit 'error', err, msg
           return
@@ -391,7 +391,7 @@ module.exports = (robot) ->
         timezone = 'UTC'
 
       scheduleQuery = {}
-      pagerduty.getSchedules msg, scheduleQuery, (err, schedules) ->
+      pagerduty.getSchedules scheduleQuery, (err, schedules) ->
         if err?
           robot.emit 'error', err, msg
           return
@@ -402,7 +402,7 @@ module.exports = (robot) ->
               scheduleId = schedule.id
               return unless scheduleId
 
-              pagerduty.get msg, "/schedules/#{scheduleId}/entries", query, (err, json) ->
+              pagerduty.get "/schedules/#{scheduleId}/entries", query, (err, json) ->
                 if err?
                   robot.emit 'error', err, msg
                   return
@@ -461,7 +461,7 @@ module.exports = (robot) ->
             'user_id':   userId
           }
           data = { 'override': override }
-          pagerduty.post msg, "/schedules/#{scheduleId}/overrides", data, (err, json) ->
+          pagerduty.post "/schedules/#{scheduleId}/overrides", data, (err, json) ->
             if err?
               robot.emit 'error', err, msg
               return
@@ -483,7 +483,7 @@ module.exports = (robot) ->
       scheduleId = schedule.id
       return unless scheduleId
 
-      pagerduty.delete msg, "/schedules/#{scheduleId}/overrides/#{msg.match[6]}", (err, success) ->
+      pagerduty.delete "/schedules/#{scheduleId}/overrides/#{msg.match[6]}", (err, success) ->
         if success
           msg.send ":boom:"
         else
@@ -518,7 +518,7 @@ module.exports = (robot) ->
         }
         withCurrentOncall msg, matchingSchedule, (old_username, schedule) ->
           data = { 'override': override }
-          pagerduty.post msg, "/schedules/#{schedule.id}/overrides", data, (err, json) ->
+          pagerduty.post "/schedules/#{schedule.id}/overrides", data, (err, json) ->
             if err?
               robot.emit 'error', err, msg
               return
@@ -547,7 +547,7 @@ module.exports = (robot) ->
       if !userId?
         msg.send "Couldn't figure out the pagerduty user connected to your account."
       else
-        pagerduty.getSchedules msg, {}, (err, schedules) ->
+        pagerduty.getSchedules {}, (err, schedules) ->
           if err?
             robot.emit 'error', err, msg
             return
@@ -572,7 +572,7 @@ module.exports = (robot) ->
     if scheduleName?
       withScheduleMatching msg, scheduleName, displaySchedule
     else
-      pagerduty.getSchedules msg, {}, (err, schedules) ->
+      pagerduty.getSchedules {}, (err, schedules) ->
         if err?
           robot.emit 'error', err, msg
           return
@@ -587,7 +587,7 @@ module.exports = (robot) ->
     if missingEnvironmentForApi(msg)
       return
 
-    pagerduty.get msg, "/services", {}, (err, json) ->
+    pagerduty.get "/services", {}, (err, json) ->
       if err?
         robot.emit 'error', err, msg
         return
@@ -622,7 +622,7 @@ module.exports = (robot) ->
       data = { 'maintenance_window': maintenance_window, 'requester_id': requester_id }
 
       msg.send "Opening maintenance window for: #{service_ids}"
-      pagerduty.post msg, "/maintenance_windows", data, (err, json) ->
+      pagerduty.post "/maintenance_windows", data, (err, json) ->
         if err?
           robot.emit 'error', err, msg
           return
@@ -663,7 +663,7 @@ module.exports = (robot) ->
         msg.send "Sorry, I can't figure out #{possessive} email address :( Can #{addressee} tell me with `#{robot.name} pager me as you@yourdomain.com`?"
         return
 
-    pagerduty.get msg, "/users", {query: email}, (err, json) ->
+    pagerduty.get "/users", {query: email}, (err, json) ->
       if err?
         robot.emit 'error', err, msg
         return
@@ -682,7 +682,7 @@ module.exports = (robot) ->
     query = {
       query: q
     }
-    pagerduty.getSchedules msg, query, (err, schedules) ->
+    pagerduty.getSchedules query, (err, schedules) ->
       if err?
         robot.emit 'error', err, msg
         return
@@ -713,7 +713,7 @@ module.exports = (robot) ->
       campfireUserToPagerDutyUser msg, campfireUser, (user) ->
         cb(assigned_to_user: user.id,  name: user.name)
     else
-      pagerduty.get msg, "/escalation_policies", query: string, (err, json) ->
+      pagerduty.get "/escalation_policies", query: string, (err, json) ->
         if err?
           robot.emit 'error', err, msg
           return
@@ -756,7 +756,7 @@ module.exports = (robot) ->
       until: oneHour,
       overflow: 'true'
     }
-    pagerduty.get msg, "/schedules/#{schedule.id}/entries", query, (err, json) ->
+    pagerduty.get "/schedules/#{schedule.id}/entries", query, (err, json) ->
       if err?
         robot.emit 'error', err, msg
         return
@@ -812,7 +812,7 @@ module.exports = (robot) ->
       requesterId = user.id
       return unless requesterId
 
-      pagerduty.getIncidents msg, statusFilter, (err, incidents) ->
+      pagerduty.getIncidents statusFilter, (err, incidents) ->
         if err?
           robot.emit 'error', err, msg
           return
@@ -836,7 +836,7 @@ module.exports = (robot) ->
               }
           }
 
-          pagerduty.put msg, "/incidents", data , (err, json) ->
+          pagerduty.put "/incidents", data , (err, json) ->
             if err?
               robot.emit 'error', err, msg
               return
