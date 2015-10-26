@@ -191,7 +191,7 @@ module.exports = (robot) ->
 
     force = msg.match[4]?
 
-    pagerduty.getIncidents 'triggered,acknwowledged', (err, incidents) ->
+    pagerduty.getIncidents 'triggered,acknowledged', (err, incidents) ->
       if err?
         robot.emit 'error', err, msg
         return
