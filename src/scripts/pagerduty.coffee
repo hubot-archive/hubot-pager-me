@@ -845,7 +845,7 @@ module.exports = (robot) ->
         return
 
       unless json.entries and json.entries.length > 0
-        cb(new Error("no entries in #{schedule.id}"), null, null)
+        cb(null, "nobody", schedule)
         return
 
       cb(null, json.entries[0].user, schedule)
