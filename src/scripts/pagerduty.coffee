@@ -41,6 +41,7 @@ pagerduty = require('../pagerduty')
 async = require('async')
 inspect = require('util').inspect
 moment = require('moment-timezone')
+Scrolls = require('../../../../lib/scrolls').context({script: 'pagerduty'})
 
 pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
@@ -560,7 +561,8 @@ module.exports = (robot) ->
 
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
-        paging = if pagerEnabledForScheduleOrEscalation(s) then "enabled" else "disabled"
+        Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: s.name, username: username})
+        paging = if pagerEnabledForScheduleOrEscalation(schedule) then "enabled" else "disabled"
         cb null, "* #{username} is on call for #{schedule.name} (pager is #{paging}) - https://#{pagerduty.domain}.pagerduty.com/schedules##{schedule.id}"
 
     if scheduleName?
