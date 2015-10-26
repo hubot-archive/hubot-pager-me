@@ -309,13 +309,18 @@ module.exports = (robot) ->
         robot.emit 'error', err, msg
         return
 
-      buffer = ''
-      if schedules.length > 0
-        for schedule in schedules
-          buffer += "* #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}\n"
-        msg.send buffer
-      else
+      if schedules.length == 0
         msg.send 'No schedules found!'
+        return
+
+      renderSchedule = (schedule, cb) ->
+        cb(null, "* #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+
+      async.map schedules, renderSchedule, (err, results) ->
+        if err?
+          robot.emit 'error', err, msg
+          return
+        msg.send results.join("\n")
 
   robot.respond /(pager|major)( me)? (schedule|overrides)( ([\w\-]+))?( ([^ ]+))?$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
