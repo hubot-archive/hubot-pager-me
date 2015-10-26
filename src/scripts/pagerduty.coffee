@@ -728,7 +728,6 @@ module.exports = (robot) ->
           return
 
         escalationPolicy = null
-
         if json?.escalation_policies?.length == 1
           escalationPolicy = json.escalation_policies[0]
         # Multiple results returned and one is exact (case-insensitive)
@@ -739,15 +738,28 @@ module.exports = (robot) ->
             escalationPolicy = matchingExactly[0]
 
         if escalationPolicy?
+          unless pagerEnabledForScheduleOrEscalation(escalationPolicy)
+            error = new Error("Found the #{escalationPolicy.name} escalation policy but it is marked #nopage, please page another escalation policy.")
+            cb(error, null)
+            return
+
           cb(null, { escalation_policy: escalationPolicy.id, name: escalationPolicy.name })
-        else
-          oneScheduleMatching msg, string, (schedule) ->
-            if schedule
-              withCurrentOncallUser msg, schedule, (user, schedule) ->
-                cb(null, { assigned_to_user: user.id,  name: user.name })
-            else
-              error = new Error("Couldn't find a user or unique schedule or escalation policy matching #{string} :/")
+          return
+
+        oneScheduleMatching msg, string, (schedule) ->
+          if schedule
+            unless pagerEnabledForScheduleOrEscalation(schedule)
+              error = new Error("Found the #{schedule.name} schedule but it is marked #nopage, please page another schedule.")
               cb(error, null)
+              return
+
+            withCurrentOncallUser msg, schedule, (user, schedule) ->
+              cb(null, { assigned_to_user: user.id,  name: user.name })
+
+            return
+
+          error = new Error("Couldn't find a user or unique schedule or escalation policy matching #{string} :/")
+          cb(error, null)
 
   withCurrentOncall = (msg, schedule, cb) ->
     withCurrentOncallUser msg, schedule, (user, s) ->
