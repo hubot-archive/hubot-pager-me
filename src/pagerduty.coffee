@@ -38,11 +38,11 @@ module.exports =
       .query(query)
       .get() (err, res, body) ->
         if err?
-          Scrolls.log('info', {at: 'get/response', url: url, query: query, error: err})
+          Scrolls.log('info', {at: 'get/error', url: url, query: query, error: err})
           cb(err)
           return
 
-        Scrolls.log('info', {at: 'get/response', url: url, query: query, status: res.statusCode})
+        Scrolls.log('info', {at: 'get/response', url: url, query: query, status: res.statusCode, body: body})
 
         unless res.statusCode is 200
           cb(new PagerDutyError("#{res.statusCode} back from #{url}"))

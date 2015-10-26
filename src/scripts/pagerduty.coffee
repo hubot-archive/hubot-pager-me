@@ -561,7 +561,7 @@ module.exports = (robot) ->
 
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
-        Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: s.name, username: username})
+        Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: username})
         paging = if pagerEnabledForScheduleOrEscalation(schedule) then "enabled" else "disabled"
         cb null, "* #{username} is on call for #{schedule.name} (pager is #{paging}) - https://#{pagerduty.domain}.pagerduty.com/schedules##{schedule.id}"
 
