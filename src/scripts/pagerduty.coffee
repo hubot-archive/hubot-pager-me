@@ -129,9 +129,9 @@ module.exports = (robot) ->
         return
 
       # Figure out what we're trying to page
-      reassignmentParametersForUserOrScheduleOrEscalationPolicy msg, query, (results) ->
-        if not (results.assigned_to_user or results.escalation_policy)
-          msg.reply "Couldn't find a user or unique schedule or escalation policy matching #{query} :/"
+      reassignmentParametersForUserOrScheduleOrEscalationPolicy msg, query, (err, results) ->
+        if err?
+          msg.reply err.message
           return
 
         pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
@@ -720,7 +720,7 @@ module.exports = (robot) ->
   reassignmentParametersForUserOrScheduleOrEscalationPolicy = (msg, string, cb) ->
     if campfireUser = robot.brain.userForName(string)
       campfireUserToPagerDutyUser msg, campfireUser, (user) ->
-        cb(assigned_to_user: user.id,  name: user.name)
+        cb(null, { assigned_to_user: user.id, name: user.name })
     else
       pagerduty.get "/escalation_policies", query: string, (err, json) ->
         if err?
@@ -739,14 +739,15 @@ module.exports = (robot) ->
             escalationPolicy = matchingExactly[0]
 
         if escalationPolicy?
-          cb(escalation_policy: escalationPolicy.id, name: escalationPolicy.name)
+          cb(null, { escalation_policy: escalationPolicy.id, name: escalationPolicy.name })
         else
           oneScheduleMatching msg, string, (schedule) ->
             if schedule
               withCurrentOncallUser msg, schedule, (user, schedule) ->
-                cb(assigned_to_user: user.id,  name: user.name)
+                cb(null, { assigned_to_user: user.id,  name: user.name })
             else
-              cb()
+              error = new Error("Couldn't find a user or unique schedule or escalation policy matching #{string} :/")
+              cb(error, null)
 
   withCurrentOncall = (msg, schedule, cb) ->
     withCurrentOncallUser msg, schedule, (user, s) ->
