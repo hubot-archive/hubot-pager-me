@@ -563,7 +563,7 @@ module.exports = (robot) ->
       withCurrentOncall msg, s, (username, schedule) ->
         Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: username})
         paging = if pagerEnabledForScheduleOrEscalation(schedule) then "enabled" else "disabled"
-        cb null, "* #{username} is on call for #{schedule.name} (pager is #{paging}) - https://#{pagerduty.domain}.pagerduty.com/schedules##{schedule.id}"
+        cb(null, "* #{username} is on call for #{schedule.name} (pager is #{paging}) - https://#{pagerduty.domain}.pagerduty.com/schedules##{schedule.id}")
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, (s) ->
@@ -581,7 +581,7 @@ module.exports = (robot) ->
         if schedules.length > 0
           async.map schedules, renderSchedule, (err, results) ->
             if err?
-              Scrolls.log("error", {at: 'who-is-on-call/map-schedules', error: err})
+              Scrolls.log("error", {at: 'who-is-on-call/map-schedules/error', error: err})
               robot.emit 'error', err, msg
               return
             Scrolls.log("info", {at: 'who-is-on-call/map-schedules'})
