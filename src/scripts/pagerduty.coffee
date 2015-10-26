@@ -560,7 +560,8 @@ module.exports = (robot) ->
 
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
-        cb null, "* #{username} is on call for #{schedule.name} - https://#{pagerduty.domain}.pagerduty.com/schedules##{schedule.id}"
+        paging = if pagerEnabledForSchedule(s) then "enabled" else "disabled"
+        cb null, "* #{username} is on call for #{schedule.name} (pager is #{paging}) - https://#{pagerduty.domain}.pagerduty.com/schedules##{schedule.id}"
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, (s) ->
@@ -632,6 +633,15 @@ module.exports = (robot) ->
           msg.send "Maintenance window created! ID: #{json.maintenance_window.id} Ends: #{json.maintenance_window.end_time}"
         else
           msg.send "That didn't work. Check Hubot's logs for an error!"
+
+  # Determine whether a schedule's participants are available to be paged.
+  #
+  # s :: Object
+  #      Decoded JSON from the Pagerduty Schedules API.
+  #
+  # Returns a Boolean instance.
+  pagerEnabledForSchedule = (s) ->
+    schedule.description.indexOf('#nopage') is -1
 
   parseIncidentNumbers = (match) ->
     match.split(/[ ,]+/).map (incidentNumber) ->
