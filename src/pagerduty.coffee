@@ -1,11 +1,12 @@
 HttpClient = require 'scoped-http-client'
+Scrolls    = require('../../../lib/scrolls').context({script: 'pagerduty'})
 
 pagerDutyApiKey        = process.env.HUBOT_PAGERDUTY_API_KEY
 pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
 pagerDutyBaseUrl       = "https://#{pagerDutySubdomain}.pagerduty.com/api/v1"
 pagerDutyServices      = process.env.HUBOT_PAGERDUTY_SERVICES
 pagerNoop              = process.env.HUBOT_PAGERDUTY_NOOP
-pagerNoop               = false if pagerNoop is "false" or pagerNoop  is "off"
+pagerNoop              = false if pagerNoop is "false" or pagerNoop  is "off"
 
 class PagerDutyError extends Error
 module.exports =
@@ -31,12 +32,18 @@ module.exports =
     if pagerDutyServices? && url.match /\/incidents/
       query['service'] = pagerDutyServices
 
+    Scrolls.log('info', {at: 'get/request', url: url, query: query})
+
     @http(url)
       .query(query)
       .get() (err, res, body) ->
         if err?
+          Scrolls.log('info', {at: 'get/response', url: url, query: query, error: err})
           cb(err)
           return
+
+        Scrolls.log('info', {at: 'get/response', url: url, query: query, status: res.statusCode})
+
         json_body = null
         switch res.statusCode
           when 200 then json_body = JSON.parse(body)
