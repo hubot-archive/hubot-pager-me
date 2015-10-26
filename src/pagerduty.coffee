@@ -44,13 +44,11 @@ module.exports =
 
         Scrolls.log('info', {at: 'get/response', url: url, query: query, status: res.statusCode})
 
-        json_body = null
-        switch res.statusCode
-          when 200 then json_body = JSON.parse(body)
-          else
-            cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
+        unless res.statusCode is 200
+          cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
+          return
 
-        cb null, json_body
+        cb(null, JSON.parse(body))
 
   put: (url, data, cb) ->
     if pagerNoop
@@ -63,15 +61,14 @@ module.exports =
       .header("content-length",json.length)
       .put(json) (err, res, body) ->
         if err?
-          callback(err)
+          cb(err)
           return
 
-        json_body = null
-        switch res.statusCode
-          when 200 then json_body = JSON.parse(body)
-          else
-            return cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
-        cb null, json_body
+        unless res.statusCode is 200
+          cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
+          return
+
+        cb(null, JSON.parse(body))
 
   post: (url, data, cb) ->
     if pagerNoop
@@ -84,14 +81,14 @@ module.exports =
       .header("content-length",json.length)
       .post(json) (err, res, body) ->
         if err?
-          return cb(err)
+          cb(err)
+          return
 
-        json_body = null
-        switch res.statusCode
-          when 201 then json_body = JSON.parse(body)
-          else
-            return cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
-        cb null, json_body
+        unless res.statusCode is 201
+          cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
+          return
+
+        cb(null, JSON.parse(body))
 
   delete: (url, cb) ->
     if pagerNoop
@@ -103,16 +100,14 @@ module.exports =
       .header("content-length",0)
       .delete() (err, res, body) ->
         if err?
-          return cb(err)
-        json_body = null
-        switch res.statusCode
-          when 204, 200
-            value = true
-          else
-            console.log res.statusCode
-            console.log body
-            value = false
-        cb null, value
+          cb(err)
+          return
+
+        unless res.statusCode is 200 or res.statusCode is 204
+          cb(new PagerDutyError("#{res.statusCode} back from #{url}"), false)
+          return
+
+        cb(null, true)
 
   getIncident: (incident, cb) ->
     @get "/incidents/#{encodeURIComponent incident}", {}, (err, json) ->
@@ -130,6 +125,7 @@ module.exports =
       if err?
         cb(err)
         return
+
       cb(null, json.incidents)
 
   getSchedules: (query, cb) ->
