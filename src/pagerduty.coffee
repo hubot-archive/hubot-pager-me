@@ -10,6 +10,8 @@ pagerNoop              = false if pagerNoop is "false" or pagerNoop  is "off"
 
 class PagerDutyError extends Error
 module.exports =
+  subdomain: pagerDutySubdomain
+
   http: (path) ->
     HttpClient.create("#{pagerDutyBaseUrl}#{path}")
       .headers(Authorization: "Token token=#{pagerDutyApiKey}", Accept: 'application/json')
