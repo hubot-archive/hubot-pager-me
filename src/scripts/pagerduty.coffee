@@ -560,7 +560,7 @@ module.exports = (robot) ->
 
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
-        paging = if pagerEnabledForSchedule(s) then "enabled" else "disabled"
+        paging = if pagerEnabledForScheduleOrEscalation(s) then "enabled" else "disabled"
         cb null, "* #{username} is on call for #{schedule.name} (pager is #{paging}) - https://#{pagerduty.domain}.pagerduty.com/schedules##{schedule.id}"
 
     if scheduleName?
@@ -637,11 +637,11 @@ module.exports = (robot) ->
   # Determine whether a schedule's participants are available to be paged.
   #
   # s :: Object
-  #      Decoded JSON from the Pagerduty Schedules API.
+  #      Decoded JSON from the Pagerduty Schedules or Escalation API.
   #
   # Returns a Boolean instance.
-  pagerEnabledForSchedule = (s) ->
-    schedule.description.indexOf('#nopage') is -1
+  pagerEnabledForScheduleOrEscalation = (s) ->
+    s.description.indexOf('#nopage') is -1
 
   parseIncidentNumbers = (match) ->
     match.split(/[ ,]+/).map (incidentNumber) ->
