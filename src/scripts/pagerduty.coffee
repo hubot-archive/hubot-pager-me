@@ -641,7 +641,7 @@ module.exports = (robot) ->
   #
   # Returns a Boolean instance.
   pagerEnabledForScheduleOrEscalation = (s) ->
-    s.description.indexOf('#nopage') is -1
+    (s.description or "").indexOf('#nopage') is -1
 
   parseIncidentNumbers = (match) ->
     match.split(/[ ,]+/).map (incidentNumber) ->
