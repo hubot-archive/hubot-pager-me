@@ -739,7 +739,7 @@ module.exports = (robot) ->
 
         if escalationPolicy?
           unless pagerEnabledForScheduleOrEscalation(escalationPolicy)
-            error = new Error("Found the #{escalationPolicy.name} escalation policy but it is marked #nopage, please page another escalation policy.")
+            error = new Error("Found the #{escalationPolicy.name} escalation policy but it is marked #nopage, see /who's on call for schedules you can page.")
             cb(error, null)
             return
 
@@ -749,7 +749,7 @@ module.exports = (robot) ->
         oneScheduleMatching msg, string, (schedule) ->
           if schedule
             unless pagerEnabledForScheduleOrEscalation(schedule)
-              error = new Error("Found the #{schedule.name} schedule but it is marked #nopage, please page another schedule.")
+              error = new Error("Found the #{schedule.name} schedule but it is marked #nopage, see /who's on call for schedules you can page.")
               cb(error, null)
               return
 
@@ -758,7 +758,7 @@ module.exports = (robot) ->
 
             return
 
-          error = new Error("Couldn't find a user or unique schedule or escalation policy matching #{string} :/")
+          error = new Error("Couldn't find a user, unique schedule or escalation policy matching #{string} to page, see /who's on call for schedules you can page.")
           cb(error, null)
 
   withCurrentOncall = (msg, schedule, cb) ->
