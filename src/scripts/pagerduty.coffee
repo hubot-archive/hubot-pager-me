@@ -581,8 +581,10 @@ module.exports = (robot) ->
         if schedules.length > 0
           async.map schedules, renderSchedule, (err, results) ->
             if err?
+              Scrolls.log("error", {at: 'who-is-on-call/map-schedules', error: err})
               robot.emit 'error', err, msg
               return
+            Scrolls.log("info", {at: 'who-is-on-call/map-schedules'})
             msg.send results.join("\n")
         else
           msg.send 'No schedules found!'
