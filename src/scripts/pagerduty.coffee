@@ -528,7 +528,11 @@ module.exports = (robot) ->
           'end':       end,
           'user_id':   userId
         }
-        withCurrentOncall msg, matchingSchedule, (old_username, schedule) ->
+        withCurrentOncall msg, matchingSchedule, (err, old_username, schedule) ->
+          if err?
+            robot.emit 'error', err, msg
+            return
+
           data = { 'override': override }
           pagerduty.post "/schedules/#{schedule.id}/overrides", data, (err, json) ->
             if err?
@@ -552,11 +556,15 @@ module.exports = (robot) ->
       userId = user.id
 
       renderSchedule = (s, cb) ->
-        withCurrentOncallId msg, s, (oncallUserid, oncallUsername, schedule) ->
+        withCurrentOncallId msg, s, (err, oncallUserid, oncallUsername, schedule) ->
+          if err?
+            cb(err)
+            return
+
           if userId == oncallUserid
-            cb null, "* Yes, you are on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
+            cb(null, "* Yes, you are on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
           else
-            cb null, "* No, you are NOT on call for #{schedule.name} (but #{oncallUsername} is)- https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
+            cb(null, "* No, you are NOT on call for #{schedule.name} (but #{oncallUsername} is)- https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
 
       unless userId?
         msg.send "Couldn't figure out the pagerduty user connected to your account."
@@ -585,7 +593,11 @@ module.exports = (robot) ->
     scheduleName = msg.match[4]
 
     renderSchedule = (s, cb) ->
-      withCurrentOncall msg, s, (username, schedule) ->
+      withCurrentOncall msg, s, (err, username, schedule) ->
+        if err?
+          cb(err)
+          return
+
         Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: username})
         paging = if pagerEnabledForScheduleOrEscalation(schedule) then "enabled" else "disabled"
         cb(null, "* #{username} is on call for #{schedule.name} (pager is #{paging}) - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
@@ -790,7 +802,11 @@ module.exports = (robot) ->
               cb(error, null)
               return
 
-            withCurrentOncallUser msg, schedule, (user, schedule) ->
+            withCurrentOncallUser msg, schedule, (err, user, schedule) ->
+              if err?
+                cb(err, null)
+                return
+
               cb(null, { assigned_to_user: user.id,  name: user.name })
 
             return
@@ -799,12 +815,20 @@ module.exports = (robot) ->
           cb(error, null)
 
   withCurrentOncall = (msg, schedule, cb) ->
-    withCurrentOncallUser msg, schedule, (user, s) ->
-      cb(user.name, s)
+    withCurrentOncallUser msg, schedule, (err, user, s) ->
+      if err?
+        cb(err, null, null)
+        return
+
+      cb(null, user.name, s)
 
   withCurrentOncallId = (msg, schedule, cb) ->
-    withCurrentOncallUser msg, schedule, (user, s) ->
-      cb(user.id, user.name, s)
+    withCurrentOncallUser msg, schedule, (err, user, s) ->
+      if err?
+        cb(err, null, null, null)
+        return
+
+      cb(null, user.id, user.name, s)
 
   withCurrentOncallUser = (msg, schedule, cb) ->
     oneHour = moment().add(1, 'hours').format()
@@ -817,10 +841,14 @@ module.exports = (robot) ->
     }
     pagerduty.get "/schedules/#{schedule.id}/entries", query, (err, json) ->
       if err?
-        robot.emit 'error', err, msg
+        cb(err, null, null)
         return
-      if json.entries and json.entries.length > 0
-        cb(json.entries[0].user, schedule)
+
+      unless json.entries and json.entries.length > 0
+        cb(new Error("no entries in #{schedule.id}"), null, null)
+        return
+
+      cb(null, json.entries[0].user, schedule)
 
   pagerDutyIntegrationAPI = (msg, cmd, description, cb) ->
     unless pagerDutyServiceApiKey?
