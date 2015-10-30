@@ -136,3 +136,5 @@ module.exports =
         return
 
       cb(null, json.schedules)
+
+  subdomain: pagerDutySubdomain
