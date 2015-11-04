@@ -677,7 +677,7 @@ module.exports = (robot) ->
 
       cb(json.users[0])
 
-  oneScheduleMatching = (msg, q, cb) ->
+  SchedulesMatching = (msg, q, cb) ->
     query = {
       query: q
     }
@@ -686,26 +686,12 @@ module.exports = (robot) ->
         robot.emit 'error', err, msg
         return
 
-      # Single result returned
-      if schedules?.length == 1
-        schedule = schedules[0]
-
-      # Multiple results returned and one is exact (case-insensitive)
-      if schedules?.length > 1
-        matchingExactly = json.schedules.filter (s) ->
-          s.name.toLowerCase() == q.toLowerCase()
-        if matchingExactly.length == 1
-          schedule = matchingExactly[0]
-      cb(schedule)
+      cb(schedules)
 
   withScheduleMatching = (msg, q, cb) ->
-    oneScheduleMatching msg, q, (schedule) ->
-      if schedule
-        cb(schedule)
-      else
-        # maybe look for a specific name match here?
-        msg.send "I couldn't determine exactly which schedule you meant by #{q}. Can you be more specific?"
-        return
+    SchedulesMatching msg, q, (schedules) ->
+      cb(schedule) for schedule in schedules
+      return
 
   reassignmentParametersForUserOrScheduleOrEscalationPolicy = (msg, string, cb) ->
     if campfireUser = robot.brain.userForName(string)
