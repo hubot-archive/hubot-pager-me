@@ -751,7 +751,7 @@ module.exports = (robot) ->
 
       # Multiple results returned and one is exact (case-insensitive)
       if schedules?.length > 1
-        matchingExactly = json.schedules.filter (s) ->
+        matchingExactly = schedules.filter (s) ->
           s.name.toLowerCase() == q.toLowerCase()
         if matchingExactly.length == 1
           schedule = matchingExactly[0]
