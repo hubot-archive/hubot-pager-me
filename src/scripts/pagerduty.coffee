@@ -560,7 +560,7 @@ module.exports = (robot) ->
 
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
-        cb null, "* #{username} is on call for #{schedule.name} - https://#{pagerduty.domain}.pagerduty.com/schedules##{schedule.id}"
+        cb null, "* #{username} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, (s) ->
