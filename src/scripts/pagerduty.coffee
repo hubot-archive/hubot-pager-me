@@ -721,7 +721,7 @@ module.exports = (robot) ->
         if escalationPolicy?
           cb(escalation_policy: escalationPolicy.id, name: escalationPolicy.name)
         else
-          oneScheduleMatching msg, string, (schedule) ->
+          SchedulesMatching msg, string, (schedule) ->
             if schedule
               withCurrentOncallUser msg, schedule, (user, schedule) ->
                 cb(assigned_to_user: user.id,  name: user.name)
