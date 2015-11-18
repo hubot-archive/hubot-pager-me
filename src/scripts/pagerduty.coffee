@@ -693,7 +693,6 @@ module.exports = (robot) ->
       if schedules?.length < 1
         msg.send "I couldn't find any schedules matching #{q}"
       else
-        msg.send schedule for schedule in schedules
         cb(schedule) for schedule in schedules
       return
 
