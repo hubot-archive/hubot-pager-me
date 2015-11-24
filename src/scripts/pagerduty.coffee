@@ -739,12 +739,15 @@ module.exports = (robot) ->
     oneHour = moment().add(1, 'hours').format()
     now = moment().format()
 
+    scheduleId = schedule.id
+    if (schedule instanceof Array)
+      scheduleId = schedule[0].id
     query = {
       since: now,
       until: oneHour,
       overflow: 'true'
     }
-    pagerduty.get "/schedules/#{schedule.id}/entries", query, (err, json) ->
+    pagerduty.get "/schedules/#{scheduleId}/entries", query, (err, json) ->
       if err?
         robot.emit 'error', err, msg
         return
