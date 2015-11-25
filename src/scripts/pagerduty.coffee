@@ -740,8 +740,12 @@ module.exports = (robot) ->
     now = moment().format()
 
     scheduleId = schedule.id
-    if (schedule instanceof Array)
+    if (schedule instanceof Array && schedule[0])
       scheduleId = schedule[0].id
+    unless scheduleId
+      msg.send "Unable to retrieve the schedule. Use 'pager schedules' to list all schedules."
+      return
+
     query = {
       since: now,
       until: oneHour,
