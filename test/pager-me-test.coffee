@@ -67,7 +67,7 @@ describe 'pagerduty', ->
     expect(@robot.respond).to.have.been.calledWith(/pager( me)? (.+) (\d+)$/i)
 
   it 'registers a pager on call listener', ->
-    expect(@robot.respond).to.have.been.calledWith(/who(’s|'s|s| is|se)? (on call|oncall|on-call)( (?:for )?(.+))?/i)
+    expect(@robot.respond).to.have.been.calledWith(/who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?: (?:for )?(.*?)(?:\?|$))?/i)
 
   it 'registers a pager services listener', ->
     expect(@robot.respond).to.have.been.calledWith(/(pager|major)( me)? services$/i)
