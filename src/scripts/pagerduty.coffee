@@ -556,7 +556,7 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    scheduleName = msg.match[4]
+    scheduleName = msg.match[1]
 
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
