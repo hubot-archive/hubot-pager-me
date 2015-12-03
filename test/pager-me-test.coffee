@@ -55,7 +55,7 @@ describe 'pagerduty', ->
     expect(@robot.respond).to.have.been.calledWith(/(pager|major)( me)? schedules( (.+))?$/i)
 
   it 'registers a pager schedule override listener', ->
-    expect(@robot.respond).to.have.been.calledWith(/(pager|major)( me)? (schedule|overrides)( ([\w\-]+))?( ([^ ]+))?$/i)
+    expect(@robot.respond).to.have.been.calledWith(/(pager|major)( me)? (schedule|overrides)( ([\w\-]+))?( ([^ ]+)\s*(\d+)?)?$/i)
 
   it 'registers a pager schedule override details listener', ->
     expect(@robot.respond).to.have.been.calledWith(/(pager|major)( me)? (override) ([\w\-]+) ([\w\-:\+]+) - ([\w\-:\+]+)( (.*))?$/i)
@@ -64,7 +64,7 @@ describe 'pagerduty', ->
     expect(@robot.respond).to.have.been.calledWith(/(pager|major)( me)? (overrides?) ([\w\-]*) (delete) (.*)$/i)
 
   it 'registers a pager link listener', ->
-    expect(@robot.respond).to.have.been.calledWith(/pager( me)? (.+) (\d+)$/i)
+    expect(@robot.respond).to.have.been.calledWith(/pager( me)? (?!schedules?\b|overrides?\b|my schedule\b)(.+) (\d+)$/i)
 
   it 'registers a pager on call listener', ->
     expect(@robot.respond).to.have.been.calledWith(/who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?: (?:for )?(.*?)(?:\?|$))?/i)

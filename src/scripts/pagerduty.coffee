@@ -25,11 +25,11 @@
 #   hubot pager resolve! - resolve all acknowledged, not just yours
 #   hubot pager schedules - list schedules
 #   hubot pager schedules <search> - list schedules matching <search>
-#   hubot pager schedule <schedule> - show <schedule>'s shifts for the upcoming month
-#   hubot pager my schedule - show my on call shifts for the upcoming month in all schedules
+#   hubot pager schedule <schedule> <days> - show <schedule>'s shifts for the next <days> (default 30 days)
+#   hubot pager my schedule <days> - show my on call shifts for the upcoming <days> in all schedules (default 30 days)
 #   hubot pager me <schedule> <minutes> - take the pager for <minutes> minutes
 #   hubot pager override <schedule> <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
-#   hubot pager overrides <schedule> - show upcoming overrides for the next month
+#   hubot pager overrides <schedule> <days> - show upcoming overrides for the next x <days> (default 30 days)
 #   hubot pager override <schedule> delete <id> - delete an override by its ID
 #   hubot pager services - list services
 #   hubot pager maintenance <minutes> <service_id1> <service_id2> ... <service_idN> - schedule a maintenance window for <minutes> for specified services
@@ -318,13 +318,18 @@ module.exports = (robot) ->
       else
         msg.send 'No schedules found!'
 
-  robot.respond /(pager|major)( me)? (schedule|overrides)( ([\w\-]+))?( ([^ ]+))?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (schedule|overrides)( ([\w\-]+))?( ([^ ]+)\s*(\d+)?)?$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
+    if msg.match[8]
+      days = msg.match[8]
+    else
+      days = 30
+
     query = {
       since: moment().format(),
-      until: moment().add(30, 'days').format(),
+      until: moment().add(days, 'days').format(),
       overflow: 'true'
     }
 
@@ -370,16 +375,21 @@ module.exports = (robot) ->
         else
           msg.send "None found!"
 
-  robot.respond /(pager|major)( me)? my schedule( ([^ ]+))?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? my schedule( ([^ ]+)\s?(\d+))?$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
+
+    if msg.match[5]
+      days = msg.match[5]
+    else
+      days = 30
 
     campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
       userId = user.id
 
       query = {
         since: moment().format(),
-        until: moment().add(30, 'days').format(),
+        until: moment().add(days, 'days').format(),
         overflow: 'true'
       }
 
@@ -482,7 +492,7 @@ module.exports = (robot) ->
         else
           msg.send "Something went weird."
 
-  robot.respond /pager( me)? (.+) (\d+)$/i, (msg) ->
+  robot.respond /pager( me)? (?!schedules?\b|overrides?\b|my schedule\b)(.+) (\d+)$/i, (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
