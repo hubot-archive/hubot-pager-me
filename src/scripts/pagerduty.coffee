@@ -554,11 +554,11 @@ module.exports = (robot) ->
             msg.send 'No schedules found!'
 
   # who is on call?
-  robot.respond /who(’s|'s|s| is|se)? (on call|oncall|on-call)( (?:for )?(.+))?/i, (msg) ->
+  robot.respond /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?: (?:for )?(.*?)(?:\?|$))?/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    scheduleName = msg.match[4]
+    scheduleName = msg.match[1]
 
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
