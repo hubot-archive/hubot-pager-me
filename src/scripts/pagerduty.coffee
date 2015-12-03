@@ -75,6 +75,8 @@ module.exports = (robot) ->
     msg.send "Okay, I've forgotten your PagerDuty email"
 
   robot.respond /(pager|major)( me)? incident (.*)$/i, (msg) ->
+    msg.finish()
+    
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
