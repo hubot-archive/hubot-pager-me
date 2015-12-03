@@ -674,7 +674,7 @@ module.exports = (robot) ->
           cb null
           return
         else
-          msg.send "Sorry, I expected to get 1 user back for #{email}, but got #{json.users.length} :sweat:. Can you make sure that is actually a real user on PagerDuty?"
+          msg.send "Sorry, I expected to get 1 user back for #{email}, but got #{json.users.length} :sweat:. If your PagerDuty email is not #{email} use `/pager me as #{email}`"
           return
 
       cb(json.users[0])
