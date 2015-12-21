@@ -599,17 +599,29 @@ module.exports = (robot) ->
           else
             msg.send 'No schedules found!'
 
+
+  # who was on call?
+  robot.respond /who was (on call|oncall)/i, (msg) ->
+    withTimeBasedOncall -72, msg, (usernames) ->
+      msg.send "*Previous shift*: #{usernames[0]} were on call.\n_Current shift: #{usernames[1]} are on call now._"
+
+  # who is next on call?
+  robot.respond /who(?:’s|'s|s| is|se)? ((next (on call|oncall))|((on call|oncall) next))/i, (msg) ->
+    withTimeBasedOncall 72, msg, (usernames) ->
+      msg.send "*Upcoming shift*: #{usernames[1]} are next on call.\n_Current shift: #{usernames[0]} are on call now._"
+
+
   # who is on call?
   robot.respond /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?:\?)?(?: (?:for )?((["'])([^]*?)\2|(.*?))(?:\?|$))?$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
+    messages = []
+
     scheduleName = msg.match[3] or msg.match[4]
 
-    messages = []
-    allowed_schedules = []
-    if pagerDutySchedules?
-      allowed_schedules = pagerDutySchedules.split(",")
+    if scheduleName?.trim() is 'next'
+      return
 
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
@@ -618,7 +630,7 @@ module.exports = (robot) ->
           robot.logger.debug "Schedule #{schedule.id} (#{schedule.name}) not in HUBOT_PAGERDUTY_SCHEDULES"
           return cb null
 
-        # Ignore schedule if no user assigned to it 
+        # Ignore schedule if no user assigned to it
         if (username)
           messages.push("* #{username} is on call for #{schedule.name} - #{schedule.html_url}")
         else
@@ -731,6 +743,110 @@ module.exports = (robot) ->
                 cb(assigned_to_user: user.id,  name: user.name)
             else
               cb()
+
+  withCurrentOncall = (msg, schedule, cb) ->
+    withCurrentOncallUser 1, msg, schedule, (user, s) ->
+      if (user)
+        cb(user.name, s)
+      else
+        cb(null, s)
+
+  withCurrentOncallId = (msg, schedule, cb) ->
+    withCurrentOncallUser 1, msg, schedule, (user, s) ->
+      cb(user.id, user.name, s)
+
+  withCurrentOncallUser = (addedHours = 1, msg, schedule, cb) ->
+    if typeof schedule is 'function'
+      cb = schedule
+      schedule = msg
+      msg = addedHours
+      addedHours = 1
+
+    if addedHours > 0
+      timeSince = moment().format()
+      timeUntil = moment().add(addedHours, 'hours').format()
+    else
+      timeSince = moment().subtract(-addedHours, 'hours').format()
+      timeUntil = moment().format()
+
+    scheduleId = schedule.id
+    if (schedule instanceof Array && schedule[0])
+      scheduleId = schedule[0].id
+    unless scheduleId
+      msg.send "Unable to retrieve the schedule. Use 'pager schedules' to list all schedules."
+      return
+
+    query = {
+      since: timeSince
+      until: timeUntil
+      overflow: 'true'
+    }
+
+    pagerduty.get "/schedules/#{scheduleId}/users", query, (err, json) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+      if json.entries and json.entries.length > 0
+        if addedHours isnt 1 # custom hours [who (next|was) oncall]
+          if addedHours > 0
+            users = [
+              json.entries[0].user
+              json.entries[1].user
+            ]
+          else if addedHours < 0
+            last = json.entries.pop()
+            prev = json.entries.pop() or last
+            users = [
+              prev.user
+              last.user
+            ]
+          return cb(users, schedule)
+        cb(json.entries[0].user, schedule)
+
+
+  withTimeBasedOncall = (addedHours = 1, msg, cb) ->
+    renderSchedule = (s, cb) ->
+      withCurrentOncallUser addedHours, msg, s, (users, schedule = {}) ->
+        cb(null,
+          users.map((user) ->
+            "#{schedule.name} - #{user.name}"
+          )
+        )
+
+    pagerduty.getSchedules (err, schedules = []) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+
+      schedules = schedules.filter((schedule) ->
+        !!schedule.name.match(/^(user support on\-call|1st level platform on\-call|2nd level platform on\-call)/i)
+      )
+
+      if schedules.length > 0
+        async.map schedules, renderSchedule, (err, results = []) ->
+          if err?
+            robot.emit 'error', err, msg
+            return
+          rows = []
+
+          # Mix these arrays:
+          #   ['platform userA', 'platform userX']
+          #   ['user-support userC', 'user-support userT']
+          # into:
+          #   [
+          #     'platform userA and user-support userC'
+          #     'platform userX and user-support userT'
+          #   ]
+
+          for userIndex in [0..(results[0]?.length - 1)] by 1
+            messageRow = []
+            for historyIndex in [0..(results.length - 1)] by 1
+              messageRow.push(results[historyIndex][userIndex])
+            rows.push(messageRow.join(' and '))
+          cb(rows)
+      else
+        msg.send 'No schedules found!'
+
 
   pagerDutyIntegrationAPI = (msg, cmd, description, cb) ->
     unless pagerDutyServiceApiKey?
