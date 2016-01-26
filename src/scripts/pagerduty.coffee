@@ -603,12 +603,12 @@ module.exports = (robot) ->
   # who was on call?
   robot.respond /who was (on call|oncall)/i, (msg) ->
     withTimeBasedOncall -72, msg, (usernames) ->
-      msg.send "*Previous shift*: #{usernames[0]} were on call.\n_Current shift: #{usernames[1]} are on call now._"
+      msg.send "> *Previous shift*:\n> #{usernames[0].join("\n> ")}"
 
   # who is next on call?
   robot.respond /who(?:’s|'s|s| is|se)? ((next (on call|oncall))|((on call|oncall) next))/i, (msg) ->
     withTimeBasedOncall 72, msg, (usernames) ->
-      msg.send "*Upcoming shift*: #{usernames[1]} are next on call.\n_Current shift: #{usernames[0]} are on call now._"
+      msg.send "> *Upcoming shift*: \n> #{usernames[1].join("\n> ")}"
 
 
   # who is on call?
@@ -632,7 +632,7 @@ module.exports = (robot) ->
 
         # Ignore schedule if no user assigned to it
         if (username)
-          messages.push("* #{username} is on call for #{schedule.name} - #{schedule.html_url}")
+          messages.push("> #{schedule.name} - *#{username}*")
         else
           robot.logger.debug "No user for schedule #{schedule.name}"
 
@@ -786,9 +786,11 @@ module.exports = (robot) ->
       if json.entries and json.entries.length > 0
         if addedHours isnt 1 # custom hours [who (next|was) oncall]
           if addedHours > 0
+            first = json.entries[0]
+            next = json.entries[1] or first
             users = [
-              json.entries[0].user
-              json.entries[1].user
+              first.user
+              next.user
             ]
           else if addedHours < 0
             last = json.entries.pop()
@@ -808,7 +810,7 @@ module.exports = (robot) ->
       withCurrentOncallUser addedHours, msg, s, (users, schedule = {}) ->
         cb(null,
           users.map((user) ->
-            "#{schedule.name} - #{user.name}"
+            "#{schedule.name} - *#{user.name}*"
           )
         )
 
@@ -816,10 +818,6 @@ module.exports = (robot) ->
       if err?
         robot.emit 'error', err, msg
         return
-
-      schedules = schedules.filter((schedule) ->
-        !!schedule.name.match(/^(user support on\-call|1st level platform on\-call|2nd level platform on\-call)/i)
-      )
 
       if schedules.length > 0
         async.map schedules, renderSchedule, (err, results = []) ->
@@ -841,7 +839,7 @@ module.exports = (robot) ->
             messageRow = []
             for historyIndex in [0..(results.length - 1)] by 1
               messageRow.push(results[historyIndex][userIndex])
-            rows.push(messageRow.join(' and '))
+            rows.push(messageRow)
           cb(rows)
       else
         msg.send 'No schedules found!'
