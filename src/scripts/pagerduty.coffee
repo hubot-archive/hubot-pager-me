@@ -61,8 +61,7 @@ module.exports = (robot) ->
       else
         msg.send "I couldn't find your user :( #{emailNote}"
 
-    cmds = robot.helpCommands()
-    cmds = (cmd for cmd in cmds when cmd.match(/hubot (pager |who's on call)/))
+    cmds = renamedHelpCommands(robot)
     msg.send cmds.join("\n")
 
   robot.respond /pager(?: me)? as (.*)$/i, (msg) ->
@@ -876,3 +875,11 @@ module.exports = (robot) ->
     incidents.filter (incident) ->
       incident.assigned_to.some (assignment) ->
         assignment.object.email is userEmail
+
+renamedHelpCommands = (robot) ->
+  robot_name = robot.alias or robot.name
+  cmds = robot.helpCommands()
+  cmds = (cmd for cmd in cmds when cmd.match(/hubot (pager |who's on call)/))
+  help_commands = cmds.map (command) ->
+    command.replace /^hubot/i, robot_name
+  help_commands.sort()
