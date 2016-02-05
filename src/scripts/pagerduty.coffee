@@ -76,7 +76,7 @@ module.exports = (robot) ->
 
   robot.respond /(pager|major)( me)? incident (.*)$/i, (msg) ->
     msg.finish()
-    
+
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
@@ -570,9 +570,13 @@ module.exports = (robot) ->
 
     scheduleName = msg.match[1]
 
+    messages = ["/code"]
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
-        cb null, "* #{username} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
+        cb null, messages.push("* #{username} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+    setTimeout ( ->
+      msg.send messages.join("\n")
+    ), 1500
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, (s) ->
@@ -586,7 +590,6 @@ module.exports = (robot) ->
         if err?
           robot.emit 'error', err, msg
           return
-
         if schedules.length > 0
           async.map schedules, renderSchedule, (err, results) ->
             if err?
