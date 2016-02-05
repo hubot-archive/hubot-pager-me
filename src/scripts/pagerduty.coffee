@@ -570,7 +570,7 @@ module.exports = (robot) ->
 
     scheduleName = msg.match[1]
 
-    messages = ["/code"]
+    messages = []
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
         cb null, messages.push("* #{username} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
