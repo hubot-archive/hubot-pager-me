@@ -92,7 +92,7 @@ module.exports =
       return
 
     auth = "Token token=#{pagerDutyApiKey}"
-    http(url)
+    @http(url)
       .header("content-length",0)
       .delete() (err, res, body) ->
         if err?
