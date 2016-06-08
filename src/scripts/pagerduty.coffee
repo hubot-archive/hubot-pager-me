@@ -573,10 +573,8 @@ module.exports = (robot) ->
     messages = []
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
-        cb null, messages.push("* #{username} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
-    setTimeout ( ->
-      msg.send messages.join("\n")
-    ), 1500
+        messages.push("* #{username} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+        cb null
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, (s) ->
@@ -591,11 +589,11 @@ module.exports = (robot) ->
           robot.emit 'error', err, msg
           return
         if schedules.length > 0
-          async.map schedules, renderSchedule, (err, results) ->
+          async.map schedules, renderSchedule, (err) ->
             if err?
               robot.emit 'error', err, msg
               return
-            msg.send results.join("\n")
+            msg.send messages.join("\n")
         else
           msg.send 'No schedules found!'
 
