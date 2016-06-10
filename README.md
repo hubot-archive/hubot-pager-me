@@ -23,6 +23,7 @@ Then add **hubot-pager-me** to your `external-scripts.json`:
 * HUBOT_PAGERDUTY_API_KEY - Get one from https://<your subdomain>.pagerduty.com/api_keys
 * HUBOT_PAGERDUTY_SERVICE_API_KEY - Service API Key from a 'General API Service'. This should be assigned to a dummy escalation policy that doesn't actually notify, as hubot will trigger on this before reassigning it
 * HUBOT_PAGERDUTY_SERVICES - (optional) Provide a comma separated list of service identifiers (e.g. `PFGPBFY`) to restrict queries to only those services.
+* HUBOT_PAGERDUTY_CHAR_TO_SPACE - (optional) Provide a character that will be transformed into a space. For example, if you specify `_` here then entering something like `pager trigger Foo_Bar testing` will transform the schedule to `Foo Bar`.
 
 ### Webhook
 
@@ -109,7 +110,7 @@ hubot-pager-me makes some assumptions about how you are using PagerDuty:
 
 * PagerDuty email matches chat email
   * override with `hubot pager me as <pagerduty email>`
-* Schedules' and Escalation Policies' names are letters and dashes (no spaces, digits)
+* Schedules' and Escalation Policies' names are letters, numbers, dashes and underscores. Spaces are also possible with `HUBOT_PAGERDUTY_CHAR_TO_SPACE`
 * The Service used by hubot-pager-me should not be assigned to an escalation policy with real people on it. Instead, it should be a dummy user that doesn't have any notification rules. If this isn't done, the escalation policy assigned to it will be notified, and then hubot will immediately reassign to the proper team
 
 ## Development
