@@ -44,6 +44,7 @@ moment = require('moment-timezone')
 
 pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
+pagerDutyCharToSpace   = process.env.HUBOT_PAGERDUTY_CHAR_TO_SPACE
 
 module.exports = (robot) ->
 
@@ -702,6 +703,7 @@ module.exports = (robot) ->
       cb(schedules)
 
   withScheduleMatching = (msg, q, cb) ->
+    q = transformCharToSpace q
     SchedulesMatching msg, q, (schedules) ->
       if schedules?.length < 1
         msg.send "I couldn't find any schedules matching #{q}"
@@ -710,6 +712,7 @@ module.exports = (robot) ->
       return
 
   reassignmentParametersForUserOrScheduleOrEscalationPolicy = (msg, string, cb) ->
+    string = transformCharToSpace string
     if campfireUser = robot.brain.userForName(string)
       campfireUserToPagerDutyUser msg, campfireUser, (user) ->
         cb(assigned_to_user: user.id,  name: user.name)
@@ -813,6 +816,12 @@ module.exports = (robot) ->
 
 
     "#{inc.incident_number}: #{inc.created_on} #{summary} #{assigned_to}\n"
+
+  transformCharToSpace = (string) ->
+    if pagerDutyCharToSpace?
+      string = string.replace(pagerDutyCharToSpace, ' ')
+
+    return string
 
   updateIncidents = (msg, incidentNumbers, statusFilter, updatedStatus) ->
     campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
