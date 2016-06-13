@@ -2,40 +2,47 @@
 #   Interact with PagerDuty services, schedules, and incidents with Hubot.
 #
 # Commands:
-#   hubot pager me as <email> - remember your pager email is <email>
-#   hubot pager forget me - forget your pager email
-#   hubot Am I on call - return if I'm currently on call or not
-#   hubot who's on call - return a list of services and who is on call for them
-#   hubot who's on call for <schedule> - return the username of who's on call for any schedule matching <search>
-#   hubot pager trigger <user> <msg> - create a new incident with <msg> and assign it to <user>
-#   hubot pager trigger <schedule> <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>
-#   hubot pager incidents - return the current incidents
-#   hubot pager sup - return the current incidents
-#   hubot pager incident <incident> - return the incident NNN
-#   hubot pager note <incident> <content> - add note to incident #<incident> with <content>
-#   hubot pager notes <incident> - show notes for incident #<incident>
-#   hubot pager problems - return all open incidents
-#   hubot pager ack <incident> - ack incident #<incident>
-#   hubot pager ack - ack triggered incidents assigned to you
-#   hubot pager ack! - ack all triggered incidents, not just yours
-#   hubot pager ack <incident1> <incident2> ... <incidentN> - ack all specified incidents
-#   hubot pager resolve <incident> - resolve incident #<incident>
-#   hubot pager resolve <incident1> <incident2> ... <incidentN> - resolve all specified incidents
-#   hubot pager resolve - resolve acknowledged incidents assigned to you
-#   hubot pager resolve! - resolve all acknowledged, not just yours
-#   hubot pager schedules - list schedules
-#   hubot pager schedules <search> - list schedules matching <search>
-#   hubot pager schedule <schedule> <days> - show <schedule>'s shifts for the next <days> (default 30 days)
-#   hubot pager my schedule <days> - show my on call shifts for the upcoming <days> in all schedules (default 30 days)
-#   hubot pager me <schedule> <minutes> - take the pager for <minutes> minutes
-#   hubot pager override <schedule> <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
-#   hubot pager overrides <schedule> <days> - show upcoming overrides for the next x <days> (default 30 days)
-#   hubot pager override <schedule> delete <id> - delete an override by its ID
-#   hubot pager services - list services
-#   hubot pager maintenance <minutes> <service_id1> <service_id2> ... <service_idN> - schedule a maintenance window for <minutes> for specified services
+#   hubot help pager - show hubot-pager-me help text
+#   hubot pager help - show hubot-pager-me help text
 #
 # Authors:
 #   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin, Michael Warkentin
+
+PAGERDUTY_HELP = '''
+hubot pager me as <email> - remember your pager email is <email>
+hubot pager forget me - forget your pager email
+hubot Am I on call - return if I'm currently on call or not
+hubot who's on call - return a list of services and who is on call for them
+hubot who's on call for <schedule> - return the username of who's on call for any schedule matching <search>
+hubot pager trigger <user> <msg> - create a new incident with <msg> and assign it to <user>
+hubot pager trigger <schedule> <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>
+hubot pager incidents - return the current incidents
+hubot pager sup - return the current incidents
+hubot pager incident <incident> - return the incident NNN
+hubot pager note <incident> <content> - add note to incident #<incident> with <content>
+hubot pager notes <incident> - show notes for incident #<incident>
+hubot pager problems - return all open incidents
+hubot pager ack <incident> - ack incident #<incident>
+hubot pager ack - ack triggered incidents assigned to you
+hubot pager ack! - ack all triggered incidents, not just yours
+hubot pager ack <incident1> <incident2> ... <incidentN> - ack all specified incidents
+hubot pager resolve <incident> - resolve incident #<incident>
+hubot pager resolve <incident1> <incident2> ... <incidentN> - resolve all specified incidents
+hubot pager resolve - resolve acknowledged incidents assigned to you
+hubot pager resolve! - resolve all acknowledged, not just yours
+hubot pager schedules - list schedules
+hubot pager schedules <search> - list schedules matching <search>
+hubot pager schedule <schedule> <days> - show <schedule>'s shifts for the next <days> (default 30 days)
+hubot pager my schedule <days> - show my on call shifts for the upcoming <days> in all schedules (default 30 days)
+hubot pager me <schedule> <minutes> - take the pager for <minutes> minutes
+hubot pager override <schedule> <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
+hubot pager overrides <schedule> <days> - show upcoming overrides for the next x <days> (default 30 days)
+hubot pager override <schedule> delete <id> - delete an override by its ID
+hubot pager services - list services
+hubot pager maintenance <minutes> <service_id1> <service_id2> ... <service_idN> - schedule a maintenance window for <minutes> for specified services
+'''
+
+# TODO Handle if user in DM or chan
 
 pagerduty = require('../pagerduty')
 async = require('async')
@@ -645,6 +652,12 @@ module.exports = (robot) ->
           msg.send "Maintenance window created! ID: #{json.maintenance_window.id} Ends: #{json.maintenance_window.end_time}"
         else
           msg.send "That didn't work. Check Hubot's logs for an error!"
+
+  robot.respond /(help pager|pager help)/, (msg) ->
+    console.log "Replacing name with #{robot.name}"
+    helpWithRobotName = PAGERDUTY_HELP.replace /^hubot/igm, robot.name
+    msg.send "```#{helpWithRobotName}```"
+
 
   parseIncidentNumbers = (match) ->
     match.split(/[ ,]+/).map (incidentNumber) ->
