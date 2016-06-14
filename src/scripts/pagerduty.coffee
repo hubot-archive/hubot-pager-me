@@ -720,7 +720,6 @@ module.exports = (robot) ->
 
   reassignmentParametersForUserOrScheduleOrEscalationPolicy = (msg, string, cb) ->
     if msg.message.match(/\@/)
-      name = data.msg.message.user.name
       for own key, hcuser of robot.brain.users()
         if hcuser.mention_name == string
           campfireUserToPagerDutyUser msg, hcuser, (user) ->
