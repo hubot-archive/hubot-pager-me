@@ -7,8 +7,8 @@
 #   hubot Am I on call - return if I'm currently on call or not
 #   hubot who's on call - return a list of services and who is on call for them
 #   hubot who's on call for <schedule> - return the username of who's on call for any schedule matching <search>
-#   hubot pager trigger <user> <msg> - create a new incident with <msg> and assign it to <user>
-#   hubot pager trigger <schedule> <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>
+#   hubot pager trigger <user>: <msg> - create a new incident with <msg> and assign it to <user>
+#   hubot pager trigger <schedule>: <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>
 #   hubot pager incidents - return the current incidents
 #   hubot pager sup - return the current incidents
 #   hubot pager incident <incident> - return the incident NNN
@@ -106,10 +106,10 @@ module.exports = (robot) ->
       else
         msg.send "No open incidents"
 
-  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/i, (msg) ->
-    msg.reply "Please include a user or schedule to page, like 'hubot pager infrastructure everything is on fire'."
+  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\- ]+)$/i, (msg) ->
+    msg.reply "Please include a user or schedule to page, like 'hubot pager infrastructure: everything is on fire'."
 
-  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+) (.+)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\- ]+): (.+)$/i, (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
