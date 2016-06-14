@@ -110,11 +110,7 @@ module.exports = (robot) ->
       else
         msg.send "No open incidents"
 
-
-  robot.respond /(pager|major)( me)? (?:trigger|page) @?([\w\- ]+)$/i, (msg) ->
-    msg.reply "Please include a user or schedule to page, like '#{robot.name} pager infrastructure: everything is on fire'."
-
-  robot.respond /(pager|major)( me)? (?:trigger|page) @?([\w\- ]+): (.+)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (?:trigger|page) @?([\w\- ]+):?(?: (.+)?)?$/i, (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
@@ -122,8 +118,10 @@ module.exports = (robot) ->
 
     fromUserName   = msg.message.user.mention_name || msg.message.user.name
     query          = msg.match[3]
-    reason         = msg.match[4]
+    reason         = msg.match[4] || "Help requested in this room: #{msg.message.room}"
     description    = "#{reason} - @#{fromUserName}"
+
+    msg.send "Attempting to page #{query} with message: #{reason}"
 
     # Figure out who we are
     campfireUserToPagerDutyUser msg, msg.message.user, false, (triggerdByPagerDutyUser) ->
