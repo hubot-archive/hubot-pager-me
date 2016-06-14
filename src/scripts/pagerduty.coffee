@@ -6,7 +6,9 @@
 #   hubot pager forget me - forget your pager email
 #   hubot Am I on call - return if I'm currently on call or not
 #   hubot who's on call - return a list of services and who is on call for them
+#   hubot oncall - return a list of services and who is on call for them
 #   hubot who's on call for <schedule> - return the username of who's on call for any schedule matching <search>
+#   hubot oncall <schedule> - return the username of who's on call for any schedule matching <search>
 #   hubot pager trigger <user> <msg> - create a new incident with <msg> and assign it to <user>
 #   hubot pager trigger <schedule> <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>
 #   hubot pager incidents - return the current incidents
@@ -564,7 +566,7 @@ module.exports = (robot) ->
             msg.send 'No schedules found!'
 
   # who is on call?
-  robot.respond /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?: (?:for )?(.*?)(?:\?|$))?/i, (msg) ->
+  robot.respond /(?:who)?(?:’s|'s|s| is|se)?(?:\s+)?(?:on call|oncall|on-call)(?: (?:for )?(.*?)(?:\?|$))?/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
