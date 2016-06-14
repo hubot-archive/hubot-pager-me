@@ -119,8 +119,9 @@ module.exports = (robot) ->
       return
 
     fromUserName   = msg.message.user.mention_name || msg.message.user.name
+    room           = msg.message.room || "Private Message with #{robot.name}"
     query          = msg.match[3]
-    reason         = msg.match[4] || "Help requested in this room: #{msg.message.room}"
+    reason         = msg.match[4] || "Help requested in this room: #{room}"
     description    = "#{reason} - @#{fromUserName}"
 
     robot.logger.debug "Attempting to page #{query} with message: #{reason}"
