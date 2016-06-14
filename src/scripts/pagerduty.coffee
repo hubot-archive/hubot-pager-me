@@ -106,16 +106,16 @@ module.exports = (robot) ->
       else
         msg.send "No open incidents"
 
-  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (?:trigger|page) @?([\w\-]+)$/i, (msg) ->
     msg.reply "Please include a user or schedule to page, like 'hubot pager infrastructure everything is on fire'."
 
-  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+) (.+)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (?:trigger|page) @?([\w\-]+) (.+)$/i, (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    fromUserName   = msg.message.user.name
+    fromUserName   = msg.message.user.mention_name || msg.message.user.name
     query          = msg.match[3]
     reason         = msg.match[4]
     description    = "#{reason} - @#{fromUserName}"
@@ -710,7 +710,14 @@ module.exports = (robot) ->
       return
 
   reassignmentParametersForUserOrScheduleOrEscalationPolicy = (msg, string, cb) ->
-    if campfireUser = robot.brain.userForName(string)
+    if msg.message.match(/\@/)
+      name = data.msg.message.user.name
+      for own key, hcuser of robot.brain.users()
+        if hcuser.mention_name == string
+          campfireUserToPagerDutyUser msg, hcuser, (user) ->
+            cb(assigned_to_user: user.id,  name: user.name)
+          break
+    else if campfireUser = robot.brain.userForName(string)
       campfireUserToPagerDutyUser msg, campfireUser, (user) ->
         cb(assigned_to_user: user.id,  name: user.name)
     else
