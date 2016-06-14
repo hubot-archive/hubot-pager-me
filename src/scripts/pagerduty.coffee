@@ -6,9 +6,11 @@
 #   hubot pager forget me - forget your pager email
 #   hubot Am I on call - return if I'm currently on call or not
 #   hubot who's on call - return a list of services and who is on call for them
+#   hubot oncall - return a list of services and who is on call for them
 #   hubot who's on call for <schedule> - return the username of who's on call for any schedule matching <search>
-#   hubot pager trigger <user> <msg> - create a new incident with <msg> and assign it to <user>
-#   hubot pager trigger <schedule> <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>
+#   hubot oncall <schedule> - return the username of who's on call for any schedule matching <search>
+#   hubot pager trigger <user>: <msg> - create a new incident with <msg> and assign it to <user>
+#   hubot pager trigger <schedule>: <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>
 #   hubot pager incidents - return the current incidents
 #   hubot pager sup - return the current incidents
 #   hubot pager incident <incident> - return the incident NNN
@@ -62,8 +64,10 @@ module.exports = (robot) ->
         msg.send "I couldn't find your user :( #{emailNote}"
 
     cmds = robot.helpCommands()
-    cmds = (cmd for cmd in cmds when cmd.match(/hubot (pager |who's on call)/))
-    msg.send cmds.join("\n")
+    cmds = (cmd for cmd in cmds when cmd.match(/hubot (pager |on call|page|oncall)/))
+    cmds = cmds.join("\n")
+    cmds = cmds.replace /hubot/ig, "#{robot.name}"
+    msg.send cmds
 
   robot.respond /pager(?: me)? as (.*)$/i, (msg) ->
     email = msg.match[1]
@@ -106,16 +110,17 @@ module.exports = (robot) ->
       else
         msg.send "No open incidents"
 
-  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/i, (msg) ->
-    msg.reply "Please include a user or schedule to page, like 'hubot pager infrastructure everything is on fire'."
 
-  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+) (.+)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (?:trigger|page) @?([\w\- ]+)$/i, (msg) ->
+    msg.reply "Please include a user or schedule to page, like '#{robot.name} pager infrastructure: everything is on fire'."
+
+  robot.respond /(pager|major)( me)? (?:trigger|page) @?([\w\- ]+): (.+)$/i, (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    fromUserName   = msg.message.user.name
+    fromUserName   = msg.message.user.mention_name || msg.message.user.name
     query          = msg.match[3]
     reason         = msg.match[4]
     description    = "#{reason} - @#{fromUserName}"
@@ -203,7 +208,7 @@ module.exports = (robot) ->
       if filteredIncidents.length is 0
         # nothing assigned to the user, but there were others
         if incidents.length > 0 and not force
-          msg.send "Nothing assigned to you to acknowledge. Acknowledge someone else's incident with `hubot pager ack <nnn>`"
+          msg.send "Nothing assigned to you to acknowledge. Acknowledge someone else's incident with `#{robot.name} pager ack <nnn>`"
         else
           msg.send "Nothing to acknowledge"
         return
@@ -242,7 +247,7 @@ module.exports = (robot) ->
       if filteredIncidents.length is 0
         # nothing assigned to the user, but there were others
         if incidents.length > 0 and not force
-          msg.send "Nothing assigned to you to resolve. Resolve someone else's incident with `hubot pager ack <nnn>`"
+          msg.send "Nothing assigned to you to resolve. Resolve someone else's incident with `#{robot.name} pager ack <nnn>`"
         else
           msg.send "Nothing to resolve"
         return
@@ -532,7 +537,7 @@ module.exports = (robot) ->
               msg.send "Rejoice, #{old_username}! #{json.override.user.name} has the pager on #{schedule.name} until #{end.format()}"
 
   # Am I on call?
-  robot.respond /am i on (call|oncall|on-call)/i, (msg) ->
+  robot.respond /am i (on call|oncall|on-call)/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
@@ -564,7 +569,7 @@ module.exports = (robot) ->
             msg.send 'No schedules found!'
 
   # who is on call?
-  robot.respond /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?: (?:for )?(.*?)(?:\?|$))?/i, (msg) ->
+  robot.respond /(?:who)?(?:’s|'s|s| is|se)?(?:\s+)?(?:on call|oncall|on-call)(?: (?:for )?(.*?)(?:\?|$))?/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
@@ -710,7 +715,14 @@ module.exports = (robot) ->
       return
 
   reassignmentParametersForUserOrScheduleOrEscalationPolicy = (msg, string, cb) ->
-    if campfireUser = robot.brain.userForName(string)
+    if msg.message.match(/\@/)
+      name = data.msg.message.user.name
+      for own key, hcuser of robot.brain.users()
+        if hcuser.mention_name == string
+          campfireUserToPagerDutyUser msg, hcuser, (user) ->
+            cb(assigned_to_user: user.id,  name: user.name)
+          break
+    else if campfireUser = robot.brain.userForName(string)
       campfireUserToPagerDutyUser msg, campfireUser, (user) ->
         cb(assigned_to_user: user.id,  name: user.name)
     else
