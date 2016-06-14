@@ -276,6 +276,8 @@ module.exports = (robot) ->
         incident.assigned_to.some (assignment) ->
           assignment.object.email is userEmail
 
+  robot.pagerduty = new PagerDuty
+
   robot.respond /pager( me)?$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
