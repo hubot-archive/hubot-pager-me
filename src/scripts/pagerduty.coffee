@@ -532,7 +532,7 @@ module.exports = (robot) ->
               msg.send "Rejoice, #{old_username}! #{json.override.user.name} has the pager on #{schedule.name} until #{end.format()}"
 
   # Am I on call?
-  robot.respond /am i on (call|oncall|on-call)/i, (msg) ->
+  robot.respond /am i (on call|oncall|on-call)/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
