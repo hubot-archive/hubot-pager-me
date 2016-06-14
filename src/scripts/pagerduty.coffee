@@ -587,7 +587,10 @@ module.exports = (robot) ->
           if err?
             robot.emit 'error'
             return
-          msg.send text
+          if messages && messages.length > 0
+            msg.send messages[messages.length - 1]
+          else
+            msg.send "No one is oncall for #{scheduleName}"
     else
       pagerduty.getSchedules (err, schedules) ->
         if err?
