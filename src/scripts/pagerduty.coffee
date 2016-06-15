@@ -155,9 +155,47 @@ module.exports = (robot) ->
         cb(user.id, user.name, s)
     withCurrentOncallMention: (msg, schedule, cb) ->
       robot.pagerduty.withCurrentOncallUser msg, schedule, (user, s) ->
-        robotuser = robot.brain.userForName(user.name) || {mention_name : "unknown"}
-        mention = robotuser.mention_name
-        cb(mention, user.name, s)
+        if user is 'err'
+          mention = 'err'
+          name = 'err'
+        else
+          robotuser = robot.brain.userForName(user.name) || {mention_name : "unknown"}
+          name = user.name
+          mention = robotuser.mention_name
+        cb(mention, name, s)
+
+    withCurrentOncallMentionNoMSG: (schedule, cb) ->
+      robot.pagerduty.withCurrentOncallUserNoMSG schedule, (user, s) ->
+        if user is 'err'
+          mention = 'err'
+          name = 'err'
+        else
+          robotuser = robot.brain.userForName(user.name) || {mention_name : "unknown"}
+          name = user.name
+          mention = robotuser.mention_name
+        cb(mention, name, s)
+
+    withCurrentOncallUserNoMSG: (schedule, cb) ->
+      oneHour = moment().add(1, 'hours').format()
+      now = moment().format()
+
+      scheduleId = schedule.id
+      if (schedule instanceof Array && schedule[0])
+        scheduleId = schedule[0].id
+      if scheduleId
+        query = {
+          since: now,
+          until: oneHour,
+          overflow: 'true'
+        }
+        pagerduty.get "/schedules/#{scheduleId}/entries", query, (err, json) ->
+          if err?
+            cb("err", schedule)
+          if json && json.entries and json.entries.length > 0
+            cb(json.entries[0].user, schedule)
+      else
+        cb("err", schedule)
+
     withCurrentOncallUser: (msg, schedule, cb) ->
       oneHour = moment().add(1, 'hours').format()
       now = moment().format()
@@ -282,6 +320,11 @@ module.exports = (robot) ->
       incidents.filter (incident) ->
         incident.assigned_to.some (assignment) ->
           assignment.object.email is userEmail
+
+    getTeamOncallbyId: (scheduleId, cb) ->
+      s = {id: scheduleId}
+      robot.pagerduty.withCurrentOncallMentionNoMSG s, (oncallUserMention, oncallUsername, schedule) ->
+        cb? oncallUserMention
 
     getTeamOncall: (scheduleName, msg, at, cb)  ->
       if pagerduty.missingEnvironmentForApi(msg)
