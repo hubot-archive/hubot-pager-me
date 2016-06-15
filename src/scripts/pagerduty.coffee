@@ -153,6 +153,11 @@ module.exports = (robot) ->
     withCurrentOncallId: (msg, schedule, cb) ->
       robot.pagerduty.withCurrentOncallUser msg, schedule, (user, s) ->
         cb(user.id, user.name, s)
+    withCurrentOncallMention: (msg, schedule, cb) ->
+      robot.pagerduty.withCurrentOncallUser msg, schedule, (user, s) ->
+        robotuser = robot.brain.userForName(user.name) || {mention_name : "unknown"}
+        mention = robotuser.mention_name
+        cb(mention, user.name, s)
     withCurrentOncallUser: (msg, schedule, cb) ->
       oneHour = moment().add(1, 'hours').format()
       now = moment().format()
@@ -277,6 +282,45 @@ module.exports = (robot) ->
       incidents.filter (incident) ->
         incident.assigned_to.some (assignment) ->
           assignment.object.email is userEmail
+
+    getTeamOncall: (scheduleName, msg, at, cb)  ->
+      if pagerduty.missingEnvironmentForApi(msg)
+        return
+
+      messages = []
+      renderSchedule = (s, resp) ->
+        robot.pagerduty.withCurrentOncallMention msg, s, (oncallUserMention, oncallUsername, schedule) ->
+          if at && at == "wordy"
+            messages.push("* #{oncallUserMention} (#{oncallUsername}) is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+          else if at
+            messages.push("@#{oncallUserMention}")
+          else
+            messages.push("#{oncallUserMention}")
+          resp null
+
+      if scheduleName?
+        robot.pagerduty.withScheduleMatching msg, scheduleName, (s) ->
+          renderSchedule s, (err, text) ->
+            if err?
+              robot.emit 'error'
+              return
+            if messages && messages.length > 0
+              cb? messages[messages.length - 1]
+            else
+              cb? "No one is oncall for #{scheduleName}"
+      else
+        pagerduty.getSchedules (err, schedules) ->
+          if err?
+            robot.emit 'error', err, msg
+            return
+          if schedules.length > 0
+            async.map schedules, renderSchedule, (err) ->
+              if err?
+                robot.emit 'error', err, msg
+                return
+              cb? messages.join("\n")
+          else
+            cb? 'No schedules found!'
 
   robot.pagerduty = new PagerDuty
 
@@ -805,35 +849,8 @@ module.exports = (robot) ->
 
     scheduleName = msg.match[1]
 
-    messages = []
-    renderSchedule = (s, cb) ->
-      robot.pagerduty.withCurrentOncall msg, s, (username, schedule) ->
-        messages.push("* #{username} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
-        cb null
-
-    if scheduleName?
-      robot.pagerduty.withScheduleMatching msg, scheduleName, (s) ->
-        renderSchedule s, (err, text) ->
-          if err?
-            robot.emit 'error'
-            return
-          if messages && messages.length > 0
-            msg.send messages[messages.length - 1]
-          else
-            msg.send "No one is oncall for #{scheduleName}"
-    else
-      pagerduty.getSchedules (err, schedules) ->
-        if err?
-          robot.emit 'error', err, msg
-          return
-        if schedules.length > 0
-          async.map schedules, renderSchedule, (err) ->
-            if err?
-              robot.emit 'error', err, msg
-              return
-            msg.send messages.join("\n")
-        else
-          msg.send 'No schedules found!'
+    robot.pagerduty.getTeamOncall scheduleName, msg, "wordy", (response) ->
+      msg.send response
 
   robot.respond /(pager|major)( me)? services$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
