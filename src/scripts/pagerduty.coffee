@@ -37,7 +37,9 @@
 #   hubot pager override <schedule> delete <id> - delete an override by its ID
 #   hubot pager services - list services
 #   hubot pager maintenance <minutes> <service_id1> <service_id2> ... <service_idN> - schedule a maintenance window for <minutes> for specified services
-#
+#   hubot get oncall - list the default oncall for this room
+#   hubot clear oncall - remove the default oncall for this room
+#   hubot set oncall - set the default oncall for this room
 # Authors:
 #   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin, Michael Warkentin
 
