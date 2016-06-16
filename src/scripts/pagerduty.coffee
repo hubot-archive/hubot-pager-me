@@ -142,18 +142,18 @@ module.exports = (robot) ->
           else
             robot.pagerduty.SchedulesMatching msg, string, (schedule) ->
               if schedule
-                robot.pagerduty.withCurrentOncallUser schedule, (user, schedule) ->
+                robot.pagerduty.withCurrentOncallUser msg, schedule, (user, schedule) ->
                   cb(assigned_to_user: user.id,  name: user.name)
               else
                 cb()
-    withCurrentOncall: (schedule, cb) ->
-      robot.pagerduty.withCurrentOncallUser schedule, (user, s) ->
+    withCurrentOncall: (msg, schedule, cb) ->
+      robot.pagerduty.withCurrentOncallUser msg, schedule, (user, s) ->
         cb(user.name, s)
-    withCurrentOncallId: (schedule, cb) ->
-      robot.pagerduty.withCurrentOncallUser schedule, (user, s) ->
+    withCurrentOncallId: (msg, schedule, cb) ->
+      robot.pagerduty.withCurrentOncallUser msg, schedule, (user, s) ->
         cb(user.id, user.name, s)
-    withCurrentOncallMention: (schedule, cb) ->
-      robot.pagerduty.withCurrentOncallUser schedule, (user, s) ->
+    withCurrentOncallMention: (msg, schedule, cb) ->
+      robot.pagerduty.withCurrentOncallUser msg, schedule, (user, s) ->
         if user is 'err'
           mention = 'err'
           name = 'err'
@@ -163,7 +163,39 @@ module.exports = (robot) ->
           mention = robotuser.mention_name
         cb(mention, name, s)
 
-    withCurrentOncallUser: (schedule, cb) ->
+    withCurrentOncallMentionNoMSG: (schedule, cb) ->
+      robot.pagerduty.withCurrentOncallUserNoMSG schedule, (user, s) ->
+        if user is 'err'
+          mention = 'err'
+          name = 'err'
+        else
+          robotuser = robot.brain.userForName(user.name) || {mention_name : "unknown"}
+          name = user.name
+          mention = robotuser.mention_name
+        cb(mention, name, s)
+
+    withCurrentOncallUserNoMSG: (schedule, cb) ->
+      oneHour = moment().add(1, 'hours').format()
+      now = moment().format()
+
+      scheduleId = schedule.id
+      if (schedule instanceof Array && schedule[0])
+        scheduleId = schedule[0].id
+      if scheduleId
+        query = {
+          since: now,
+          until: oneHour,
+          overflow: 'true'
+        }
+        pagerduty.get "/schedules/#{scheduleId}/entries", query, (err, json) ->
+          if err?
+            cb("err", schedule)
+          if json && json.entries and json.entries.length > 0
+            cb(json.entries[0].user, schedule)
+      else
+        cb("err", schedule)
+
+    withCurrentOncallUser: (msg, schedule, cb) ->
       oneHour = moment().add(1, 'hours').format()
       now = moment().format()
 
@@ -171,7 +203,7 @@ module.exports = (robot) ->
       if (schedule instanceof Array && schedule[0])
         scheduleId = schedule[0].id
       unless scheduleId
-        cb? "Unable to retrieve the schedule. Use 'pager schedules' to list all schedules."
+        msg.send "Unable to retrieve the schedule. Use 'pager schedules' to list all schedules."
         return
 
       query = {
@@ -185,7 +217,6 @@ module.exports = (robot) ->
           return
         if json.entries and json.entries.length > 0
           cb(json.entries[0].user, schedule)
-
     pagerDutyIntegrationAPI: (msg, cmd, description, cb) ->
       unless pagerDutyServiceApiKey?
         msg.send "PagerDuty API service key is missing."
@@ -291,7 +322,7 @@ module.exports = (robot) ->
 
     getTeamOncallbyId: (scheduleId, cb) ->
       s = {id: scheduleId}
-      robot.pagerduty.withCurrentOncallMention s, (oncallUserMention, oncallUsername, schedule) ->
+      robot.pagerduty.withCurrentOncallMentionNoMSG s, (oncallUserMention, oncallUsername, schedule) ->
         cb? oncallUserMention
 
     pageTeamByID: (escalationId, description, msg, cb) ->
@@ -394,7 +425,7 @@ module.exports = (robot) ->
 
       messages = []
       renderSchedule = (s, resp) ->
-        robot.pagerduty.withCurrentOncallMention s, (oncallUserMention, oncallUsername, schedule) ->
+        robot.pagerduty.withCurrentOncallMention msg, s, (oncallUserMention, oncallUsername, schedule) ->
           if at && at == "wordy"
             messages.push("* #{oncallUserMention} (#{oncallUsername}) is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
           else if at
@@ -854,7 +885,7 @@ module.exports = (robot) ->
           'end':       end,
           'user_id':   userId
         }
-        robot.pagerduty.withCurrentOncall matchingSchedule, (old_username, schedule) ->
+        robot.pagerduty.withCurrentOncall msg, matchingSchedule, (old_username, schedule) ->
           data = { 'override': override }
           pagerduty.post "/schedules/#{schedule.id}/overrides", data, (err, json) ->
             if err?
@@ -875,7 +906,7 @@ module.exports = (robot) ->
       userId = user.id
 
       renderSchedule = (s, cb) ->
-        robot.pagerduty.withCurrentOncallId s, (oncallUserid, oncallUsername, schedule) ->
+        robot.pagerduty.withCurrentOncallId msg, s, (oncallUserid, oncallUsername, schedule) ->
           if userId == oncallUserid
             cb null, "* Yes, you are on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
           else
