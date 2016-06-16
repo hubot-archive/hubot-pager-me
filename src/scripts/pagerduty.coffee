@@ -362,7 +362,7 @@ module.exports = (robot) ->
                     return
 
                   if json?.incidents.length == 1
-                    cb? ":pager: assigned to this escalation ID: #{escalationId}!"
+                    cb? ":pager: assigned to this escalation ID: https://sendgrid.pagerduty.com/escalation_policies##{escalationId}!"
                   else
                     cb? "Problem reassigning the incident :/ - please manually page this escalation Id: https://sendgrid.pagerduty.com/escalation_policies##{escalationId}"
           , 5000
