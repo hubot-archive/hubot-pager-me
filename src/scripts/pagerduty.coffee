@@ -170,6 +170,49 @@ module.exports = (robot) ->
     withCurrentOncallId: (msg, schedule, cb) ->
       robot.pagerduty.withCurrentOncallUser msg, schedule, (user, s) ->
         cb(user.id, user.name, s)
+    withCurrentOncallMention: (msg, schedule, cb) ->
+      robot.pagerduty.withCurrentOncallUser msg, schedule, (user, s) ->
+        if user is 'err'
+          mention = 'err'
+          name = 'err'
+        else
+          robotuser = robot.brain.userForName(user.name) || {mention_name : "unknown"}
+          name = user.name
+          mention = robotuser.mention_name
+        cb(mention, name, s)
+
+    withCurrentOncallMentionNoMSG: (schedule, cb) ->
+      robot.pagerduty.withCurrentOncallUserNoMSG schedule, (user, s) ->
+        if user is 'err'
+          mention = 'err'
+          name = 'err'
+        else
+          robotuser = robot.brain.userForName(user.name) || {mention_name : "unknown"}
+          name = user.name
+          mention = robotuser.mention_name
+        cb(mention, name, s)
+
+    withCurrentOncallUserNoMSG: (schedule, cb) ->
+      oneHour = moment().add(1, 'hours').format()
+      now = moment().format()
+
+      scheduleId = schedule.id
+      if (schedule instanceof Array && schedule[0])
+        scheduleId = schedule[0].id
+      if scheduleId
+        query = {
+          since: now,
+          until: oneHour,
+          overflow: 'true'
+        }
+        pagerduty.get "/schedules/#{scheduleId}/entries", query, (err, json) ->
+          if err?
+            cb("err", schedule)
+          if json && json.entries and json.entries.length > 0
+            cb(json.entries[0].user, schedule)
+      else
+        cb("err", schedule)
+
     withCurrentOncallUser: (msg, schedule, cb) ->
       oneHour = moment().add(1, 'hours').format()
       now = moment().format()
@@ -295,6 +338,144 @@ module.exports = (robot) ->
         incident.assigned_to.some (assignment) ->
           assignment.object.email is userEmail
 
+    getTeamOncallbyId: (scheduleId, cb) ->
+      s = {id: scheduleId}
+      robot.pagerduty.withCurrentOncallMentionNoMSG s, (oncallUserMention, oncallUsername, schedule) ->
+        cb? oncallUserMention
+
+    pageTeamByID: (escalationId, description, msg, cb) ->
+      robot.pagerduty.campfireUserToPagerDutyUser msg, msg.message.user, false, (triggerdByPagerDutyUser) ->
+        triggerdByPagerDutyUserId = if triggerdByPagerDutyUser?
+                                      triggerdByPagerDutyUser.id
+                                    else if pagerDutyUserId
+                                      pagerDutyUserId
+        robot.logger.debug "Paging the escalation policy: https://sendgrid.pagerduty.com/escalation_policies##{escalationId} with #{description}"
+        robot.pagerduty.pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
+          query =
+            incident_key: json.incident_key
+
+          cb? ":pager: triggered! now assigning it to the right team..."
+
+          setTimeout () ->
+            pagerduty.get "/incidents", query, (err, json) ->
+              if err?
+                robot.emit 'error', err, msg
+                return
+
+              if json?.incidents.length == 0
+                cb? "Couldn't find the incident we just created to reassign. Please try again :/"
+              else
+                data = {
+                  requester_id: triggerdByPagerDutyUserId,
+                  incidents: json.incidents.map (incident) ->
+                    {
+                      id:                incident.id
+                      escalation_policy: escalationId
+                    }
+                }
+
+                pagerduty.put "/incidents", data , (err, json) ->
+                  if err?
+                    robot.emit 'error', err, msg
+                    return
+
+                  if json?.incidents.length == 1
+                    cb? ":pager: assigned to this escalation ID: https://sendgrid.pagerduty.com/escalation_policies##{escalationId}!"
+                  else
+                    cb? "Problem reassigning the incident :/ - please manually page this escalation Id: https://sendgrid.pagerduty.com/escalation_policies##{escalationId}"
+          , 5000
+
+    triggerPage: (msg, fromUserName, room, query, reason, description, cb) ->
+      # Figure out who we are
+      robot.pagerduty.campfireUserToPagerDutyUser msg, msg.message.user, false, (triggerdByPagerDutyUser) ->
+        triggerdByPagerDutyUserId = if triggerdByPagerDutyUser?
+                                      triggerdByPagerDutyUser.id
+                                    else if pagerDutyUserId
+                                      pagerDutyUserId
+        unless triggerdByPagerDutyUserId
+          cb? "Sorry, I can't figure your PagerDuty account, and I don't have my own :( Can you tell me your PagerDuty email with `#{robot.name} pager me as you@yourdomain.com` or make sure you've set the HUBOT_PAGERDUTY_USER_ID environment variable?"
+          return
+
+        # Figure out what we're trying to page
+        robot.pagerduty.reassignmentParametersForUserOrScheduleOrEscalationPolicy msg, query, (results) ->
+          if not (results.assigned_to_user or results.escalation_policy)
+            msg.reply "Couldn't find a user or unique schedule or escalation policy matching #{query} :/"
+            return
+
+          robot.pagerduty.pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
+            query =
+              incident_key: json.incident_key
+
+            cb? ":pager: triggered! now assigning it to the right user..."
+
+            setTimeout () ->
+              pagerduty.get "/incidents", query, (err, json) ->
+                if err?
+                  robot.emit 'error', err, msg
+                  return
+
+                if json?.incidents.length == 0
+                  cb? "Couldn't find the incident we just created to reassign. Please try again :/"
+                else
+                  data = {
+                    requester_id: triggerdByPagerDutyUserId,
+                    incidents: json.incidents.map (incident) ->
+                      {
+                        id:                incident.id
+                        assigned_to_user:  results.assigned_to_user
+                        escalation_policy: results.escalation_policy
+                      }
+                  }
+
+                  pagerduty.put "/incidents", data , (err, json) ->
+                    if err?
+                      robot.emit 'error', err, msg
+                      return
+
+                    if json?.incidents.length == 1
+                      cb? ":pager: assigned to #{results.name}!"
+                    else
+                      cb? "Problem reassigning the incident :/"
+            , 5000
+    getTeamOncall: (scheduleName, msg, at, cb)  ->
+      if pagerduty.missingEnvironmentForApi(msg)
+        return
+
+      messages = []
+      renderSchedule = (s, resp) ->
+        robot.pagerduty.withCurrentOncallMention msg, s, (oncallUserMention, oncallUsername, schedule) ->
+          if at && at == "wordy"
+            messages.push("* #{oncallUserMention} (#{oncallUsername}) is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+          else if at
+            messages.push("@#{oncallUserMention}")
+          else
+            messages.push("#{oncallUserMention}")
+          resp null
+
+      if scheduleName?
+        robot.pagerduty.withScheduleMatching msg, scheduleName, (s) ->
+          renderSchedule s, (err, text) ->
+            if err?
+              robot.emit 'error'
+              return
+            if messages && messages.length > 0
+              cb? messages[messages.length - 1]
+            else
+              cb? "No one is oncall for #{scheduleName}"
+      else
+        pagerduty.getSchedules (err, schedules) ->
+          if err?
+            robot.emit 'error', err, msg
+            return
+          if schedules.length > 0
+            async.map schedules, renderSchedule, (err) ->
+              if err?
+                robot.emit 'error', err, msg
+                return
+              cb? messages.join("\n")
+          else
+            cb? 'No schedules found!'
+
   robot.pagerduty = new PagerDuty
 
   robot.respond /pager( me)?$/i, (msg) ->
@@ -391,57 +572,8 @@ module.exports = (robot) ->
 
     robot.logger.debug "Attempting to page #{query} with message: #{reason}"
 
-    # Figure out who we are
-    robot.pagerduty.campfireUserToPagerDutyUser msg, msg.message.user, false, (triggerdByPagerDutyUser) ->
-      triggerdByPagerDutyUserId = if triggerdByPagerDutyUser?
-                                    triggerdByPagerDutyUser.id
-                                  else if pagerDutyUserId
-                                    pagerDutyUserId
-      unless triggerdByPagerDutyUserId
-        msg.send "Sorry, I can't figure your PagerDuty account, and I don't have my own :( Can you tell me your PagerDuty email with `#{robot.name} pager me as you@yourdomain.com` or make sure you've set the HUBOT_PAGERDUTY_USER_ID environment variable?"
-        return
-
-      # Figure out what we're trying to page
-      robot.pagerduty.reassignmentParametersForUserOrScheduleOrEscalationPolicy msg, query, (results) ->
-        if not (results.assigned_to_user or results.escalation_policy)
-          msg.reply "Couldn't find a user or unique schedule or escalation policy matching #{query} :/"
-          return
-
-        robot.pagerduty.pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
-          query =
-            incident_key: json.incident_key
-
-          msg.reply ":pager: triggered! now assigning it to the right user..."
-
-          setTimeout () ->
-            pagerduty.get "/incidents", query, (err, json) ->
-              if err?
-                robot.emit 'error', err, msg
-                return
-
-              if json?.incidents.length == 0
-                msg.reply "Couldn't find the incident we just created to reassign. Please try again :/"
-              else
-                data = {
-                  requester_id: triggerdByPagerDutyUserId,
-                  incidents: json.incidents.map (incident) ->
-                    {
-                      id:                incident.id
-                      assigned_to_user:  results.assigned_to_user
-                      escalation_policy: results.escalation_policy
-                    }
-                }
-
-                pagerduty.put "/incidents", data , (err, json) ->
-                  if err?
-                    robot.emit 'error', err, msg
-                    return
-
-                  if json?.incidents.length == 1
-                    msg.reply ":pager: assigned to #{results.name}!"
-                  else
-                    msg.reply "Problem reassigning the incident :/"
-          , 5000
+    robot.pagerduty.triggerPage msg, fromUserName, room, query, reason, description, (response) ->
+      msg.reply response
 
   robot.respond /(?:pager|major)(?: me)? ack(?:nowledge)? (.+)$/i, (msg) ->
     msg.finish()
@@ -857,37 +989,9 @@ module.exports = (robot) ->
     unless scheduleName
       msg.send "No default team is set up for this room; so I'll show you everyone who's oncall!"
 
-    messages = []
-    renderSchedule = (s, cb) ->
-      robot.pagerduty.withCurrentOncall msg, s, (username, schedule) ->
-        messages.push("* #{username} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
-        cb null
+    robot.pagerduty.getTeamOncall scheduleName, msg, "wordy", (response) ->
+      msg.send response
 
-    if scheduleName?
-      robot.pagerduty.withScheduleMatching msg, scheduleName, (s) ->
-        renderSchedule s, (err, text) ->
-          if err?
-            robot.emit 'error'
-            return
-          if messages && messages.length > 0
-            if robot.brain.data.custom_oncall_message && robot.brain.data.custom_oncall_message["#{s.name}"]
-              msg.send robot.brain.data.custom_oncall_message["#{s.name}"]
-            msg.send messages[messages.length - 1]
-          else
-            msg.send "No one is oncall for #{scheduleName}"
-    else
-      pagerduty.getSchedules (err, schedules) ->
-        if err?
-          robot.emit 'error', err, msg
-          return
-        if schedules.length > 0
-          async.map schedules, renderSchedule, (err) ->
-            if err?
-              robot.emit 'error', err, msg
-              return
-            msg.send messages.join("\n")
-        else
-          msg.send 'No schedules found!'
 
   robot.respond /(pager|major)( me)? services$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
