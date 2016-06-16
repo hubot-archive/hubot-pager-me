@@ -37,6 +37,11 @@
 #   hubot pager override <schedule> delete <id> - delete an override by its ID
 #   hubot pager services - list services
 #   hubot pager maintenance <minutes> <service_id1> <service_id2> ... <service_idN> - schedule a maintenance window for <minutes> for specified services
+#   hubot get oncall - list the default oncall for this room
+#   hubot clear oncall - remove the default oncall for this room
+#   hubot set oncall TEAM NAME- set the default oncall for this room
+#   hubot set oncallmsg TEAM: [message] - Set an oncall message to be displayed each time someone requests the oncall for your team
+#   hubot clear oncallmsg TEAM - clear the default oncall msg for a team
 #
 # Authors:
 #   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin, Michael Warkentin
@@ -50,7 +55,20 @@ pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
 
 module.exports = (robot) ->
+  robot.brain.data.oncalldefault ?= {}
+  robot.brain.data.custom_oncall_message ?= {}
   class PagerDuty
+    set_custom_oncall: (team, message, cb) ->
+      robot.brain.data.custom_oncall_message["#{team}"] = message
+      cb? "Done! Whenever someone says \"#{robot.name} oncall #{team}\" they will be shown #{message}, and then shown who is oncall"
+
+    clear_custom_oncall: (team, cb) ->
+      if robot.brain.data.custom_oncall_message && robot.brain.data.custom_oncall_message["#{team}"]
+        delete robot.brain.data.custom_oncall_message["#{team}"]
+        cb? "Done! We won't show a message before your oncall notification anymore"
+      else
+        cb? "Team #{team} didn't have an oncall message to clear."
+
     parseIncidentNumbers: (match) ->
       match.split(/[ ,]+/).map (incidentNumber) ->
         parseInt(incidentNumber)
@@ -521,17 +539,36 @@ module.exports = (robot) ->
       else
         msg.send "No open incidents"
 
-  robot.respond /(?:(?:(pager|major)( me)? (?:trigger|page))|page) @?([\w\- ]+):?(?: (.+)?)?$/i, (msg) ->
+  robot.respond /(?:(?:(pager|major)( me)? (?:trigger|page))|page)\b@?([\w\- ]+)?:?(?: (.+)?)?$/i, (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
     fromUserName   = msg.message.user.mention_name || msg.message.user.name
-    room           = msg.message.room || "Private Message with #{robot.name}"
+    room           = msg.message.room || "Private Message with #{msg.message.user.name}"
+    defaultroom    = msg.message.room || msg.message.user.email
     query          = msg.match[3]
     reason         = msg.match[4] || "Help requested in this room: #{room}"
     description    = "#{reason} - @#{fromUserName}"
+
+    # Use cases: (same for oncall)
+    #   opsbot page
+    #     - if default team, use default
+    #     - if no default team, list all pages
+    #   opsbot page team
+    #     - if default team, use passed in team
+    #     - if no default team, use passed in team
+    #   opsbot page search phrase
+    #     - if default team, use passed in team
+    #     - if no default team, use passed in team
+
+    if robot.brain.data.oncalldefault && robot.brain.data.oncalldefault[defaultroom]
+      query = robot.brain.data.oncalldefault[defaultroom] unless query
+
+    unless query
+      msg.send "No default team is setup for this room, please give a search phrase for a team to page."
+      return
 
     robot.logger.debug "Attempting to page #{query} with message: #{reason}"
 
@@ -935,9 +972,26 @@ module.exports = (robot) ->
       return
 
     scheduleName = msg.match[1]
+    room  = msg.message.room || msg.message.user.email
+    # Use cases: (same for page)
+    #   opsbot oncall
+    #     - if default team, use default
+    #     - if no default team, list all oncalls
+    #   opsbot oncall team
+    #     - if default team, use passed in team
+    #     - if no default team, use passed in team
+    #   opsbot oncall search phrase
+    #     - if default team, use passed in team
+    #     - if no default team, use passed in team
+    if robot.brain.data.oncalldefault && robot.brain.data.oncalldefault[room]
+      scheduleName = robot.brain.data.oncalldefault[room] unless scheduleName
+
+    unless scheduleName
+      msg.send "No default team is set up for this room; so I'll show you everyone who's oncall!"
 
     robot.pagerduty.getTeamOncall scheduleName, msg, "wordy", (response) ->
       msg.send response
+
 
   robot.respond /(pager|major)( me)? services$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
@@ -956,6 +1010,31 @@ module.exports = (robot) ->
         msg.send buffer
       else
         msg.send 'No services found!'
+
+  # Set the default oncall for this room
+  robot.respond /set oncall\s+(.*)/i, (msg) ->
+    team = msg.match[1]
+    room = msg.message.room || msg.message.user.email
+    robot.brain.data.oncalldefault[room] = "#{team}"
+    msg.reply "Okay, \"#{robot.name} oncall|page\" in #{room} will default to \"#{robot.name} oncall|page #{team}\""
+
+  # Allow any user to see if this room is setup with a default oncall team.
+  robot.respond /get oncall/i, (msg) ->
+    room = msg.message.room || msg.message.user.email
+    if robot.brain.data.oncalldefault && robot.brain.data.oncalldefault[room]
+      team = robot.brain.data.oncalldefault[room]
+      msg.reply "This room is defaulted to use #{team} for all oncall/page actions. Message me \"#{robot.name} clear oncall\" to remove this, or \"#{robot.name} set oncall TEAM\" to change to a new team."
+      return
+    msg.reply "This room isn't setup with a default team for oncall/page"
+
+  # Allow any user to clear the room's default for oncall.
+  robot.respond /clear oncall\b/i, (msg) ->
+    room = msg.message.room || msg.message.user.email
+    if robot.brain.data.oncalldefault && robot.brain.data.oncalldefault[room]
+      delete robot.brain.data.oncalldefault[room]
+      msg.reply "Okay, this room no longer has a default team for oncall/page!"
+      return
+    msg.reply "This room wasn't setup with a default oncall/page team."
 
   robot.respond /(pager|major)( me)? maintenance (\d+) (.+)$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
@@ -987,3 +1066,18 @@ module.exports = (robot) ->
           msg.send "Maintenance window created! ID: #{json.maintenance_window.id} Ends: #{json.maintenance_window.end_time}"
         else
           msg.send "That didn't work. Check Hubot's logs for an error!"
+
+   # Set a custom oncall message to be displayed before the oncall results are shown
+  robot.respond /set oncallmsg ([\w:\-_ ]+): (.+)/i, (msg) ->
+    oncallmsg = msg.match[2]
+    team = msg.match[1]
+
+    robot.pagerduty.set_custom_oncall team, oncallmsg, (response) ->
+      msg.reply response
+
+  # Clear a custom oncall message to be displayed before the oncall results are shown
+  robot.respond /clear oncallmsg ([\w:\-_ ]+)/i, (msg) ->
+    team = msg.match[1]
+
+    robot.pagerduty.clear_custom_oncall team, (response) ->
+      msg.reply response
