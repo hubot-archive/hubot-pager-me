@@ -325,6 +325,61 @@ module.exports = (robot) ->
       robot.pagerduty.withCurrentOncallMentionNoMSG s, (oncallUserMention, oncallUsername, schedule) ->
         cb? oncallUserMention
 
+    pageTeamByID: (scheduleId, cb) ->
+      robot.logger.debug "stuff"
+
+    triggerPage: (msg, fromUserName, room, query, reason, description, cb) ->
+      # Figure out who we are
+      robot.pagerduty.campfireUserToPagerDutyUser msg, msg.message.user, false, (triggerdByPagerDutyUser) ->
+        triggerdByPagerDutyUserId = if triggerdByPagerDutyUser?
+                                      triggerdByPagerDutyUser.id
+                                    else if pagerDutyUserId
+                                      pagerDutyUserId
+        unless triggerdByPagerDutyUserId
+          cb? "Sorry, I can't figure your PagerDuty account, and I don't have my own :( Can you tell me your PagerDuty email with `#{robot.name} pager me as you@yourdomain.com` or make sure you've set the HUBOT_PAGERDUTY_USER_ID environment variable?"
+          return
+
+        # Figure out what we're trying to page
+        robot.pagerduty.reassignmentParametersForUserOrScheduleOrEscalationPolicy msg, query, (results) ->
+          if not (results.assigned_to_user or results.escalation_policy)
+            msg.reply "Couldn't find a user or unique schedule or escalation policy matching #{query} :/"
+            return
+
+          robot.pagerduty.pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
+            query =
+              incident_key: json.incident_key
+
+            cb? ":pager: triggered! now assigning it to the right user..."
+
+            setTimeout () ->
+              pagerduty.get "/incidents", query, (err, json) ->
+                if err?
+                  robot.emit 'error', err, msg
+                  return
+
+                if json?.incidents.length == 0
+                  cb? "Couldn't find the incident we just created to reassign. Please try again :/"
+                else
+                  data = {
+                    requester_id: triggerdByPagerDutyUserId,
+                    incidents: json.incidents.map (incident) ->
+                      {
+                        id:                incident.id
+                        assigned_to_user:  results.assigned_to_user
+                        escalation_policy: results.escalation_policy
+                      }
+                  }
+
+                  pagerduty.put "/incidents", data , (err, json) ->
+                    if err?
+                      robot.emit 'error', err, msg
+                      return
+
+                    if json?.incidents.length == 1
+                      cb? ":pager: assigned to #{results.name}!"
+                    else
+                      cb? "Problem reassigning the incident :/"
+            , 5000
     getTeamOncall: (scheduleName, msg, at, cb)  ->
       if pagerduty.missingEnvironmentForApi(msg)
         return
@@ -441,57 +496,8 @@ module.exports = (robot) ->
 
     robot.logger.debug "Attempting to page #{query} with message: #{reason}"
 
-    # Figure out who we are
-    robot.pagerduty.campfireUserToPagerDutyUser msg, msg.message.user, false, (triggerdByPagerDutyUser) ->
-      triggerdByPagerDutyUserId = if triggerdByPagerDutyUser?
-                                    triggerdByPagerDutyUser.id
-                                  else if pagerDutyUserId
-                                    pagerDutyUserId
-      unless triggerdByPagerDutyUserId
-        msg.send "Sorry, I can't figure your PagerDuty account, and I don't have my own :( Can you tell me your PagerDuty email with `#{robot.name} pager me as you@yourdomain.com` or make sure you've set the HUBOT_PAGERDUTY_USER_ID environment variable?"
-        return
-
-      # Figure out what we're trying to page
-      robot.pagerduty.reassignmentParametersForUserOrScheduleOrEscalationPolicy msg, query, (results) ->
-        if not (results.assigned_to_user or results.escalation_policy)
-          msg.reply "Couldn't find a user or unique schedule or escalation policy matching #{query} :/"
-          return
-
-        robot.pagerduty.pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
-          query =
-            incident_key: json.incident_key
-
-          msg.reply ":pager: triggered! now assigning it to the right user..."
-
-          setTimeout () ->
-            pagerduty.get "/incidents", query, (err, json) ->
-              if err?
-                robot.emit 'error', err, msg
-                return
-
-              if json?.incidents.length == 0
-                msg.reply "Couldn't find the incident we just created to reassign. Please try again :/"
-              else
-                data = {
-                  requester_id: triggerdByPagerDutyUserId,
-                  incidents: json.incidents.map (incident) ->
-                    {
-                      id:                incident.id
-                      assigned_to_user:  results.assigned_to_user
-                      escalation_policy: results.escalation_policy
-                    }
-                }
-
-                pagerduty.put "/incidents", data , (err, json) ->
-                  if err?
-                    robot.emit 'error', err, msg
-                    return
-
-                  if json?.incidents.length == 1
-                    msg.reply ":pager: assigned to #{results.name}!"
-                  else
-                    msg.reply "Problem reassigning the incident :/"
-          , 5000
+    robot.pagerduty.triggerPage msg, fromUserName, room, query, reason, description, (response) ->
+      msg.reply response
 
   robot.respond /(?:pager|major)(?: me)? ack(?:nowledge)? (.+)$/i, (msg) ->
     msg.finish()
