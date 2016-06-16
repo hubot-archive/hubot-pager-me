@@ -325,8 +325,47 @@ module.exports = (robot) ->
       robot.pagerduty.withCurrentOncallMentionNoMSG s, (oncallUserMention, oncallUsername, schedule) ->
         cb? oncallUserMention
 
-    pageTeamByID: (scheduleId, cb) ->
-      robot.logger.debug "stuff"
+    pageTeamByID: (escalationId, description, msg, cb) ->
+      robot.pagerduty.campfireUserToPagerDutyUser msg, msg.message.user, false, (triggerdByPagerDutyUser) ->
+        triggerdByPagerDutyUserId = if triggerdByPagerDutyUser?
+                                      triggerdByPagerDutyUser.id
+                                    else if pagerDutyUserId
+                                      pagerDutyUserId
+        robot.logger.debug "Paging the escalation policy: #{escalationId} with #{description}"
+        robot.pagerduty.pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
+          query =
+            incident_key: json.incident_key
+
+          cb? ":pager: triggered! now assigning it to the right team..."
+
+          setTimeout () ->
+            pagerduty.get "/incidents", query, (err, json) ->
+              if err?
+                robot.emit 'error', err, msg
+                return
+
+              if json?.incidents.length == 0
+                cb? "Couldn't find the incident we just created to reassign. Please try again :/"
+              else
+                data = {
+                  requester_id: triggerdByPagerDutyUserId,
+                  incidents: json.incidents.map (incident) ->
+                    {
+                      id:                incident.id
+                      escalation_policy: escalationId
+                    }
+                }
+
+                pagerduty.put "/incidents", data , (err, json) ->
+                  if err?
+                    robot.emit 'error', err, msg
+                    return
+
+                  if json?.incidents.length == 1
+                    cb? ":pager: assigned to this escalation ID: #{escalationId}!"
+                  else
+                    cb? "Problem reassigning the incident :/ - please manually page this escalation Id: https://sendgrid.pagerduty.com/escalation_policies##{escalationId}"
+          , 5000
 
     triggerPage: (msg, fromUserName, room, query, reason, description, cb) ->
       # Figure out who we are
