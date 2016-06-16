@@ -37,6 +37,8 @@
 #   hubot pager override <schedule> delete <id> - delete an override by its ID
 #   hubot pager services - list services
 #   hubot pager maintenance <minutes> <service_id1> <service_id2> ... <service_idN> - schedule a maintenance window for <minutes> for specified services
+#   hubot set oncallmsg TEAM [message] - Set an oncall message to be displayed each time someone requests the oncall for your team
+#   hubot clear oncallmsg TEAM - clear the default oncall msg for a team
 #
 # Authors:
 #   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin, Michael Warkentin
