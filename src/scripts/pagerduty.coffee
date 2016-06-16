@@ -37,6 +37,8 @@
 #   hubot pager override <schedule> delete <id> - delete an override by its ID
 #   hubot pager services - list services
 #   hubot pager maintenance <minutes> <service_id1> <service_id2> ... <service_idN> - schedule a maintenance window for <minutes> for specified services
+#   hubot set oncallmsg TEAM: [message] - Set an oncall message to be displayed each time someone requests the oncall for your team
+#   hubot clear oncallmsg TEAM - clear the default oncall msg for a team
 #
 # Authors:
 #   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin, Michael Warkentin
@@ -50,7 +52,19 @@ pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
 
 module.exports = (robot) ->
+  robot.brain.data.custom_oncall_message ?= {}
   class PagerDuty
+    set_custom_oncall: (team, message, cb) ->
+      robot.brain.data.custom_oncall_message["#{team}"] = message
+      cb? "Done! Whenever someone says \"#{robot.name} oncall #{team}\" they will be shown #{message}, and then shown who is oncall"
+
+    clear_custom_oncall: (team, cb) ->
+      if robot.brain.data.custom_oncall_message && robot.brain.data.custom_oncall_message["#{team}"]
+        delete robot.brain.data.custom_oncall_message["#{team}"]
+        cb? "Done! We won't show a message before your oncall notification anymore"
+      else
+        cb? "Team #{team} didn't have an oncall message to clear."
+
     parseIncidentNumbers: (match) ->
       match.split(/[ ,]+/).map (incidentNumber) ->
         parseInt(incidentNumber)
@@ -817,6 +831,8 @@ module.exports = (robot) ->
             robot.emit 'error'
             return
           if messages && messages.length > 0
+            if robot.brain.data.custom_oncall_message && robot.brain.data.custom_oncall_message["#{s.name}"]
+              msg.send robot.brain.data.custom_oncall_message["#{s.name}"]
             msg.send messages[messages.length - 1]
           else
             msg.send "No one is oncall for #{scheduleName}"
@@ -882,3 +898,18 @@ module.exports = (robot) ->
           msg.send "Maintenance window created! ID: #{json.maintenance_window.id} Ends: #{json.maintenance_window.end_time}"
         else
           msg.send "That didn't work. Check Hubot's logs for an error!"
+
+   # Set a custom oncall message to be displayed before the oncall results are shown
+  robot.respond /set oncallmsg ([\w:\-_ ]+): (.+)/i, (msg) ->
+    oncallmsg = msg.match[2]
+    team = msg.match[1]
+
+    robot.pagerduty.set_custom_oncall team, oncallmsg, (response) ->
+      msg.reply response
+
+  # Clear a custom oncall message to be displayed before the oncall results are shown
+  robot.respond /clear oncallmsg ([\w:\-_ ]+)/i, (msg) ->
+    team = msg.match[1]
+
+    robot.pagerduty.clear_custom_oncall team, (response) ->
+      msg.reply response
