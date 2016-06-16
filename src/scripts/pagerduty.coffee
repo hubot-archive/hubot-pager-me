@@ -40,6 +40,7 @@
 #   hubot get oncall - list the default oncall for this room
 #   hubot clear oncall - remove the default oncall for this room
 #   hubot set oncall - set the default oncall for this room
+#
 # Authors:
 #   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin, Michael Warkentin
 
