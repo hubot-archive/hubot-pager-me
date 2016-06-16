@@ -54,11 +54,11 @@ pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
 module.exports = (robot) ->
   robot.brain.data.custom_oncall_message ?= {}
   class PagerDuty
-    set_custom_oncall: (team, username, message, cb) ->
+    set_custom_oncall: (team, message, cb) ->
       robot.brain.data.custom_oncall_message["#{team}"] = message
       cb? "Done! Whenever someone says \"#{robot.name} oncall #{team}\" they will be shown #{message}, and then shown who is oncall"
 
-    clear_custom_oncall: (team, username, cb) ->
+    clear_custom_oncall: (team, cb) ->
       if robot.brain.data.custom_oncall_message && robot.brain.data.custom_oncall_message["#{team}"]
         delete robot.brain.data.custom_oncall_message["#{team}"]
         cb? "Done! We won't show a message before your oncall notification anymore"
@@ -831,8 +831,8 @@ module.exports = (robot) ->
             robot.emit 'error'
             return
           if messages && messages.length > 0
-            if robot.brain.data.custom_oncall_message && robot.brain.data.custom_oncall_message["#{team}"]
-              cb? robot.brain.data.custom_oncall_message["#{team}"]
+            if robot.brain.data.custom_oncall_message && robot.brain.data.custom_oncall_message["#{s.name}"]
+              msg.send robot.brain.data.custom_oncall_message["#{s.name}"]
             msg.send messages[messages.length - 1]
           else
             msg.send "No one is oncall for #{scheduleName}"
@@ -904,12 +904,12 @@ module.exports = (robot) ->
     oncallmsg = msg.match[2]
     team = msg.match[1]
 
-    robot.pagerduty.set_custom_oncall team, msg.message.user.name, oncallmsg, (response) ->
+    robot.pagerduty.set_custom_oncall team, oncallmsg, (response) ->
       msg.reply response
 
   # Clear a custom oncall message to be displayed before the oncall results are shown
   robot.respond /clear oncallmsg ([\w:\-_ ]+)/i, (msg) ->
     team = msg.match[1]
 
-    robot.pagerduty.clear_custom_oncall team, msg.message.user.name, (response) ->
+    robot.pagerduty.clear_custom_oncall team, (response) ->
       msg.reply response
