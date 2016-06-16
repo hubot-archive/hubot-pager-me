@@ -331,7 +331,7 @@ module.exports = (robot) ->
                                       triggerdByPagerDutyUser.id
                                     else if pagerDutyUserId
                                       pagerDutyUserId
-        robot.logger.debug "Paging the escalation policy: #{escalationId} with #{description}"
+        robot.logger.debug "Paging the escalation policy: https://sendgrid.pagerduty.com/escalation_policies##{escalationId} with #{description}"
         robot.pagerduty.pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
           query =
             incident_key: json.incident_key
