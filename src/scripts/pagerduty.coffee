@@ -37,7 +37,7 @@
 #   hubot pager override <schedule> delete <id> - delete an override by its ID
 #   hubot pager services - list services
 #   hubot pager maintenance <minutes> <service_id1> <service_id2> ... <service_idN> - schedule a maintenance window for <minutes> for specified services
-#   hubot set oncallmsg TEAM [message] - Set an oncall message to be displayed each time someone requests the oncall for your team
+#   hubot set oncallmsg TEAM: [message] - Set an oncall message to be displayed each time someone requests the oncall for your team
 #   hubot clear oncallmsg TEAM - clear the default oncall msg for a team
 #
 # Authors:
@@ -900,18 +900,16 @@ module.exports = (robot) ->
           msg.send "That didn't work. Check Hubot's logs for an error!"
 
    # Set a custom oncall message to be displayed before the oncall results are shown
-  robot.respond /set oncallmsg ([\w:\-_]+) (.+)/i, (msg) ->
+  robot.respond /set oncallmsg ([\w:\-_ ]+): (.+)/i, (msg) ->
     oncallmsg = msg.match[2]
-    alias = msg.match[1]
-    team = dealias alias
+    team = msg.match[1]
 
     robot.pagerduty.set_custom_oncall team, msg.message.user.name, oncallmsg, (response) ->
       msg.reply response
 
   # Clear a custom oncall message to be displayed before the oncall results are shown
-  robot.respond /clear oncallmsg ([\w:\-_]+)/i, (msg) ->
-    alias = msg.match[1]
-    team = dealias alias
+  robot.respond /clear oncallmsg ([\w:\-_ ]+)/i, (msg) ->
+    team = msg.match[1]
 
     robot.pagerduty.clear_custom_oncall team, msg.message.user.name, (response) ->
       msg.reply response
