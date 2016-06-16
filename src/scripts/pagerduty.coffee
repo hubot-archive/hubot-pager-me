@@ -50,6 +50,7 @@ pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
 
 module.exports = (robot) ->
+  robot.brain.data.oncalldefault ?= {}
   class PagerDuty
     parseIncidentNumbers: (match) ->
       match.split(/[ ,]+/).map (incidentNumber) ->
@@ -340,7 +341,7 @@ module.exports = (robot) ->
       else
         msg.send "No open incidents"
 
-  robot.respond /(?:(?:(pager|major)( me)? (?:trigger|page))|page) @?([\w\- ]+):?(?: (.+)?)?$/i, (msg) ->
+  robot.respond /(?:(?:(pager|major)( me)? (?:trigger|page))|page)\b@?([\w\- ]+)?:?(?: (.+)?)?$/i, (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
@@ -351,6 +352,13 @@ module.exports = (robot) ->
     query          = msg.match[3]
     reason         = msg.match[4] || "Help requested in this room: #{room}"
     description    = "#{reason} - @#{fromUserName}"
+
+    if robot.brain.data.oncalldefault && robot.brain.data.oncalldefault[room]
+      query = robot.brain.data.oncalldefault[room] unless query
+
+    unless query
+      msg.send "No default team is setup for this room, please give a search phrase for a team to page."
+      return
 
     robot.logger.debug "Attempting to page #{query} with message: #{reason}"
 
@@ -804,6 +812,12 @@ module.exports = (robot) ->
 
     scheduleName = msg.match[1]
 
+    if robot.brain.data.oncalldefault && robot.brain.data.oncalldefault[room]
+      scheduleName = robot.brain.data.oncalldefault[room] unless scheduleName
+
+    unless scheduleName
+      msg.send "No default team is set up for this room; so I'll show you everyone who's oncall!"
+
     messages = []
     renderSchedule = (s, cb) ->
       robot.pagerduty.withCurrentOncall msg, s, (username, schedule) ->
@@ -851,6 +865,37 @@ module.exports = (robot) ->
         msg.send buffer
       else
         msg.send 'No services found!'
+
+  # Set the default oncall for this room
+  robot.respond /set oncall\s+(.*)/i, (msg) ->
+    team = msg.match[1]
+    room = msg.message.room
+    robot.brain.data.oncalldefault["#{room}"] = "#{team}"
+    msg.reply "Okay, \"#{robot.name} oncall|page\" in #{room} will default to \"#{robot.name} oncall|page #{team}\""
+
+  # Allow any user to see if this room is setup with a default oncall team.
+  robot.respond /get oncall/i, (msg) ->
+    for own room, team of robot.brain.data.oncalldefault
+      if room is msg.message.room
+        message = "This room is defaulted to use #{team} for all oncall/page actions. Message me \"#{robot.name} clear oncall\" to remove this, or \"#{robot.name} set oncall TEAM\" to change to a new team."
+        msg.reply message
+        robot.logger.info "oncall.coffee - #{msg.message.user.name} requested information about default oncall/page in #{room}"
+        return
+    message = "This room isn't setup with a default team for oncall/page"
+    msg.reply message
+
+  # Allow any user to clear the room's default for oncall.
+  robot.respond /clear oncall\b/i, (msg) ->
+    room = msg.message.room
+    for own room, team of robot.brain.data.oncalldefault
+      if room is msg.message.room
+        delete robot.brain.data.oncalldefault[room]
+        message = "Okay, this room no longer has a default team for oncall/page!"
+        msg.reply message
+        robot.logger.info "oncall.coffee - Cleared default team for oncall/page in #{room} by request of #{msg.message.user.name}"
+        return
+    message = "This room wasn't setup with a default oncall/page team."
+    msg.reply message
 
   robot.respond /(pager|major)( me)? maintenance (\d+) (.+)$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
