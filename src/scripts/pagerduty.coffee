@@ -351,13 +351,25 @@ module.exports = (robot) ->
       return
 
     fromUserName   = msg.message.user.mention_name || msg.message.user.name
-    room           = msg.message.room || "Private Message with #{robot.name}"
+    room           = msg.message.room || "Private Message with #{msg.message.user.name}"
+    defaultroom    = msg.message.room || msg.message.user.email
     query          = msg.match[3]
     reason         = msg.match[4] || "Help requested in this room: #{room}"
     description    = "#{reason} - @#{fromUserName}"
 
-    if robot.brain.data.oncalldefault && robot.brain.data.oncalldefault[room]
-      query = robot.brain.data.oncalldefault[room] unless query
+    # Use cases: (same for oncall)
+    #   opsbot page
+    #     - if default team, use default
+    #     - if no default team, list all pages
+    #   opsbot page team
+    #     - if default team, use passed in team
+    #     - if no default team, use passed in team
+    #   opsbot page search phrase
+    #     - if default team, use passed in team
+    #     - if no default team, use passed in team
+
+    if robot.brain.data.oncalldefault && robot.brain.data.oncalldefault[defaultroom]
+      query = robot.brain.data.oncalldefault[defaultroom] unless query
 
     unless query
       msg.send "No default team is setup for this room, please give a search phrase for a team to page."
@@ -814,7 +826,17 @@ module.exports = (robot) ->
       return
 
     scheduleName = msg.match[1]
-
+    room  = msg.message.room || msg.message.user.email
+    # Use cases: (same for page)
+    #   opsbot oncall
+    #     - if default team, use default
+    #     - if no default team, list all oncalls
+    #   opsbot oncall team
+    #     - if default team, use passed in team
+    #     - if no default team, use passed in team
+    #   opsbot oncall search phrase
+    #     - if default team, use passed in team
+    #     - if no default team, use passed in team
     if robot.brain.data.oncalldefault && robot.brain.data.oncalldefault[room]
       scheduleName = robot.brain.data.oncalldefault[room] unless scheduleName
 
@@ -872,33 +894,27 @@ module.exports = (robot) ->
   # Set the default oncall for this room
   robot.respond /set oncall\s+(.*)/i, (msg) ->
     team = msg.match[1]
-    room = msg.message.room
-    robot.brain.data.oncalldefault["#{room}"] = "#{team}"
+    room = msg.message.room || msg.message.user.email
+    robot.brain.data.oncalldefault[room] = "#{team}"
     msg.reply "Okay, \"#{robot.name} oncall|page\" in #{room} will default to \"#{robot.name} oncall|page #{team}\""
 
   # Allow any user to see if this room is setup with a default oncall team.
   robot.respond /get oncall/i, (msg) ->
-    for own room, team of robot.brain.data.oncalldefault
-      if room is msg.message.room
-        message = "This room is defaulted to use #{team} for all oncall/page actions. Message me \"#{robot.name} clear oncall\" to remove this, or \"#{robot.name} set oncall TEAM\" to change to a new team."
-        msg.reply message
-        robot.logger.info "oncall.coffee - #{msg.message.user.name} requested information about default oncall/page in #{room}"
-        return
-    message = "This room isn't setup with a default team for oncall/page"
-    msg.reply message
+    room = msg.message.room || msg.message.user.email
+    if robot.brain.data.oncalldefault && robot.brain.data.oncalldefault[room]
+      team = robot.brain.data.oncalldefault[room]
+      msg.reply "This room is defaulted to use #{team} for all oncall/page actions. Message me \"#{robot.name} clear oncall\" to remove this, or \"#{robot.name} set oncall TEAM\" to change to a new team."
+      return
+    msg.reply "This room isn't setup with a default team for oncall/page"
 
   # Allow any user to clear the room's default for oncall.
   robot.respond /clear oncall\b/i, (msg) ->
-    room = msg.message.room
-    for own room, team of robot.brain.data.oncalldefault
-      if room is msg.message.room
-        delete robot.brain.data.oncalldefault[room]
-        message = "Okay, this room no longer has a default team for oncall/page!"
-        msg.reply message
-        robot.logger.info "oncall.coffee - Cleared default team for oncall/page in #{room} by request of #{msg.message.user.name}"
-        return
-    message = "This room wasn't setup with a default oncall/page team."
-    msg.reply message
+    room = msg.message.room || msg.message.user.email
+    if robot.brain.data.oncalldefault && robot.brain.data.oncalldefault[room]
+      delete robot.brain.data.oncalldefault[room]
+      msg.reply "Okay, this room no longer has a default team for oncall/page!"
+      return
+    msg.reply "This room wasn't setup with a default oncall/page team."
 
   robot.respond /(pager|major)( me)? maintenance (\d+) (.+)$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
