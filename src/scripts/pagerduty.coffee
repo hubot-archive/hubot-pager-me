@@ -967,6 +967,19 @@ module.exports = (robot) ->
             msg.send 'No schedules found!'
 
   # who is on call?
+  robot.hear /@oncall/i, (msg) ->
+    if pagerduty.missingEnvironmentForApi(msg)
+      return
+
+    room  = msg.message.room || msg.message.user.email
+
+    if robot.brain.data.oncalldefault && robot.brain.data.oncalldefault[room]
+      scheduleName = robot.brain.data.oncalldefault[room] unless scheduleName
+
+      robot.pagerduty.getTeamOncall scheduleName, msg, true, (response) ->
+        msg.send response
+
+  # who is on call?
   robot.respond /(?:who)?(?:’s|'s|s| is|se)?(?:\s+)?(?:on call|oncall|on-call)(?: (?:for )?(.*?)(?:\?|$))?/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
