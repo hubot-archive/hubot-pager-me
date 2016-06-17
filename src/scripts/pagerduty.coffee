@@ -539,7 +539,7 @@ module.exports = (robot) ->
       else
         msg.send "No open incidents"
 
-  robot.respond /(?:(?:(pager|major)( me)? (?:trigger|page))|page)\b@?([\w\- ]+)?:?(?: (.+)?)?$/i, (msg) ->
+  robot.respond /(?:(?:(pager|major)( me)? (?:trigger|page))|page)(?:\s+)?@?([\w\- ]+)?:?(?: (.+)?)?$/i, (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
