@@ -590,7 +590,7 @@ module.exports = (robot) ->
           if err?
             robot.emit 'error'
             return
-          msg.send text
+          msg.send messages[messages.length - 1]
     else
       pagerduty.getSchedules (err, schedules) ->
         if err?
