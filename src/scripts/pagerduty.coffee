@@ -459,6 +459,21 @@ module.exports = (robot) ->
               robot.emit 'error'
               return
             if messages && messages.length > 0
+              # Figure out if this ping is outside of normal working hours
+              today = new Date().getUTCHours()
+              # 1 = 5 pm PST/6 pm MST , 14 = 7 am PST/8 am MST
+              if (today >= 1 && today <= 14)
+                robot.logger.debug "oncall.coffee - late night ping: #{today}"
+                # between 5 and 7 pm (or 6 and 8 pm)
+                if (today >= 1 && today <= 3)
+                  descriptor = "getting late"
+                # between 7 pm and 5 am (or 8pm and 6 am)
+                if (today > 3 && today < 12)
+                  descriptor = "pretty late"
+                # between 5 am and 7 am (or 6 am and 8 am)
+                if (today > 12 && today <= 14)
+                  descriptor = "pretty early"
+                cb? "(panic) It's #{descriptor} in CO/CA right now - please use \"#{robot.name} page\" for them to see this!"
               cb? messages[messages.length - 1]
             else
               cb? "No one is oncall for #{scheduleName}"
