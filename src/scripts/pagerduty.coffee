@@ -443,7 +443,7 @@ module.exports = (robot) ->
 
       messages = []
       renderSchedule = (s, resp) ->
-        @withCurrentOncallMention msg, s, (oncallUserMention, oncallUsername, schedule) ->
+        robot.pagerduty.withCurrentOncallMention msg, s, (oncallUserMention, oncallUsername, schedule) ->
           if at && at == "wordy"
             messages.push("* #{oncallUserMention} (#{oncallUsername}) is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
           else if at
