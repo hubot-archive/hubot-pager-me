@@ -109,7 +109,6 @@ hubot-pager-me makes some assumptions about how you are using PagerDuty:
 
 * PagerDuty email matches chat email
   * override with `hubot pager me as <pagerduty email>`
-* Schedules' and Escalation Policies' names are letters and dashes (no spaces, digits)
 * The Service used by hubot-pager-me should not be assigned to an escalation policy with real people on it. Instead, it should be a dummy user that doesn't have any notification rules. If this isn't done, the escalation policy assigned to it will be notified, and then hubot will immediately reassign to the proper team
 
 ## Development

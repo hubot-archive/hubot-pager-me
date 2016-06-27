@@ -25,11 +25,11 @@
 #   hubot pager resolve! - resolve all acknowledged, not just yours
 #   hubot pager schedules - list schedules
 #   hubot pager schedules <search> - list schedules matching <search>
-#   hubot pager schedule <schedule> <days> - show <schedule>'s shifts for the next <days> (default 30 days)
+#   hubot pager schedule <schedule> [days] - show <schedule>'s shifts for the next x [days] (default 30 days)
 #   hubot pager my schedule <days> - show my on call shifts for the upcoming <days> in all schedules (default 30 days)
 #   hubot pager me <schedule> <minutes> - take the pager for <minutes> minutes
 #   hubot pager override <schedule> <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
-#   hubot pager overrides <schedule> <days> - show upcoming overrides for the next x <days> (default 30 days)
+#   hubot pager overrides <schedule> [days] - show upcoming overrides for the next x [days] (default 30 days)
 #   hubot pager override <schedule> delete <id> - delete an override by its ID
 #   hubot pager services - list services
 #   hubot pager maintenance <minutes> <service_id1> <service_id2> ... <service_idN> - schedule a maintenance window for <minutes> for specified services
@@ -109,15 +109,15 @@ module.exports = (robot) ->
   robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/i, (msg) ->
     msg.reply "Please include a user or schedule to page, like 'hubot pager infrastructure everything is on fire'."
 
-  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+) (.+)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (?:trigger|page) ((["'])([^]*?)\4|([\w\-]+)) (.+)$/i, (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
     fromUserName   = msg.message.user.name
-    query          = msg.match[3]
-    reason         = msg.match[4]
+    query          = msg.match[5] or msg.match[6]
+    reason         = msg.match[7]
     description    = "#{reason} - @#{fromUserName}"
 
     # Figure out who we are
@@ -170,7 +170,7 @@ module.exports = (robot) ->
                     msg.reply ":pager: assigned to #{results.name}!"
                   else
                     msg.reply "Problem reassigning the incident :/"
-          , 5000
+          , 10000
 
   robot.respond /(?:pager|major)(?: me)? ack(?:nowledge)? (.+)$/i, (msg) ->
     msg.finish()
@@ -297,10 +297,11 @@ module.exports = (robot) ->
         else
           msg.send "Sorry, I couldn't do it :("
 
-  robot.respond /(pager|major)( me)? schedules( (.+))?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? schedules( ((["'])([^]*?)\5|(.+)))?$/i, (msg) ->
     query = {}
-    if msg.match[4]
-      query['query'] = msg.match[4]
+    scheduleName = msg.match[6] or msg.match[7]
+    if scheduleName
+      query['query'] = scheduleName
 
     if pagerduty.missingEnvironmentForApi(msg)
       return
@@ -318,12 +319,12 @@ module.exports = (robot) ->
       else
         msg.send 'No schedules found!'
 
-  robot.respond /(pager|major)( me)? (schedule|overrides)( ([\w\-]+))?( ([^ ]+)\s*(\d+)?)?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (schedule|overrides)( ((["'])([^]*?)\6|([\w\-]+)))?( ([^ ]+)\s*(\d+)?)?$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    if msg.match[8]
-      days = msg.match[8]
+    if msg.match[11]
+      days = msg.match[11]
     else
       days = 30
 
@@ -338,15 +339,18 @@ module.exports = (robot) ->
       thing = 'overrides'
       query['editable'] = 'true'
 
-    if !msg.match[5]
+    scheduleName = msg.match[7] or msg.match[8]
+
+    if !scheduleName
       msg.reply "Please specify a schedule with 'pager #{msg.match[3]} <name>.'' Use 'pager schedules' to list all schedules."
       return
-    if msg.match[7]
-      timezone = msg.match[7]
+
+    if msg.match[10]
+      timezone = msg.match[10]
     else
       timezone = 'UTC'
 
-    withScheduleMatching msg, msg.match[5], (schedule) ->
+    withScheduleMatching msg, scheduleName, (schedule) ->
       scheduleId = schedule.id
       return unless scheduleId
 
@@ -433,12 +437,14 @@ module.exports = (robot) ->
         else
           msg.send 'No schedules found!'
 
-  robot.respond /(pager|major)( me)? (override) ([\w\-]+) ([\w\-:\+]+) - ([\w\-:\+]+)( (.*))?$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (override) ((["'])([^]*?)\5|([\w\-]+)) ([\w\-:\+]+) - ([\w\-:\+]+)( (.*))?$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    if msg.match[8]
-      overrideUser = robot.brain.userForName(msg.match[8])
+    scheduleName = msg.match[6] or msg.match[7]
+
+    if msg.match[11]
+      overrideUser = robot.brain.userForName(msg.match[11])
 
       unless overrideUser
         msg.send "Sorry, I don't seem to know who that is. Are you sure they are in chat?"
@@ -450,13 +456,13 @@ module.exports = (robot) ->
       userId = user.id
       return unless userId
 
-      withScheduleMatching msg, msg.match[4], (schedule) ->
+      withScheduleMatching msg, scheduleName, (schedule) ->
         scheduleId = schedule.id
         return unless scheduleId
 
-        if moment(msg.match[5]).isValid() && moment(msg.match[6]).isValid()
-          start_time = moment(msg.match[5]).format()
-          end_time = moment(msg.match[6]).format()
+        if moment(msg.match[8]).isValid() && moment(msg.match[9]).isValid()
+          start_time = moment(msg.match[8]).format()
+          end_time = moment(msg.match[9]).format()
 
           override  = {
             'start':     start_time,
@@ -478,15 +484,17 @@ module.exports = (robot) ->
         else
           msg.send "Please use a http://momentjs.com/ compatible date!"
 
-  robot.respond /(pager|major)( me)? (overrides?) ([\w\-]*) (delete) (.*)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (overrides?) ((["'])([^]*?)\5|([\w\-]+)) (delete) (.*)$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    withScheduleMatching msg, msg.match[4], (schedule) ->
+    scheduleName = msg.match[6] or msg.match[7]
+
+    withScheduleMatching msg, scheduleName, (schedule) ->
       scheduleId = schedule.id
       return unless scheduleId
 
-      pagerduty.delete "/schedules/#{scheduleId}/overrides/#{msg.match[6]}", (err, success) ->
+      pagerduty.delete "/schedules/#{scheduleId}/overrides/#{msg.match[9]}", (err, success) ->
         if success
           msg.send ":boom:"
         else
