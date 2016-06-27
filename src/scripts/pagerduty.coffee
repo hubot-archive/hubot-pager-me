@@ -122,7 +122,7 @@ module.exports = (robot) ->
 
         cb(schedules)
     withScheduleMatching: (msg, q, cb) ->
-      @SchedulesMatching msg, q, (schedules) ->
+      robot.pagerduty.SchedulesMatching msg, q, (schedules) ->
         if schedules?.length < 1
           msg.send "I couldn't find any schedules matching #{q}"
         else
@@ -132,11 +132,11 @@ module.exports = (robot) ->
       if msg.message.match(/\@/)
         for own key, hcuser of robot.brain.users()
           if hcuser.mention_name == string
-            @campfireUserToPagerDutyUser msg, hcuser, (user) ->
+            robot.pagerduty.campfireUserToPagerDutyUser msg, hcuser, (user) ->
               cb(assigned_to_user: user.id,  name: user.name)
             break
       else if campfireUser = robot.brain.userForName(string)
-        @campfireUserToPagerDutyUser msg, campfireUser, (user) ->
+        robot.pagerduty.campfireUserToPagerDutyUser msg, campfireUser, (user) ->
           cb(assigned_to_user: user.id,  name: user.name)
       else
         pagerduty.get "/escalation_policies", query: string, (err, json) ->
@@ -158,20 +158,20 @@ module.exports = (robot) ->
           if escalationPolicy?
             cb(escalation_policy: escalationPolicy.id, name: escalationPolicy.name)
           else
-            @SchedulesMatching msg, string, (schedule) ->
+            robot.pagerduty.SchedulesMatching msg, string, (schedule) ->
               if schedule
-                @withCurrentOncallUser msg, schedule, (user, schedule) ->
+                robot.pagerduty.withCurrentOncallUser msg, schedule, (user, schedule) ->
                   cb(assigned_to_user: user.id,  name: user.name)
               else
                 cb()
     withCurrentOncall: (msg, schedule, cb) ->
-      @withCurrentOncallUser msg, schedule, (user, s) ->
+      robot.pagerduty.withCurrentOncallUser msg, schedule, (user, s) ->
         cb(user.name, s)
     withCurrentOncallId: (msg, schedule, cb) ->
-      @withCurrentOncallUser msg, schedule, (user, s) ->
+      robot.pagerduty.withCurrentOncallUser msg, schedule, (user, s) ->
         cb(user.id, user.name, s)
     withCurrentOncallMention: (msg, schedule, cb) ->
-      @withCurrentOncallUser msg, schedule, (user, s) ->
+      robot.pagerduty.withCurrentOncallUser msg, schedule, (user, s) ->
         if user is 'err'
           mention = 'err'
           name = 'err'
@@ -182,7 +182,7 @@ module.exports = (robot) ->
         cb(mention, name, s)
 
     withCurrentOncallMentionNoMSG: (schedule, cb) ->
-      @withCurrentOncallUserNoMSG schedule, (user, s) ->
+      robot.pagerduty.withCurrentOncallUserNoMSG schedule, (user, s) ->
         if user is 'err'
           mention = 'err'
           name = 'err'
@@ -245,7 +245,7 @@ module.exports = (robot) ->
       switch cmd
         when "trigger"
           data = JSON.stringify { service_key: pagerDutyServiceApiKey, event_type: "trigger", description: description}
-          @pagerDutyIntegrationPost msg, data, (json) ->
+          robot.pagerduty.pagerDutyIntegrationPost msg, data, (json) ->
             cb(json)
     formatIncident: (inc) ->
        # { pd_nagios_object: 'service',
@@ -277,7 +277,7 @@ module.exports = (robot) ->
 
       "#{inc.incident_number}: #{inc.created_on} #{summary} #{assigned_to}\n"
     updateIncidents: (msg, incidentNumbers, statusFilter, updatedStatus) ->
-      @campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
+      robot.pagerduty.campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
 
         requesterId = user.id
         return unless requesterId
@@ -340,17 +340,17 @@ module.exports = (robot) ->
 
     getTeamOncallbyId: (scheduleId, cb) ->
       s = {id: scheduleId}
-      @withCurrentOncallMentionNoMSG s, (oncallUserMention, oncallUsername, schedule) ->
+      robot.pagerduty.withCurrentOncallMentionNoMSG s, (oncallUserMention, oncallUsername, schedule) ->
         cb? oncallUserMention
 
     pageTeamByID: (escalationId, description, msg, cb) ->
-      @campfireUserToPagerDutyUser msg, msg.message.user, false, (triggerdByPagerDutyUser) ->
+      robot.pagerduty.campfireUserToPagerDutyUser msg, msg.message.user, false, (triggerdByPagerDutyUser) ->
         triggerdByPagerDutyUserId = if triggerdByPagerDutyUser?
                                       triggerdByPagerDutyUser.id
                                     else if pagerDutyUserId
                                       pagerDutyUserId
         robot.logger.debug "Paging the escalation policy: https://sendgrid.pagerduty.com/escalation_policies##{escalationId} with #{description}"
-        @pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
+        robot.pagerduty.pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
           query =
             incident_key: json.incident_key
 
@@ -387,7 +387,7 @@ module.exports = (robot) ->
 
     triggerPage: (msg, fromUserName, room, query, reason, description, cb) ->
       # Figure out who we are
-      @campfireUserToPagerDutyUser msg, msg.message.user, false, (triggerdByPagerDutyUser) ->
+      robot.pagerduty.campfireUserToPagerDutyUser msg, msg.message.user, false, (triggerdByPagerDutyUser) ->
         triggerdByPagerDutyUserId = if triggerdByPagerDutyUser?
                                       triggerdByPagerDutyUser.id
                                     else if pagerDutyUserId
@@ -397,12 +397,12 @@ module.exports = (robot) ->
           return
 
         # Figure out what we're trying to page
-        @reassignmentParametersForUserOrScheduleOrEscalationPolicy msg, query, (results) ->
+        robot.pagerduty.reassignmentParametersForUserOrScheduleOrEscalationPolicy msg, query, (results) ->
           if not (results.assigned_to_user or results.escalation_policy)
             msg.reply "Couldn't find a user or unique schedule or escalation policy matching #{query} :/"
             return
 
-          @pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
+          robot.pagerduty.pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
             query =
               incident_key: json.incident_key
 
@@ -453,7 +453,7 @@ module.exports = (robot) ->
           resp null
 
       if scheduleName?
-        @withScheduleMatching msg, scheduleName, (s) ->
+        robot.pagerduty.withScheduleMatching msg, scheduleName, (s) ->
           renderSchedule s, (err, text) ->
             if err?
               robot.emit 'error'
