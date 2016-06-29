@@ -586,11 +586,11 @@ module.exports = (robot) ->
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, (s) ->
-        renderSchedule s, (err, text) ->
+        renderSchedule s, (err) ->
           if err?
             robot.emit 'error'
             return
-          msg.send text
+          msg.send messages.join("\n")
     else
       pagerduty.getSchedules (err, schedules) ->
         if err?
