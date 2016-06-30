@@ -8,6 +8,7 @@ describe 'pagerduty', ->
   before ->
     @triggerRegex = /(pager|major)( me)? (?:trigger|page) ((["'])([^]*?)\4|([\w\-]+)) (.+)$/i
     @schedulesRegex = /(pager|major)( me)? schedules( ((["'])([^]*?)\5|(.+)))?$/i
+    @whosOnCallRegex = /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?: (?:for )?((["'])([^]*?)\2|(.*?))(?:\?|$))?$/i
 
   beforeEach ->
     @robot =
@@ -71,7 +72,7 @@ describe 'pagerduty', ->
     expect(@robot.respond).to.have.been.calledWith(/pager( me)? (?!schedules?\b|overrides?\b|my schedule\b)(.+) (\d+)$/i)
 
   it 'registers a pager on call listener', ->
-    expect(@robot.respond).to.have.been.calledWith(/who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?: (?:for )?(.*?)(?:\?|$))?/i)
+    expect(@robot.respond).to.have.been.calledWith(@whosOnCallRegex)
 
   it 'registers a pager services listener', ->
     expect(@robot.respond).to.have.been.calledWith(/(pager|major)( me)? services$/i)
@@ -105,3 +106,27 @@ describe 'pagerduty', ->
   it 'schedules handles names without spaces', ->
     msg = @schedulesRegex.exec('pager schedules foobar')
     expect(msg[7]).to.equal('foobar')
+
+  it 'whos on call handles bad input', ->
+    msg = @whosOnCallRegex.exec('whos on callllllll')
+    expect(msg).to.be.null
+
+  it 'whos on call handles no schedule', ->
+    msg = @whosOnCallRegex.exec('whos on call')
+    expect(msg).to.not.be.null
+
+  it 'whos on call handles schedules with quotes', ->
+    msg = @whosOnCallRegex.exec('whos on call for "foo bar"')
+    expect(msg[3]).to.equal('foo bar')
+
+  it 'whos on call handles schedules with quotes and quesiton mark', ->
+    msg = @whosOnCallRegex.exec('whos on call for "foo bar"?')
+    expect(msg[3]).to.equal('foo bar')
+
+  it 'whos on call handles schedules without quotes', ->
+    msg = @whosOnCallRegex.exec('whos on call for foo bar')
+    expect(msg[4]).to.equal('foo bar')
+
+  it 'whos on call handles schedules without quotes and question mark', ->
+    msg = @whosOnCallRegex.exec('whos on call for foo bar?')
+    expect(msg[4]).to.equal('foo bar')
