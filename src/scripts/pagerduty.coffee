@@ -581,7 +581,10 @@ module.exports = (robot) ->
     messages = []
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
-        messages.push("* #{username} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+        if (username)
+          messages.push("* #{username} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+        else
+          robot.logger.debug "No user for schedule #{schedule.name}"
         cb null
 
     if scheduleName?
@@ -750,7 +753,10 @@ module.exports = (robot) ->
 
   withCurrentOncall = (msg, schedule, cb) ->
     withCurrentOncallUser msg, schedule, (user, s) ->
-      cb(user.name, s)
+      if (user)
+        cb(user.name, s)
+      else
+        cb(null, s)
 
   withCurrentOncallId = (msg, schedule, cb) ->
     withCurrentOncallUser msg, schedule, (user, s) ->
@@ -778,6 +784,8 @@ module.exports = (robot) ->
         return
       if json.entries and json.entries.length > 0
         cb(json.entries[0].user, schedule)
+      else
+        cb(null, schedule)
 
   pagerDutyIntegrationAPI = (msg, cmd, description, cb) ->
     unless pagerDutyServiceApiKey?
