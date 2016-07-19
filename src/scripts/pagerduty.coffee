@@ -585,6 +585,9 @@ module.exports = (robot) ->
       msg.send "No default team is setup for this room, please give a search phrase for a team to page."
       return
 
+    # Chomp white space from query
+    query = query.replace /^\s+|\s+$/g, ""
+
     robot.logger.debug "Attempting to page #{query} with message: #{reason}"
 
     robot.pagerduty.triggerPage msg, fromUserName, room, query, reason, description, (response) ->
