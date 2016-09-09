@@ -8,7 +8,7 @@ describe 'pagerduty', ->
   before ->
     @triggerRegex = /(pager|major)( me)? (?:trigger|page) ((["'])([^]*?)\4|([\w\-]+)) (.+)$/i
     @schedulesRegex = /(pager|major)( me)? schedules( ((["'])([^]*?)\5|(.+)))?$/i
-    @whosOnCallRegex = /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?: (?:for )?((["'])([^]*?)\2|(.*?))(?:\?|$))?$/i
+    @whosOnCallRegex = /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?:\?)?(?: (?:for )?((["'])([^]*?)\2|(.*?))(?:\?|$))?$/i
 
   beforeEach ->
     @robot =
