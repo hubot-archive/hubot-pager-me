@@ -9,6 +9,15 @@
 #   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin, Michael Warkentin
 
 PAGERDUTY_HELP = '''
+Common usage:
+hubot pager sup - See open alerts
+hubot pager ack! - Ack all open alerts
+hubot pager resolve! - Resolve all open alerts
+hubot pager services - List configured service_id keys
+hubot pager maintenance <minutes> <service_id1> <service_id2> ... <service_idN> - schedule a maintenance window for <minutes> for specified service_id(s)
+hubot who's on call - return a list of services and who is on call for them
+
+Full usage:
 hubot pager me as <email> - remember your pager email is <email>
 hubot pager forget me - forget your pager email
 hubot Am I on call - return if I'm currently on call or not
