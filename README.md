@@ -1,6 +1,12 @@
 # hubot-pager-me
 
-PagerDuty integration for Hubot
+PagerDuty integration for Hubot API v1
+
+---
+
+_**Important:** This version of the Hubot package (`v2.1.x`) requires a V1 API token, which will be sunset in July 2017. Please use that until this package is updated. See #98 for details._
+
+---
 
 ## Installation
 
