@@ -599,8 +599,9 @@ module.exports = (robot) ->
           return
 
         Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: username})
-        paging = if pagerEnabledForScheduleOrEscalation(schedule) then "enabled" else "disabled"
-        cb(null, "* #{schedule.name}'s oncall is #{username} (pager is #{paging}) - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+        return unless pagerEnabledForScheduleOrEscalation(schedule)
+        return if username == "hubot"
+        cb(null, "* #{schedule.name}'s oncall is #{username} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, (s) ->
