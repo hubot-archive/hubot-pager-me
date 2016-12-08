@@ -599,8 +599,11 @@ module.exports = (robot) ->
           return
 
         Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: username})
-        paging = if pagerEnabledForScheduleOrEscalation(schedule) then "enabled" else "disabled"
-        cb(null, "* #{schedule.name}'s oncall is #{username} (pager is #{paging}) - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+        if !pagerEnabledForScheduleOrEscalation(schedule) || username == "hubot"
+          cb(null, undefined)
+          return
+
+        cb(null, "* #{schedule.name}'s oncall is #{username} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, (s) ->
@@ -625,6 +628,8 @@ module.exports = (robot) ->
           Scrolls.log("error", {at: 'who-is-on-call/map-schedules/error', error: err})
           robot.emit 'error', err, msg
           return
+
+        results = (result for result in results when result?)
         Scrolls.log("info", {at: 'who-is-on-call/map-schedules'})
         msg.send results.join("\n")
 
