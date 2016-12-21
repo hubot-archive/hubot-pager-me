@@ -194,7 +194,9 @@ module.exports = (robot) ->
         robot.emit 'error', err, msg
         return
 
-      email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
+      ## Determine the email based on the adapter type (v4.0.0+ of the Slack adapter stores it in `profile.email`)
+      email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address || msg.message.user.profile.email
+
       filteredIncidents = if force
                             incidents # don't filter at all
                           else
