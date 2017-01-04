@@ -669,8 +669,9 @@ module.exports = (robot) ->
       cb = required
       required = true
 
-    email  = user.pagerdutyEmail || user.email_address || process.env.HUBOT_PAGERDUTY_TEST_EMAIL
-    speakerEmail = msg.message.user.pagerdutyEmail || msg.message.user.email_address
+    ## Determine the email based on the adapter type (v4.0.0+ of the Slack adapter stores it in `profile.email`)
+    email  = user.pagerdutyEmail || user.email_address || user.profile.email || process.env.HUBOT_PAGERDUTY_TEST_EMAIL
+    speakerEmail = msg.message.user.pagerdutyEmail || msg.message.user.email_address || msg.message.user.profile.email
     if not email
       if not required
         cb null
