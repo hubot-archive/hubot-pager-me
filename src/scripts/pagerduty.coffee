@@ -702,13 +702,16 @@ module.exports = (robot) ->
     match.split(/[ ,]+/).map (incidentNumber) ->
       parseInt(incidentNumber)
 
+  emailForUser = (user) ->
+    user.pagerdutyEmail || user.email_address || user.profile?.email
+
   campfireUserToPagerDutyUser = (msg, user, required, cb) ->
     if typeof required is 'function'
       cb = required
       required = true
 
-    email  = user.pagerdutyEmail || user.email_address || process.env.HUBOT_PAGERDUTY_TEST_EMAIL || user.profile?.email
-    speakerEmail = msg.message.user.pagerdutyEmail || msg.message.user.email_address || msg.message.user.profile?.email
+    email  = emailForUser(user) || process.env.HUBOT_PAGERDUTY_TEST_EMAIL
+    speakerEmail = emailForUser(msg.message.user)
     if not email
       if not required
         cb null
