@@ -707,8 +707,8 @@ module.exports = (robot) ->
       cb = required
       required = true
 
-    email  = user.pagerdutyEmail || user.email_address || process.env.HUBOT_PAGERDUTY_TEST_EMAIL
-    speakerEmail = msg.message.user.pagerdutyEmail || msg.message.user.email_address
+    email  = user.pagerdutyEmail || user.email_address || process.env.HUBOT_PAGERDUTY_TEST_EMAIL || user.profile?.email
+    speakerEmail = msg.message.user.pagerdutyEmail || msg.message.user.email_address || msg.message.user.profile?.email
     if not email
       if not required
         cb null
