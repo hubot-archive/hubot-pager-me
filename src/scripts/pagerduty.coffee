@@ -52,11 +52,13 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
-      emailNote = if msg.message.user.pagerdutyEmail
-                    "You've told me your PagerDuty email is #{msg.message.user.pagerdutyEmail}"
-                  else if msg.message.user.email_address
-                    "I'm assuming your PagerDuty email is #{msg.message.user.email_address}. Change it with `#{robot.name} pager me as you@yourdomain.com`"
+    hubotUser = robot.getUserBySlackUser(msg.message.user)
+
+    campfireUserToPagerDutyUser msg, hubotUser, (user) ->
+      emailNote = if hubotUser.pagerdutyEmail
+                    "You've told me your PagerDuty email is #{hubotUser.pagerdutyEmail}"
+                  else if hubotUser.email_address
+                    "I'm assuming your PagerDuty email is #{hubotUser.email_address}. Change it with `#{robot.name} pager me as you@yourdomain.com`"
       if user
         msg.send "I found your PagerDuty user https://#{pagerduty.subdomain}.pagerduty.com#{user.user_url}, #{emailNote}"
       else
@@ -67,12 +69,14 @@ module.exports = (robot) ->
     msg.send cmds.join("\n")
 
   robot.respond /pager(?: me)? as (.*)$/i, (msg) ->
+    hubotUser = robot.getUserBySlackUser(msg.message.user)
     email = msg.match[1]
-    msg.message.user.pagerdutyEmail = email
+    hubotUser.pagerdutyEmail = email
     msg.send "Okay, I'll remember your PagerDuty email is #{email}"
 
   robot.respond /pager forget me$/i, (msg) ->
-    msg.message.user.pagerdutyEmail = undefined
+    hubotUser = robot.getUserBySlackUser(msg.message.user)
+    hubotUser.pagerdutyEmail = undefined
     msg.send "Okay, I've forgotten your PagerDuty email"
 
   robot.respond /(pager|major)( me)? incident (.*)$/i, (msg) ->
@@ -115,13 +119,14 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    fromUserName   = msg.message.user.name
+    hubotUser = robot.getUserBySlackUser(msg.message.user)
+    fromUserName   = hubotUser.name
     query          = msg.match[3]
     reason         = msg.match[4]
     description    = "#{reason} - @#{fromUserName}"
 
     # Figure out who we are
-    campfireUserToPagerDutyUser msg, msg.message.user, false, (triggerdByPagerDutyUser) ->
+    campfireUserToPagerDutyUser msg, hubotUser, false, (triggerdByPagerDutyUser) ->
       triggerdByPagerDutyUserId = if triggerdByPagerDutyUser?
                                     triggerdByPagerDutyUser.id
                                   else if pagerDutyUserId
@@ -189,6 +194,8 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
+    hubotUser = robot.getUserBySlackUser(msg.message.user)
+
     force = msg.match[4]?
 
     pagerduty.getIncidents 'triggered,acknowledged', (err, incidents) ->
@@ -196,7 +203,7 @@ module.exports = (robot) ->
         robot.emit 'error', err, msg
         return
 
-      email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
+      email  = hubotUser.pagerdutyEmail || hubotUser.email_address
       filteredIncidents = if force
                             incidents # don't filter at all
                           else
@@ -230,13 +237,15 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
+    hubotUser = robot.getUserBySlackUser(msg.message.user)
+
     force = msg.match[5]?
     pagerduty.getIncidents "acknowledged", (err, incidents) ->
       if err?
         robot.emit 'error', err, msg
         return
 
-      email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
+      email  = hubotUser.pagerdutyEmail || hubotUser.email_address
       filteredIncidents = if force
                             incidents # don't filter at all
                           else
@@ -274,13 +283,15 @@ module.exports = (robot) ->
   robot.respond /(pager|major)( me)? note ([\d\w]+) (.+)$/i, (msg) ->
     msg.finish()
 
+    hubotUser = robot.getUserBySlackUser(msg.message.user)
+
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
     incidentId = msg.match[3]
     content = msg.match[4]
 
-    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
+    campfireUserToPagerDutyUser msg, hubotUser.user, (user) ->
       userId = user.id
       return unless userId
 
@@ -382,7 +393,9 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
+    hubotUser = robot.getUserBySlackUser(msg.message.user)
+
+    campfireUserToPagerDutyUser msg, hubotUser, (user) ->
       userId = user.id
 
       query = {
@@ -446,7 +459,7 @@ module.exports = (robot) ->
         msg.send "Sorry, I don't seem to know who that is. Are you sure they are in chat?"
         return
     else
-      overrideUser = msg.message.user
+      overrideUser = robot.getUserBySlackUser(msg.message.user)
 
     campfireUserToPagerDutyUser msg, overrideUser, (user) ->
       userId = user.id
@@ -506,7 +519,9 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
+    hubotUser = robot.getUserBySlackUser(msg.message.user)
+
+    campfireUserToPagerDutyUser msg, hubotUser, (user) ->
 
       userId = user.id
       unless userId
@@ -552,7 +567,9 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
+    hubotUser = robot.getUserBySlackUser(msg.message.user)
+
+    campfireUserToPagerDutyUser msg, hubotUser, (user) ->
       userId = user.id
 
       renderSchedule = (s, cb) ->
@@ -659,7 +676,9 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
+    hubotUser = robot.getUserBySlackUser(msg.message.user)
+
+    campfireUserToPagerDutyUser msg, hubotUser, (user) ->
       requester_id = user.id
       unless requester_id
         return
