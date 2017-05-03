@@ -436,7 +436,7 @@ module.exports = (robot) ->
                   startTime = moment(entry.start).tz(timezone).format()
                   endTime   = moment(entry.end).tz(timezone).format()
 
-                  buffer += "* #{startTime} - #{endTime} #{entry.user.name} (#{schedule.name})"
+                  buffer += "* #{startTime} - #{endTime} #{entry.user.name} (#{schedule.name})\n"
             else
               buffer = "couldn't get entries for #{schedule.name}"
 
