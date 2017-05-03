@@ -560,7 +560,7 @@ module.exports = (robot) ->
 
             start = moment(json.override.start)
             end = moment(json.override.end)
-            msg.send "Rejoice, #{old_username}! #{json.override.user.name} has the pager on #{schedule.name} until #{end.format()}"
+            msg.send "Rejoice, @#{old_username}! @#{json.override.user.name} has the pager on #{schedule.name} until #{end.format()}"
 
   # Am I on call?
   robot.respond /am i on (call|oncall|on-call)/i, (msg) ->
