@@ -17,6 +17,7 @@
     "url": "https://github.com/hubot-scripts/hubot-pager-me/issues"
   },
   "dependencies": {
+    "async": "^1.4.2",
     "coffee-script": "~1.6",
     "moment-timezone": "~0.4.0"
   },
