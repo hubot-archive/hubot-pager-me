@@ -6,7 +6,7 @@ expect = chai.expect
 
 describe 'pagerduty', ->
   before ->
-    @triggerRegex = /(pager|major)( me)? (?:trigger|page) ((["'])([^]*?)\4|([\w\-]+)) (.+)$/i
+    @triggerRegex = /(pager|major)( me)? (?:trigger|page) ((["'])([^]*?)\4|([\.\w\-]+)) (.+)$/i
     @schedulesRegex = /(pager|major)( me)? schedules( ((["'])([^]*?)\5|(.+)))?$/i
     @whosOnCallRegex = /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?:\?)?(?: (?:for )?((["'])([^]*?)\2|(.*?))(?:\?|$))?$/i
 
@@ -79,6 +79,11 @@ describe 'pagerduty', ->
 
   it 'registers a pager maintenance listener', ->
     expect(@robot.respond).to.have.been.calledWith(/(pager|major)( me)? maintenance (\d+) (.+)$/i)
+
+  it 'trigger handles users with dots', ->
+    msg = @triggerRegex.exec('pager trigger foo.bar baz')
+    expect(msg[6]).to.equal('foo.bar')
+    expect(msg[7]).to.equal('baz')
 
   it 'trigger handles users with spaces', ->
     msg = @triggerRegex.exec('pager trigger "foo bar" baz')
