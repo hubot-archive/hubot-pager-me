@@ -1,5 +1,5 @@
 HttpClient = require 'scoped-http-client'
-Scrolls    = require('../../../lib/scrolls').context({script: 'pagerduty'})
+#Scrolls    = require('../../../lib/scrolls').context({script: 'pagerduty'})
 
 pagerDutyApiKey        = process.env.HUBOT_PAGERDUTY_API_KEY
 pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
@@ -34,7 +34,7 @@ module.exports =
     if pagerDutyServices? && url.match /\/incidents/
       query['service_ids'] = pagerDutyServices.split ","
 
-    Scrolls.log('info', {at: 'get/request', url: url, query: query})
+    #Scrolls.log('info', {at: 'get/request', url: url, query: query})
 
     @http(url)
       .query(query)
@@ -44,7 +44,7 @@ module.exports =
           cb(err)
           return
 
-        Scrolls.log('info', {at: 'get/response', url: url, query: query, status: res.statusCode, body: body})
+        #Scrolls.log('info', {at: 'get/response', url: url, query: query, status: res.statusCode, body: body})
 
         unless res.statusCode is 200
           cb(new PagerDutyError("#{res.statusCode} back from #{url}"))

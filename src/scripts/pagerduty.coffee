@@ -41,7 +41,7 @@ pagerduty = require('../pagerduty')
 async = require('async')
 inspect = require('util').inspect
 moment = require('moment-timezone')
-Scrolls = require('../../../../lib/scrolls').context({script: 'pagerduty'})
+#Scrolls = require('../../../../lib/scrolls').context({script: 'pagerduty'})
 
 pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
@@ -645,7 +645,7 @@ module.exports = (robot) ->
           cb(err)
           return
 
-        Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: username})
+        #Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: username})
         if !pagerEnabledForScheduleOrEscalation(schedule) || username == "hubot"
           cb(null, undefined)
           return
@@ -672,12 +672,12 @@ module.exports = (robot) ->
 
       async.map schedules, renderSchedule, (err, results) ->
         if err?
-          Scrolls.log("error", {at: 'who-is-on-call/map-schedules/error', error: err})
+          #Scrolls.log("error", {at: 'who-is-on-call/map-schedules/error', error: err})
           robot.emit 'error', err, msg
           return
 
         results = (result for result in results when result?)
-        Scrolls.log("info", {at: 'who-is-on-call/map-schedules'})
+        #Scrolls.log("info", {at: 'who-is-on-call/map-schedules'})
         msg.send results.join("\n")
 
   # hubot pager services - list services
