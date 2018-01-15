@@ -32,7 +32,7 @@ module.exports =
       query = {}
 
     if pagerDutyServices? && url.match /\/incidents/
-      query['service'] = pagerDutyServices
+      query['service_ids'] = pagerDutyServices.split ","
 
     Scrolls.log('info', {at: 'get/request', url: url, query: query})
 
@@ -52,7 +52,7 @@ module.exports =
 
         cb(null, JSON.parse(body))
 
-  put: (url, data, cb) ->
+  put: (url, data, cb = (->), headers = {}) ->
     if pagerNoop
       console.log "Would have PUT #{url}: #{inspect data}"
       return
@@ -61,6 +61,7 @@ module.exports =
     @http(url)
       .header("content-type","application/json")
       .header("content-length",json.length)
+      .headers(headers)
       .put(json) (err, res, body) ->
         if err?
           cb(err)
@@ -72,7 +73,7 @@ module.exports =
 
         cb(null, JSON.parse(body))
 
-  post: (url, data, cb) ->
+  post: (url, data, cb = (->), headers = {}) ->
     if pagerNoop
       console.log "Would have POST #{url}: #{inspect data}"
       return
@@ -81,6 +82,7 @@ module.exports =
     @http(url)
       .header("content-type","application/json")
       .header("content-length",json.length)
+      .headers(headers)
       .post(json) (err, res, body) ->
         if err?
           cb(err)
@@ -119,9 +121,9 @@ module.exports =
 
       cb(null, json)
 
-  getIncidents: (status, cb) ->
+  getIncidents: (statuses, cb) ->
     query =
-      status:  status
+      statuses:  statuses.split ","
       sort_by: "incident_number:asc"
     @get "/incidents", query, (err, json) ->
       if err?
