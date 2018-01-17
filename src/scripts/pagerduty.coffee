@@ -41,10 +41,12 @@ pagerduty = require('../pagerduty')
 async = require('async')
 inspect = require('util').inspect
 moment = require('moment-timezone')
+request = require 'request'
 #Scrolls = require('../../../../lib/scrolls').context({script: 'pagerduty'})
 
 pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
+pagerDutyEventsAPIURL  = 'https://events.pagerduty.com/v2/enqueue'
 
 module.exports = (robot) ->
 
@@ -120,9 +122,9 @@ module.exports = (robot) ->
   robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/i, (msg) ->
     msg.reply "Please include a user or schedule to page, like 'hubot pager infrastructure everything is on fire'."
 
-  # hubot pager trigger <user> <msg> - create a new incident with <msg> and assign it to <user>
-  # hubot pager trigger <schedule> <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>
-  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+) (.+)$/i, (msg) ->
+  # hubot pager trigger <user> <severity> <msg> - create a new incident with <msg> and assign it to <user>. Severity must be one of: critical, error, warning or info.
+  # hubot pager trigger <schedule> <severity> <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>. Severity must be one of: critical, error, warning or info.
+  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+) ([\w]+) (.+)$/i, (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
@@ -131,8 +133,14 @@ module.exports = (robot) ->
     hubotUser = robot.getUserBySlackUser(msg.message.user)
     fromUserName   = hubotUser.name
     query          = msg.match[3]
-    reason         = msg.match[4]
+    severity       = msg.match[4]
+    reason         = msg.match[5]
     description    = "#{reason} - @#{fromUserName}"
+
+    supportedSeverities = ['critical', 'error', 'warning', 'info']
+    if severity not in supportedSeverities
+      msg.send "#{severity} is not supported. Choose one from: #{supportedSeverities.join(', ')}"
+      return
 
     # Figure out who we are
     campfireUserToPagerDutyUser msg, hubotUser, false, (triggerdByPagerDutyUser) ->
@@ -147,7 +155,7 @@ module.exports = (robot) ->
           msg.reply err.message
           return
 
-        pagerDutyIntegrationAPI msg, "trigger", description, (json) ->
+        pagerDutyIntegrationAPI msg, "trigger", query, description, severity, (json) ->
           query =
             incident_key: json.incident_key
 
@@ -174,7 +182,7 @@ module.exports = (robot) ->
 
               headers = {from: triggerdByPagerDutyUserEmail}
 
-              pagerduty.put "/incidents", data, null, headers (err, json) ->
+              pagerduty.put "/incidents", data, headers, (err, json) ->
                 if err?
                   robot.emit 'error', err, msg
                   return
@@ -194,7 +202,7 @@ module.exports = (robot) ->
       return
 
     incidentNumbers = parseIncidentNumbers(msg.match[1])
-
+    
     # only acknowledge triggered things, since it doesn't make sense to re-acknowledge if it's already in re-acknowledge
     # if it ever doesn't need acknowledge again, it means it's timed out and has become 'triggered' again anyways
     updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged')
@@ -215,23 +223,22 @@ module.exports = (robot) ->
         return
 
       email  = emailForUser(hubotUser)
-      filteredIncidents = if force
-                            incidents # don't filter at all
-                          else
-                            incidentsForEmail(incidents, email) # filter by email
+      incidentsForEmail incidents, email, (filteredIncidents) ->
+        if force 
+          filteredIncidents = incidents
 
-      if filteredIncidents.length is 0
-        # nothing assigned to the user, but there were others
-        if incidents.length > 0 and not force
-          msg.send "Nothing assigned to you to acknowledge. Acknowledge someone else's incident with `hubot pager ack <nnn>`"
-        else
-          msg.send "Nothing to acknowledge"
-        return
+        if filteredIncidents.length is 0
+          # nothing assigned to the user, but there were others
+          if incidents.length > 0 and not force
+            msg.send "Nothing assigned to you to acknowledge. Acknowledge someone else's incident with `hubot pager ack <nnn>`"
+          else
+            msg.send "Nothing to acknowledge"
+          return
 
-      incidentNumbers = (incident.incident_number for incident in filteredIncidents)
+        incidentNumbers = (incident.incident_number for incident in filteredIncidents)
 
-      # only acknowledge triggered things
-      updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged')
+        # only acknowledge triggered things
+        updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged')
 
   # hubot pager resolve <incident> - resolve incident #<incident>
   # hubot pager resolve <incident1> <incident2> ... <incidentN> - resolve all specified incidents
@@ -259,24 +266,24 @@ module.exports = (robot) ->
       if err?
         robot.emit 'error', err, msg
         return
-
+      
       email  = emailForUser(hubotUser)
-      filteredIncidents = if force
-                            incidents # don't filter at all
-                          else
-                            incidentsForEmail(incidents, email) # filter by email
-      if filteredIncidents.length is 0
-        # nothing assigned to the user, but there were others
-        if incidents.length > 0 and not force
-          msg.send "Nothing assigned to you to resolve. Resolve someone else's incident with `hubot pager ack <nnn>`"
-        else
-          msg.send "Nothing to resolve"
-        return
+      incidentsForEmail incidents, email, (filteredIncidents) ->
+        if force 
+          filteredIncidents = incidents
+        
+        if filteredIncidents.length is 0
+          # nothing assigned to the user, but there were others
+          if incidents.length > 0 and not force
+            msg.send "Nothing assigned to you to resolve. Resolve someone else's incident with `hubot pager ack <nnn>`"
+          else
+            msg.send "Nothing to resolve"
+          return
 
-      incidentNumbers = (incident.incident_number for incident in filteredIncidents)
+        incidentNumbers = (incident.incident_number for incident in filteredIncidents)
 
-      # only resolve things that are acknowledged
-      updateIncidents(msg, incidentNumbers, 'acknowledged', 'resolved')
+        # only resolve things that are acknowledged
+        updateIncidents(msg, incidentNumbers, 'acknowledged', 'resolved')
 
   # hubot pager notes <incident> - show notes for incident #<incident>
   robot.respond /(pager|major)( me)? notes (.+)$/i, (msg) ->
@@ -293,7 +300,9 @@ module.exports = (robot) ->
 
       buffer = ""
       for note in json.notes
-        buffer += "#{note.created_at} #{note.user.name}: #{note.content}\n"
+        buffer += "#{note.created_at} #{note.user.summary}: #{note.content}\n"
+      if not buffer 
+        buffer = "No notes!"
       msg.send buffer
 
   # hubot pager note <incident> <content> - add note to incident #<incident> with <content>
@@ -308,7 +317,7 @@ module.exports = (robot) ->
     incidentId = msg.match[3]
     content = msg.match[4]
 
-    campfireUserToPagerDutyUser msg, hubotUser.user, (user) ->
+    campfireUserToPagerDutyUser msg, hubotUser, (user) ->
       userEmail = emailForUser(user)
       return unless userEmail
 
@@ -318,7 +327,7 @@ module.exports = (robot) ->
 
       headers = {from: userEmail}
 
-      pagerduty.post "/incidents/#{incidentId}/notes", data, null, headers, (err, json) ->
+      pagerduty.post "/incidents/#{incidentId}/notes", data, headers, (err, json) ->
         if err?
           robot.emit 'error', err, msg
           return
@@ -366,16 +375,6 @@ module.exports = (robot) ->
       since: moment().format(),
       until: moment().add(30, 'days').format()
     }
-
-    output_entries = false
-
-    if msg.match[3] && msg.match[3].match /overrides/
-      url = "/schedules/#{scheduleId}/overrides"
-      query['editable'] = 'true'
-      query['overflow'] = 'true'
-    else
-      url = "/oncalls"
-      query['schedule_ids'] = [scheduleId]
       
     if !msg.match[5]
       msg.reply "Please specify a schedule with 'pager #{msg.match[3]} <name>.'' Use 'pager schedules' to list all schedules."
@@ -388,6 +387,14 @@ module.exports = (robot) ->
     withScheduleMatching msg, msg.match[5], (schedule) ->
       scheduleId = schedule.id
       return unless scheduleId
+
+      if msg.match[3] && msg.match[3].match /overrides/
+        url = "/schedules/#{scheduleId}/overrides"
+        query['editable'] = 'true'
+        query['overflow'] = 'true'
+      else
+        url = "/oncalls"
+        query['schedule_ids'] = [scheduleId]
 
       pagerduty.get url, query, (err, json) ->
         if err?
@@ -404,12 +411,17 @@ module.exports = (robot) ->
 
         buffer = ""
         for entry in sortedEntries
+          user = "User unknown"
+          if entry.user.summary
+            user = entry.user.summary
           startTime = moment(entry.start).tz(timezone).format()
-          endTime   = moment(entry.end).tz(timezone).format()
+          endTime = "?"
+          if entry.end
+            endTime = moment(entry.end).tz(timezone).format()
           if entry.id
-            buffer += "* (#{entry.id}) #{startTime} - #{endTime} #{entry.user.name}\n"
+            buffer += "* (#{entry.id}) #{startTime} - #{endTime} #{user}\n"
           else
-            buffer += "* #{startTime} - #{endTime} #{entry.user.name}\n"
+            buffer += "* #{startTime} - #{endTime} #{user}\n"
         if buffer == ""
           msg.send "None found!"
         else
@@ -424,14 +436,6 @@ module.exports = (robot) ->
 
     campfireUserToPagerDutyUser msg, hubotUser, (user) ->
       userId = user.id
-
-      query = {
-        since: moment().format(),
-        until: moment().add(30, 'days').format(),
-        overflow: 'true',
-        schedule_ids: [scheduleId],
-        user_ids: [hubotUser.id]
-      }
 
       if msg.match[4]
         timezone = msg.match[4]
@@ -448,21 +452,24 @@ module.exports = (robot) ->
           return
 
         renderSchedule = (schedule, cb) ->
+          query = {
+            since: moment().format(),
+            until: moment().add(30, 'days').format(),
+            schedule_ids: [schedule.id],
+            user_ids: [user.id]
+          }
+
           pagerduty.get "/oncalls", query, (err, json) ->
             if err?
               cb(err)
               return
 
             buffer = ""
-            entries = json.entries
-            if entries
-              sortedEntries = entries.sort (a, b) ->
-                moment(a.start).unix() - moment(b.start).unix()
-
-              for entry in sortedEntries
-                startTime = moment(entry.start).tz(timezone).format()
-                endTime   = moment(entry.end).tz(timezone).format()
-                buffer += "* #{startTime} - #{endTime} #{entry.user.name} (#{schedule.name})\n"
+            if json.oncalls
+              for oncall in json.oncalls
+                startTime = moment(oncall.start).tz(timezone).format()
+                endTime   = moment(oncall.end).tz(timezone).format()
+                buffer += "* #{startTime} - #{endTime} #{user.name} (#{schedule.name})\n"
             else
               buffer = "couldn't get entries for #{schedule.name}"
 
@@ -508,10 +515,13 @@ module.exports = (robot) ->
         override  = {
           'start':     start_time,
           'end':       end_time,
-          'user':   {'id': userId},
+          'user':   {
+            'id': userId,
+            "type": "user_reference"
+          },
         }
         data = { 'override': override }
-        pagerduty.post "/schedules/#{scheduleId}/overrides", data, (err, json) ->
+        pagerduty.post "/schedules/#{scheduleId}/overrides", data, {}, (err, json) ->
           if err?
             robot.emit 'error', err, msg
             return
@@ -522,7 +532,7 @@ module.exports = (robot) ->
 
           start = moment(json.override.start)
           end = moment(json.override.end)
-          msg.send "Override setup! #{json.override.user.name} has the pager from #{start.format()} until #{end.format()}"
+          msg.send "Override setup! #{json.override.user.summary} has the pager from #{start.format()} until #{end.format()}"
 
   # hubot pager override <schedule> delete <id> - delete an override by its ID
   robot.respond /(pager|major)( me)? (overrides?) ([\w\-]*) (delete) (.*)$/i, (msg) ->
@@ -544,6 +554,10 @@ module.exports = (robot) ->
   # hubot pager me <schedule> <minutes> - take the pager for <minutes> minutes
   robot.respond /pager( me)? (.+) (\d+)$/i, (msg) ->
     msg.finish()
+
+    # skip hubot pager incident NNN
+    if msg.match[2] == 'incident'
+      return
 
     if pagerduty.missingEnvironmentForApi(msg)
       return
@@ -568,9 +582,12 @@ module.exports = (robot) ->
         minutes   = parseInt msg.match[3]
         end       = moment().add(minutes, 'minutes').format()
         override  = {
-          'start':     start,
-          'end':       end,
-          'user':   {'id': userId},
+          'start': start,
+          'end':   end,
+          'user':  { 
+            'id':   userId,
+            "type": "user_reference",
+          },
         }
         withCurrentOncall msg, matchingSchedule, (err, old_username, schedule) ->
           if err?
@@ -578,7 +595,7 @@ module.exports = (robot) ->
             return
 
           data = { 'override': override }
-          pagerduty.post "/schedules/#{schedule.id}/overrides", data, (err, json) ->
+          pagerduty.post "/schedules/#{schedule.id}/overrides", data, {}, (err, json) ->
             if err?
               robot.emit 'error', err, msg
               return
@@ -589,7 +606,8 @@ module.exports = (robot) ->
 
             start = moment(json.override.start)
             end = moment(json.override.end)
-            msg.send "Rejoice, @#{old_username}! @#{json.override.user.name} has the pager on #{schedule.name} until #{end.format()}"
+            getPagerDutyUser json.override.user.id, (user) ->
+              msg.send "Rejoice, @#{old_username}! @#{user.name} has the pager on #{schedule.name} until #{end.format()}"
 
   # hubot Am I on call - return if I'm currently on call or not
   robot.respond /am i on (call|oncall|on-call)/i, (msg) ->
@@ -690,7 +708,7 @@ module.exports = (robot) ->
         robot.emit 'error', err, msg
         return
 
-      if services.length == 0
+      if json.services.length == 0
         msg.send 'No services found!'
         return
 
@@ -711,14 +729,14 @@ module.exports = (robot) ->
     hubotUser = robot.getUserBySlackUser(msg.message.user)
 
     campfireUserToPagerDutyUser msg, hubotUser, (user) ->
-      requesterEmail = userEmail(user)
+      requesterEmail = emailForUser(user)
       unless requesterEmail
         return
 
       minutes = msg.match[3]
       service_ids = msg.match[4].split(' ')
       start_time = moment().format()
-      end_time = moment().add('minutes', minutes).format()
+      end_time = moment().add(minutes, 'minutes').format()
 
       maintenance_window = {
         'start_time': start_time,
@@ -726,7 +744,8 @@ module.exports = (robot) ->
         'type': 'maintenance_window',
         'services': service_ids.map (service_id) ->
           {
-            'id': service_id
+            'id': service_id,
+            "type": "service_reference"
           }
       }
       data = { 'maintenance_window': maintenance_window }
@@ -734,7 +753,7 @@ module.exports = (robot) ->
       headers = {'from': requesterEmail}
 
       msg.send "Opening maintenance window for: #{service_ids}"
-      pagerduty.post "/maintenance_windows", data, null, headers (err, json) ->
+      pagerduty.post "/maintenance_windows", data, headers, (err, json) ->
         if err?
           robot.emit 'error', err, msg
           return
@@ -760,7 +779,7 @@ module.exports = (robot) ->
       parseInt(incidentNumber)
 
   emailForUser = (user) ->
-    user.pagerdutyEmail || user.email_address || user.profile?.email
+    user.pagerdutyEmail || user.email_address || user.email || user.profile?.email
 
   campfireUserToPagerDutyUser = (msg, user, required, cb) ->
     if typeof required is 'function'
@@ -913,9 +932,21 @@ module.exports = (robot) ->
         cb(null, "nobody", schedule)
         return
 
-      cb(null, json.oncalls[0].user, schedule)
+      userId = json.oncalls[0].user.id
+      getPagerDutyUser userId, (user) ->
+        cb(null, user, schedule)
 
-  pagerDutyIntegrationAPI = (msg, cmd, description, cb) ->
+  getPagerDutyUser = (userId, cb) ->
+    pagerduty.get "/users/#{userId}", (err, json) ->
+      if err?
+        cb(null)
+
+      if not json.user
+        cb("nobody")
+
+      cb(json.user)
+
+  pagerDutyIntegrationAPI = (msg, cmd, affected, description, severity, cb) ->
     unless pagerDutyServiceApiKey?
       msg.send "PagerDuty API service key is missing."
       msg.send "Ensure that HUBOT_PAGERDUTY_SERVICE_API_KEY is set."
@@ -924,7 +955,8 @@ module.exports = (robot) ->
     data = null
     switch cmd
       when "trigger"
-        data = JSON.stringify { service_key: pagerDutyServiceApiKey, event_type: "trigger", description: description}
+        payload = {summary: description, source: affected, severity: severity}
+        data = {routing_key: pagerDutyServiceApiKey, event_action: "trigger", payload: payload}
         pagerDutyIntegrationPost msg, data, (json) ->
           cb(json)
 
@@ -947,16 +979,19 @@ module.exports = (robot) ->
                 inc.trigger_summary_data.description
               else
                 ""
-            else
-              ""
-    assigned_to = if inc.assigned_to
-                    names = inc.assigned_to.map (assignment) -> assignment.object.name
-                    "- assigned to #{names.join(', ')}"
-                  else
-                    ""
+            else 
+              "#{inc.title} #{inc.summary}"
 
+    names = []
+    for assigned in inc.assignments
+      names.push assigned.assignee.summary
 
-    "#{inc.incident_number}: #{inc.created_on} #{summary} #{assigned_to}\n"
+    if names
+      assigned_to = "- assigned to #{names.join(",")}"
+    else 
+      assigned_to = "- nobody currently assigned"
+    
+    "#{inc.incident_number}: #{inc.created_at} #{summary} #{assigned_to}\n"
 
   updateIncidents = (msg, incidentNumbers, statusFilter, updatedStatus) ->
     campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
@@ -983,13 +1018,15 @@ module.exports = (robot) ->
             incidents: foundIncidents.map (incident) ->
               {
                 'id':     incident.id,
+                "type":   "incident_reference",
                 'status': updatedStatus
               }
           }
 
           headers = {from: requesterEmail}
-
-          pagerduty.put "/incidents", data, null, headers (err, json) ->
+          pagerduty.put "/incidents", data, headers, (err, json) ->
+            console.log(err)
+            console.log(json)
             if err?
               robot.emit 'error', err, msg
               return
@@ -1005,20 +1042,32 @@ module.exports = (robot) ->
             buffer += " #{updatedStatus}"
             msg.reply buffer
 
-  pagerDutyIntegrationPost = (msg, json, cb) ->
-    msg.http('https://events.pagerduty.com/generic/2010-04-15/create_event.json')
-      .header("content-type","application/json")
-      .header("content-length", json.length)
-      .post(json) (err, res, body) ->
-        switch res.statusCode
-          when 200
-            json = JSON.parse(body)
-            cb(json)
-          else
-            console.log res.statusCode
-            console.log body
+  pagerDutyIntegrationPost = (msg, body, cb) ->
+    request.post {uri: pagerDutyEventsAPIURL, json: true, body: body}, (err, res, body) ->
+      switch res.statusCode
+        when 200
+          json = JSON.parse(body)
+          cb(json)
+        else
+          console.log res.statusCode
+          console.log body
 
-  incidentsForEmail = (incidents, userEmail) ->
-    incidents.filter (incident) ->
-      incident.assigned_to.some (assignment) ->
-        assignment.object.email is userEmail
+  allUserEmails = (cb) ->
+    pagerduty.get "/users", (err, json) ->
+      if err?
+        cb(null)
+
+      users = {}
+      for user in json.users
+        users[user.id] = user.email
+      cb(users)
+
+  incidentsForEmail = (incidents, userEmail, cb) ->
+    allUserEmails (userEmails) ->
+      filtered = []
+      for incident in incidents
+        for assignment in incident.assignments
+          assignedEmail = userEmails[assignment.assignee.id]
+          if assignedEmail is userEmail
+            filtered.push incident
+      cb(filtered)
