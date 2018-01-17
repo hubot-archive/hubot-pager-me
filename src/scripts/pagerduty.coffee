@@ -7,8 +7,8 @@
 #   hubot Am I on call - return if I'm currently on call or not
 #   hubot who's on call - return a list of services and who is on call for them
 #   hubot who's on call for <schedule> - return the username of who's on call for any schedule matching <search>
-#   hubot pager trigger <user> <msg> - create a new incident with <msg> and assign it to <user>
-#   hubot pager trigger <schedule> <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>
+#   hubot pager trigger <user> <severity> <msg> - create a new incident with <msg> and assign it to <user>. Severity must be one of: critical, error, warning or info.
+#   hubot pager trigger <schedule> <severity> <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>. Severity must be one of: critical, error, warning or info.
 #   hubot pager incidents - return the current incidents
 #   hubot pager sup - return the current incidents
 #   hubot pager incident <incident> - return the incident NNN
@@ -42,7 +42,7 @@ async = require('async')
 inspect = require('util').inspect
 moment = require('moment-timezone')
 request = require 'request'
-#Scrolls = require('../../../../lib/scrolls').context({script: 'pagerduty'})
+Scrolls = require('../../../../lib/scrolls').context({script: 'pagerduty'})
 
 pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
@@ -62,7 +62,7 @@ module.exports = (robot) ->
                   else if hubotUser.email_address
                     "I'm assuming your PagerDuty email is #{hubotUser.email_address}. Change it with `#{robot.name} pager me as you@yourdomain.com`"
       if user
-        msg.send "I found your PagerDuty user https://#{pagerduty.subdomain}.pagerduty.com#{user.user_url}, #{emailNote}"
+        msg.send "I found your PagerDuty user #{user.html_url}, #{emailNote}"
       else
         msg.send "I couldn't find your user :( #{emailNote}"
 
@@ -202,7 +202,7 @@ module.exports = (robot) ->
       return
 
     incidentNumbers = parseIncidentNumbers(msg.match[1])
-    
+
     # only acknowledge triggered things, since it doesn't make sense to re-acknowledge if it's already in re-acknowledge
     # if it ever doesn't need acknowledge again, it means it's timed out and has become 'triggered' again anyways
     updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged')
@@ -663,7 +663,7 @@ module.exports = (robot) ->
           cb(err)
           return
 
-        #Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: username})
+        Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: username})
         if !pagerEnabledForScheduleOrEscalation(schedule) || username == "hubot"
           cb(null, undefined)
           return
@@ -690,12 +690,12 @@ module.exports = (robot) ->
 
       async.map schedules, renderSchedule, (err, results) ->
         if err?
-          #Scrolls.log("error", {at: 'who-is-on-call/map-schedules/error', error: err})
+          Scrolls.log("error", {at: 'who-is-on-call/map-schedules/error', error: err})
           robot.emit 'error', err, msg
           return
 
         results = (result for result in results when result?)
-        #Scrolls.log("info", {at: 'who-is-on-call/map-schedules'})
+        Scrolls.log("info", {at: 'who-is-on-call/map-schedules'})
         msg.send results.join("\n")
 
   # hubot pager services - list services
@@ -1025,8 +1025,6 @@ module.exports = (robot) ->
 
           headers = {from: requesterEmail}
           pagerduty.put "/incidents", data, headers, (err, json) ->
-            console.log(err)
-            console.log(json)
             if err?
               robot.emit 'error', err, msg
               return
@@ -1045,9 +1043,8 @@ module.exports = (robot) ->
   pagerDutyIntegrationPost = (msg, body, cb) ->
     request.post {uri: pagerDutyEventsAPIURL, json: true, body: body}, (err, res, body) ->
       switch res.statusCode
-        when 200
-          json = JSON.parse(body)
-          cb(json)
+        when 200, 201, 202
+          cb(body)
         else
           console.log res.statusCode
           console.log body

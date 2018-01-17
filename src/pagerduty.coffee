@@ -1,7 +1,7 @@
 HttpClient = require 'scoped-http-client'
-#Scrolls    = require('../../../lib/scrolls').context({script: 'pagerduty'})
-request = require 'request'
-qs      = require 'query-string'
+Scrolls    = require('../../../lib/scrolls').context({script: 'pagerduty'})
+request    = require 'request'
+qs         = require 'query-string'
 
 pagerDutyApiKey        = process.env.HUBOT_PAGERDUTY_API_KEY
 pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
@@ -14,9 +14,16 @@ class PagerDutyError extends Error
 module.exports =
   subdomain: pagerDutySubdomain
 
-  http: (path) ->
-    HttpClient.create("#{pagerDutyBaseUrl}#{path}")
-      .headers(Authorization: "Token token=#{pagerDutyApiKey}", Accept: 'application/json')
+  headers: (headers = {}) ->
+    headers['Authorization'] = "Token token=#{pagerDutyApiKey}"
+    headers['Accept'] = 'application/vnd.pagerduty+json;version=2'
+    headers
+
+  url: (path, query = {}) ->
+    queryStr = qs.stringify query, {arrayFormat: 'bracket'}
+    path += "?#{queryStr}" if queryStr.length > 0
+    url = "#{pagerDutyBaseUrl}#{path}"
+    url
 
   missingEnvironmentForApi: (msg) ->
     missingAnything = false
@@ -36,24 +43,15 @@ module.exports =
     if pagerDutyServices? && path.match /\/incidents/
       query['service_ids'] = pagerDutyServices.split ","
 
-    #Scrolls.log('info', {at: 'get/request', path: path, query: query})
+    Scrolls.log('info', {at: 'get/request', path: path, query: query})
 
-    headers = {
-      Authorization: "Token token=#{pagerDutyApiKey}", 
-      Accept: 'application/vnd.pagerduty+json;version=2'
-    }
-
-    queryStr = qs.stringify query, {arrayFormat: 'bracket'}
-    path += "?#{queryStr}" if queryStr.length > 0
-    url = "#{pagerDutyBaseUrl}#{path}"
-
-    request.get {uri: url, json: true, headers: headers}, (err, res, body) ->
+    request.get {uri: @url(path, query), json: true, headers: @headers()}, (err, res, body) ->
       if err?
-        # Scrolls.log('info', {at: 'get/error', path: path, query: query, error: err})
+        Scrolls.log('info', {at: 'get/error', path: path, query: query, error: err})
         cb(err)
         return
 
-      #Scrolls.log('info', {at: 'get/response', path: path, query: query, status: res.statusCode, body: body})
+      Scrolls.log('info', {at: 'get/response', path: path, query: query, status: res.statusCode, body: body})
 
       unless res.statusCode is 200
         cb(new PagerDutyError("#{res.statusCode} back from #{path}"))
@@ -61,40 +59,30 @@ module.exports =
 
       cb(null, body)
 
-  put: (path, data, headers, cb) ->
+  put: (path, data, customHeaders, cb) ->
     if pagerNoop
-      console.log "Would have PUT #{url}: #{inspect data}"
+      console.log "Would have PUT #{path}: #{inspect data}"
       return
 
-    headers['Authorization'] = "Token token=#{pagerDutyApiKey}"
-    headers['Accept'] = 'application/vnd.pagerduty+json;version=2'
-
-    url = "#{pagerDutyBaseUrl}#{path}"
-
-    request.put {uri: url, json: true, headers: headers, body: data}, (err, res, body) ->
+    request.put {uri: @url(path), json: true, headers: @headers(customHeaders), body: data}, (err, res, body) ->
       if err?
         cb(err)
         return
 
-      #Scrolls.log('info', {at: 'put/response', path: path, status: res.statusCode, body: body})
+      Scrolls.log('info', {at: 'put/response', path: path, status: res.statusCode, body: body})
 
       unless res.statusCode is 200
-        cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
+        cb(new PagerDutyError("#{res.statusCode} back from #{path}"))
         return
 
       cb(null, body)
 
-  post: (path, data, headers, cb) ->
+  post: (path, data, customHeaders, cb) ->
     if pagerNoop
-      console.log "Would have POST #{url}: #{inspect data}"
+      console.log "Would have POST #{path}: #{inspect data}"
       return
 
-    headers['Authorization'] = "Token token=#{pagerDutyApiKey}"
-    headers['Accept'] = 'application/vnd.pagerduty+json;version=2'
-
-    url = "#{pagerDutyBaseUrl}#{path}"
-
-    request.post {uri: url, json: true, headers: headers, body: data}, (err, res, body) ->
+    request.post {uri: @url(path), json: true, headers: @headers(customHeaders), body: data}, (err, res, body) ->
       if err?
         cb(err)
         return
@@ -102,26 +90,23 @@ module.exports =
       Scrolls.log('info', {at: 'post/response', path: path, status: res.statusCode, body: body})
 
       unless res.statusCode is 201
-        cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
+        cb(new PagerDutyError("#{res.statusCode} back from #{path}"))
         return
 
       cb(null, body)
 
   delete: (path, cb) ->
     if pagerNoop
-      console.log "Would have DELETE #{url}"
+      console.log "Would have DELETE #{path}"
       return
 
-    headers = {Authorization: "Token token=#{pagerDutyApiKey}"}
-    url = "#{pagerDutyBaseUrl}#{path}"
-
-    request.delete {uri: url, headers: headers}, (err, res) ->
+    request.delete {uri: @url(path), headers: @headers()}, (err, res) ->
       if err?
         cb(err)
         return
 
       unless res.statusCode is 200 or res.statusCode is 204
-        cb(new PagerDutyError("#{res.statusCode} back from #{url}"), false)
+        cb(new PagerDutyError("#{res.statusCode} back from #{path}"), false)
         return
 
       cb(null, true)
