@@ -43,6 +43,8 @@ module.exports =
     if pagerDutyServices? && path.match /\/incidents/
       query['service_ids'] = pagerDutyServices.split ","
 
+    Scrolls.log('info', {at: 'get/request', path: path, query: query})
+
     request.get {uri: @url(path, query), json: true, headers: @headers()}, (err, res, body) ->
       if err?
         Scrolls.log('info', {at: 'get/error', path: path, query: query, error: err})
@@ -62,6 +64,8 @@ module.exports =
       console.log "Would have PUT #{path}: #{inspect data}"
       return
 
+    Scrolls.log('info', {at: 'put/request', path: path, query: query, body: data})
+
     request.put {uri: @url(path), json: true, headers: @headers(customHeaders), body: data}, (err, res, body) ->
       if err?
         Scrolls.log('info', {at: 'put/error', path: path, query: query, error: err})
@@ -79,7 +83,9 @@ module.exports =
   post: (path, data, customHeaders, cb) ->
     if pagerNoop
       console.log "Would have POST #{path}: #{inspect data}"
-      return
+      return  
+    
+    Scrolls.log('info', {at: 'post/request', path: path, query: query, body: data})
 
     request.post {uri: @url(path), json: true, headers: @headers(customHeaders), body: data}, (err, res, body) ->
       if err?
@@ -99,6 +105,8 @@ module.exports =
     if pagerNoop
       console.log "Would have DELETE #{path}"
       return
+
+    Scrolls.log('info', {at: 'delete/request', path: path, query: query})
 
     request.delete {uri: @url(path), headers: @headers()}, (err, res) ->
       if err?
