@@ -143,19 +143,23 @@ module.exports = (robot) ->
       return
 
     # Figure out who we are
-    campfireUserToPagerDutyUser msg, hubotUser, false, (triggerdByPagerDutyUser) ->
-      triggerdByPagerDutyUserEmail = emailForUser(triggerdByPagerDutyUser)
-      unless triggerdByPagerDutyUserEmail
+    campfireUserToPagerDutyUser msg, hubotUser, false, (triggeredByPagerDutyUser) ->
+      triggeredByPagerDutyUserEmail = emailForUser(triggeredByPagerDutyUser)
+      unless triggeredByPagerDutyUserEmail
         msg.send "Sorry, I can't figure your PagerDuty account, and I don't have my own :( Can you tell me your PagerDuty email with `#{robot.name} pager me as you@yourdomain.com`?"
         return
 
       # Figure out what we're trying to page
       reassignmentParametersForUserOrScheduleOrEscalationPolicy msg, query, (err, results) ->
         if err?
-          msg.reply err.message
+          robot.emit 'error', err, msg
           return
 
-        pagerDutyIntegrationAPI msg, "trigger", query, description, severity, (json) ->
+        pagerDutyIntegrationAPI msg, "trigger", query, description, severity, (err, json) ->
+          if err?
+            robot.emit 'error', err, msg
+            return
+
           query =
             incident_key: json.incident_key
 
@@ -180,7 +184,7 @@ module.exports = (robot) ->
                   }
               }
 
-              headers = {from: triggerdByPagerDutyUserEmail}
+              headers = {from: triggeredByPagerDutyUserEmail}
 
               pagerduty.put "/incidents", data, headers, (err, json) ->
                 if err?
@@ -223,7 +227,11 @@ module.exports = (robot) ->
         return
 
       email  = emailForUser(hubotUser)
-      incidentsForEmail incidents, email, (filteredIncidents) ->
+      incidentsForEmail incidents, email, (err, filteredIncidents) ->
+        if err? 
+          msg.send err.message 
+          return
+        
         if force 
           filteredIncidents = incidents
 
@@ -957,8 +965,8 @@ module.exports = (robot) ->
       when "trigger"
         payload = {summary: description, source: affected, severity: severity}
         data = {routing_key: pagerDutyServiceApiKey, event_action: "trigger", payload: payload}
-        pagerDutyIntegrationPost msg, data, (json) ->
-          cb(json)
+        pagerDutyIntegrationPost msg, data, (err, json) ->
+          cb(err, json)
 
   formatIncident = (inc) ->
      # { pd_nagios_object: 'service',
@@ -1042,29 +1050,36 @@ module.exports = (robot) ->
 
   pagerDutyIntegrationPost = (msg, body, cb) ->
     request.post {uri: pagerDutyEventsAPIURL, json: true, body: body}, (err, res, body) ->
+      if err?
+        cb(err)
+
       switch res.statusCode
         when 200, 201, 202
-          cb(body)
+          cb(null, body)
         else
-          console.log res.statusCode
-          console.log body
+          cb(new PagerDutyError("#{res.statusCode} back from #{path}"), false)
 
   allUserEmails = (cb) ->
     pagerduty.get "/users", (err, json) ->
       if err?
-        cb(null)
+        cb(err)
+        return
 
       users = {}
       for user in json.users
         users[user.id] = user.email
-      cb(users)
+      cb(null, users)
 
   incidentsForEmail = (incidents, userEmail, cb) ->
-    allUserEmails (userEmails) ->
+    allUserEmails (err, userEmails) ->
+      if err? 
+        cb(err)
+        return 
+      
       filtered = []
       for incident in incidents
         for assignment in incident.assignments
           assignedEmail = userEmails[assignment.assignee.id]
           if assignedEmail is userEmail
             filtered.push incident
-      cb(filtered)
+      cb(null, filtered)
