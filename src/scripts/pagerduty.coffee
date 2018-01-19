@@ -144,7 +144,7 @@ module.exports = (robot) ->
 
     # Figure out who we are
     campfireUserToPagerDutyUser msg, hubotUser, false, (triggeredByPagerDutyUser) ->
-      if triggerdByPagerDutyUser?
+      if triggeredByPagerDutyUser?
         triggeredByPagerDutyUserEmail = emailForUser(triggeredByPagerDutyUser)
       else
         # if user who sent message does not have PD account, use hubot's
@@ -162,47 +162,46 @@ module.exports = (robot) ->
           return
 
         pagerDutyIntegrationAPI msg, "trigger", query, description, severity, (err, json) ->
+
           if err?
             robot.emit 'error', err, msg
             return
 
-          query =
-            incident_key: json.incident_key
-
           msg.reply ":pager: triggered! now assigning it to the right user..."
 
+          incidentKey = json.dedup_key
+
           setTimeout () ->
-            pagerduty.get "/incidents", query, (err, json) ->
+            pagerduty.get "/incidents", {incident_key: incidentKey}, (err, json) ->
               if err?
                 robot.emit 'error', err, msg
                 return
-
+              
               if json?.incidents.length == 0
                 msg.reply "Couldn't find the incident we just created to reassign. Please try again :/"
                 return
 
-              data = {
-                incidents: json.incidents.map (incident) ->
-                  {
-                    id:                incident.id
-                    assigned_to_user:  results.assigned_to_user
-                    escalation_policy: results.escalation_policy
-                  }
-              }
+              incident = json.incidents[0]
+              data = {"type": "incident_reference"}
+              
+              if results.assigned_to_user?
+                data['assignments'] = [{"assignee": {"id": results.assigned_to_user, "type": "user_reference"}}]
+              if results.escalation_policy?
+                data['escalation_policy'] = {"id": results.escalation_policy, "type": "escalation_policy_reference"}
 
               headers = {from: triggeredByPagerDutyUserEmail}
 
-              pagerduty.put "/incidents", data, headers, (err, json) ->
+              pagerduty.put "/incidents/#{incident.id}", {'incident': data}, headers, (err, json) ->
                 if err?
                   robot.emit 'error', err, msg
                   return
 
-                if json?.incidents.length != 1
+                if not json?.incident
                   msg.reply "Problem reassigning the incident :/"
                   return
 
                 msg.reply ":pager: assigned to #{results.name}!"
-          , 5000
+          , 7000
 
   # hubot pager ack <incident> - ack incident #<incident>
   # hubot pager ack <incident1> <incident2> ... <incidentN> - ack all specified incidents
@@ -282,7 +281,11 @@ module.exports = (robot) ->
         return
       
       email  = emailForUser(hubotUser)
-      incidentsForEmail incidents, email, (filteredIncidents) ->
+      incidentsForEmail incidents, email, (err, filteredIncidents) ->
+        if err? 
+          robot.emit 'error', err, msg
+          return
+
         if force 
           filteredIncidents = incidents
         
@@ -1063,7 +1066,7 @@ module.exports = (robot) ->
         when 200, 201, 202
           cb(null, body)
         else
-          cb(new PagerDutyError("#{res.statusCode} back from #{path}"), false)
+          cb(new PagerDutyError("#{res.statusCode} back from #{path}"))
 
   allUserEmails = (cb) ->
     pagerduty.get "/users", (err, json) ->
