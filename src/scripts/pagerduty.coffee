@@ -144,7 +144,13 @@ module.exports = (robot) ->
 
     # Figure out who we are
     campfireUserToPagerDutyUser msg, hubotUser, false, (triggeredByPagerDutyUser) ->
-      triggeredByPagerDutyUserEmail = emailForUser(triggeredByPagerDutyUser)
+      if triggerdByPagerDutyUser?
+        triggeredByPagerDutyUserEmail = emailForUser(triggeredByPagerDutyUser)
+      else
+        # if user who sent message does not have PD account, use hubot's
+        getPagerDutyUser pagerDutyUserId, (user) ->
+          triggeredByPagerDutyUserEmail = emailForUser(user)
+
       unless triggeredByPagerDutyUserEmail
         msg.send "Sorry, I can't figure your PagerDuty account, and I don't have my own :( Can you tell me your PagerDuty email with `#{robot.name} pager me as you@yourdomain.com`?"
         return
