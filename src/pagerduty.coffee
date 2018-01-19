@@ -64,11 +64,11 @@ module.exports =
       console.log "Would have PUT #{path}: #{inspect data}"
       return
 
-    Scrolls.log('info', {at: 'put/request', path: path, query: query, body: data})
+    Scrolls.log('info', {at: 'put/request', path: path, body: data})
 
     request.put {uri: @url(path), json: true, headers: @headers(customHeaders), body: data}, (err, res, body) ->
       if err?
-        Scrolls.log('info', {at: 'put/error', path: path, query: query, error: err})
+        Scrolls.log('info', {at: 'put/error', path: path, error: err})
         cb(err)
         return
 
@@ -85,11 +85,11 @@ module.exports =
       console.log "Would have POST #{path}: #{inspect data}"
       return  
     
-    Scrolls.log('info', {at: 'post/request', path: path, query: query, body: data})
+    Scrolls.log('info', {at: 'post/request', path: path, body: data})
 
     request.post {uri: @url(path), json: true, headers: @headers(customHeaders), body: data}, (err, res, body) ->
       if err?
-        Scrolls.log('info', {at: 'post/error', path: path, query: query, error: err})
+        Scrolls.log('info', {at: 'post/error', path: path, error: err})
         cb(err)
         return
 
