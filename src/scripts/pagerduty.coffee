@@ -148,7 +148,11 @@ module.exports = (robot) ->
         triggeredByPagerDutyUserEmail = emailForUser(triggeredByPagerDutyUser)
       else
         # if user who sent message does not have PD account, use hubot's
-        getPagerDutyUser pagerDutyUserId, (user) ->
+        getPagerDutyUser pagerDutyUserId, (err, user) ->
+          if err?
+            robot.emit 'error', err, msg
+            return
+          
           triggeredByPagerDutyUserEmail = emailForUser(user)
 
       unless triggeredByPagerDutyUserEmail
@@ -623,7 +627,11 @@ module.exports = (robot) ->
 
             start = moment(json.override.start)
             end = moment(json.override.end)
-            getPagerDutyUser json.override.user.id, (user) ->
+            getPagerDutyUser userId, (err, user) ->
+              if err?
+                robot.emit 'error', err, msg
+                return
+              
               msg.send "Rejoice, @#{old_username}! @#{user.name} has the pager on #{schedule.name} until #{end.format()}"
 
   # hubot Am I on call - return if I'm currently on call or not
@@ -950,18 +958,23 @@ module.exports = (robot) ->
         return
 
       userId = json.oncalls[0].user.id
-      getPagerDutyUser userId, (user) ->
+      getPagerDutyUser userId, (err, user) ->
+        if err?
+          cb(err)
+          return
         cb(null, user, schedule)
 
   getPagerDutyUser = (userId, cb) ->
     pagerduty.get "/users/#{userId}", (err, json) ->
       if err?
-        cb(null)
+        cb(err)
+        return
 
       if not json.user
-        cb("nobody")
+        cb(null, "nobody")
+        return
 
-      cb(json.user)
+      cb(null, json.user)
 
   pagerDutyIntegrationAPI = (msg, cmd, affected, description, severity, cb) ->
     unless pagerDutyServiceApiKey?
@@ -1061,6 +1074,7 @@ module.exports = (robot) ->
     request.post {uri: pagerDutyEventsAPIURL, json: true, body: body}, (err, res, body) ->
       if err?
         cb(err)
+        return
 
       switch res.statusCode
         when 200, 201, 202
