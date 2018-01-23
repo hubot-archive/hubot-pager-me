@@ -44,7 +44,7 @@ moment = require('moment-timezone')
 request = require 'request'
 Scrolls = require('../../../../lib/scrolls').context({script: 'pagerduty'})
 
-pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
+pagerDutyUserEmail     = process.env.HUBOT_PAGERDUTY_USERNAME
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
 pagerDutyEventsAPIURL  = 'https://events.pagerduty.com/v2/enqueue'
 
@@ -144,17 +144,10 @@ module.exports = (robot) ->
 
     # Figure out who we are
     campfireUserToPagerDutyUser msg, hubotUser, false, (triggeredByPagerDutyUser) ->
-      if triggeredByPagerDutyUser?
-        triggeredByPagerDutyUserEmail = emailForUser(triggeredByPagerDutyUser)
-      else
-        # if user who sent message does not have PD account, use hubot's
-        getPagerDutyUser pagerDutyUserId, (err, user) ->
-          if err?
-            robot.emit 'error', err, msg
-            return
-          
-          triggeredByPagerDutyUserEmail = emailForUser(user)
-
+      triggeredByPagerDutyUserEmail = if triggeredByPagerDutyUser?
+                                        emailForUser(triggeredByPagerDutyUser)
+                                      else if pagerDutyUserEmail
+                                        pagerDutyUserEmail   
       unless triggeredByPagerDutyUserEmail
         msg.send "Sorry, I can't figure your PagerDuty account, and I don't have my own :( Can you tell me your PagerDuty email with `#{robot.name} pager me as you@yourdomain.com`?"
         return
@@ -205,7 +198,7 @@ module.exports = (robot) ->
                   return
 
                 msg.reply ":pager: assigned to #{results.name}!"
-          , 7000
+          , 7000 # set timeout to 7s. sometimes PagerDuty needs a bit of time for events to propagate as incidents
 
   # hubot pager ack <incident> - ack incident #<incident>
   # hubot pager ack <incident1> <incident2> ... <incidentN> - ack all specified incidents
@@ -987,8 +980,7 @@ module.exports = (robot) ->
       when "trigger"
         payload = {summary: description, source: affected, severity: severity}
         data = {routing_key: pagerDutyServiceApiKey, event_action: "trigger", payload: payload}
-        pagerDutyIntegrationPost msg, data, (err, json) ->
-          cb(err, json)
+        pagerDutyIntegrationPost msg, data, cb
 
   formatIncident = (inc) ->
      # { pd_nagios_object: 'service',
