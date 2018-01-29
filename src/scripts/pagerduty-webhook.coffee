@@ -19,7 +19,7 @@ module.exports = (robot) ->
 
     messages = hook.messages
 
-    if /^incident.*$/.test(messages[0].type)
+    if /^incident.*$/.test(messages[0].event)
       parseIncidents(messages)
     else
       "No incidents in webhook"
@@ -28,20 +28,23 @@ module.exports = (robot) ->
     returnMessage = []
     count = 0
     for message in messages
-      incident = message.data.incident
-      hookType = message.type
+      incident = message.incident
+      hookType = message.event
       returnMessage.push(generateIncidentString(incident, hookType))
       count = count+1
     returnMessage.unshift("You have " + count + " PagerDuty update(s): \n")
     returnMessage.join("\n")
 
   getUserForIncident = (incident) ->
-    if incident.assigned_to_user
-      incident.assigned_to_user.email
-    else if incident.resolved_by_user
-      incident.resolved_by_user.email
-    else
-      '(???)'
+    users = []
+    for assigned in incident.assignments
+      if assigned.assignee.summary
+        users.push assigned.assignee.summary
+    
+    if users.length > 0
+      users.join ", "
+    else 
+      "(???)" 
 
   generateIncidentString = (incident, hookType) ->
     console.log "hookType is " + hookType
