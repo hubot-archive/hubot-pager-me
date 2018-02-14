@@ -13,7 +13,6 @@ pagerNoop              = false if pagerNoop is "false" or pagerNoop  is "off"
 class PagerDutyError extends Error
 module.exports =
   subdomain: pagerDutySubdomain
-  cache: []
 
   headers: (headers = {}) ->
     headers['Authorization'] = "Token token=#{pagerDutyApiKey}"
