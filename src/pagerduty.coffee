@@ -13,6 +13,7 @@ pagerNoop              = false if pagerNoop is "false" or pagerNoop  is "off"
 class PagerDutyError extends Error
 module.exports =
   subdomain: pagerDutySubdomain
+  cache: []
 
   headers: (headers = {}) ->
     headers['Authorization'] = "Token token=#{pagerDutyApiKey}"
@@ -56,8 +57,30 @@ module.exports =
       unless res.statusCode is 200
         cb(new PagerDutyError("#{res.statusCode} back from #{path}"))
         return
+      
+      cb(null, body, res)
 
-      cb(null, body)
+  getAll: (path, query, key, all_cb) ->
+    entries = []
+    `var self = this`
+
+    if not query["offset"]
+      query["offset"] = 0
+    
+    cb = (err, body, res) ->
+      if err?
+        all_cb(err)
+        return
+
+      entries = entries.concat body[key]
+      if res.more?
+        query["offset"] += 25
+        `self.get(path, query, cb)`
+        return
+
+      all_cb(null, entries)
+
+    @get(path, query, cb)
 
   put: (path, data, customHeaders, cb) ->
     if pagerNoop

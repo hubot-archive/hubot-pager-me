@@ -473,19 +473,27 @@ module.exports = (robot) ->
             user_ids: [user.id]
           }
 
-          pagerduty.get "/oncalls", query, (err, json) ->
+          # skip this schedule if the user isn't 
+          # a part of the assigned team
+          match = false
+          for scheduleUser in schedule.users
+            if scheduleUser.id == userId
+              match = true
+          if not match
+            cb(null)
+            return
+
+          pagerduty.getAll "/oncalls", query, "oncalls", (err, oncalls) ->
             if err?
               cb(err)
               return
 
             buffer = ""
-            if json.oncalls
-              for oncall in json.oncalls
+            if oncalls.length > 0
+              for oncall in oncalls
                 startTime = moment(oncall.start).tz(timezone).format()
                 endTime   = moment(oncall.end).tz(timezone).format()
                 buffer += "* #{startTime} - #{endTime} #{user.name} (#{schedule.name})\n"
-            else
-              buffer = "couldn't get entries for #{schedule.name}"
 
             cb(null, buffer)
 
@@ -493,6 +501,9 @@ module.exports = (robot) ->
           if err?
             robot.emit 'error', err, msg
             return
+          results = results.filter (x) -> typeof x isnt 'undefined' && x isnt "" && x?
+          unless results.length
+            results = ["You are not oncall this month!"]
           msg.send results.join("\n")
 
   # hubot pager override <schedule> <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
