@@ -42,7 +42,7 @@ async = require('async')
 inspect = require('util').inspect
 moment = require('moment-timezone')
 request = require 'request'
-Scrolls = require('../../../../lib/scrolls').context({script: 'pagerduty'})
+#Scrolls = require('../../../../lib/scrolls').context({script: 'pagerduty'})
 
 pagerDutyUserEmail     = process.env.HUBOT_PAGERDUTY_USERNAME
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
@@ -489,11 +489,10 @@ module.exports = (robot) ->
               return
 
             buffer = ""
-            if oncalls.length > 0
-              for oncall in oncalls
-                startTime = moment(oncall.start).tz(timezone).format()
-                endTime   = moment(oncall.end).tz(timezone).format()
-                buffer += "* #{startTime} - #{endTime} #{user.name} (#{schedule.name})\n"
+            for oncall in oncalls
+              startTime = moment(oncall.start).tz(timezone).format()
+              endTime   = moment(oncall.end).tz(timezone).format()
+              buffer += "* #{startTime} - #{endTime} #{user.name} (#{schedule.name})\n"
 
             cb(null, buffer)
 
