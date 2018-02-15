@@ -430,12 +430,13 @@ module.exports = (robot) ->
             user = entry.user.summary
           startTime = moment(entry.start).tz(timezone).format()
           endTime = "?"
+          epSummary = entry.escalation_policy.summary
           if entry.end
             endTime = moment(entry.end).tz(timezone).format()
           if entry.id
-            buffer += "* (#{entry.id}) #{startTime} - #{endTime} #{user}\n"
+            buffer += "* (#{entry.id}) #{startTime} - #{endTime} #{user}: #{epSummary}\n"
           else
-            buffer += "* #{startTime} - #{endTime} #{user}\n"
+            buffer += "* #{startTime} - #{endTime} #{user}: #{epSummary}\n"
         if buffer == ""
           msg.send "None found!"
         else
