@@ -1,5 +1,5 @@
 HttpClient = require 'scoped-http-client'
-Scrolls    = require('../../../lib/scrolls').context({script: 'pagerduty'})
+#Scrolls    = require('../../../lib/scrolls').context({script: 'pagerduty'})
 request    = require 'request'
 qs         = require 'query-string'
 
@@ -65,6 +65,8 @@ module.exports =
 
     if not query["offset"]
       query["offset"] = 0
+    if not query["limit"]
+      query["limit"] = 100
     
     cb = (err, body) ->
       if err?
@@ -168,9 +170,9 @@ module.exports =
       cb = query
       query = {}
 
-    @get "/schedules", query, (err, json) ->
+    @getAll "/schedules", query, "schedules", (err, schedules) ->
       if err?
         cb(err)
         return
 
-      cb(null, json.schedules)
+      cb(null, schedules)
