@@ -482,8 +482,6 @@ module.exports = (robot) ->
             scheduleId = oncall.schedule.id
             if scheduleId not of schedules 
               schedules[scheduleId] = []
-            console.log scheduleId
-            console.log schedules[scheduleId]
             if time not in schedules[scheduleId]
               schedules[scheduleId].push time
               buffer += "* #{time} #{user.name} (#{oncall.schedule.summary})\n"
