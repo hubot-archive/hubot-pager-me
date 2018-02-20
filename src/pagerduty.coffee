@@ -1,5 +1,5 @@
 HttpClient = require 'scoped-http-client'
-#Scrolls    = require('../../../lib/scrolls').context({script: 'pagerduty'})
+Scrolls    = require('../../../lib/scrolls').context({script: 'pagerduty'})
 request    = require 'request'
 qs         = require 'query-string'
 
