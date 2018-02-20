@@ -473,11 +473,23 @@ module.exports = (robot) ->
           return
 
         buffer = ""
+        schedules = {}
         for oncall in oncalls 
           startTime = moment(oncall.start).tz(timezone).format()
           endTime   = moment(oncall.end).tz(timezone).format()
-          epSummary = oncall.escalation_policy.summary
-          buffer   += "* #{startTime} - #{endTime} #{user.name} (#{epSummary})\n"
+          time      = "#{startTime} - #{endTime}"
+          if oncall.schedule?
+            scheduleId = oncall.schedule.id
+            if scheduleId not of schedules 
+              schedules[scheduleId] = []
+            console.log scheduleId
+            console.log schedules[scheduleId]
+            if time not in schedules[scheduleId]
+              schedules[scheduleId].push time
+              buffer += "* #{time} #{user.name} (#{oncall.schedule.summary})\n"
+          else 
+            epSummary = oncall.escalation_policy.summary
+            buffer += "* #{time} #{user.name} (#{epSummary})\n"
         
         msg.send buffer
 
