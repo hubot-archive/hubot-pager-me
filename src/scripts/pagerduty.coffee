@@ -42,7 +42,7 @@ async = require('async')
 inspect = require('util').inspect
 moment = require('moment-timezone')
 request = require 'request'
-Scrolls = require('../../../../lib/scrolls').context({script: 'pagerduty'})
+#Scrolls = require('../../../../lib/scrolls').context({script: 'pagerduty'})
 
 pagerDutyUserEmail     = process.env.HUBOT_PAGERDUTY_USERNAME
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
@@ -474,26 +474,38 @@ module.exports = (robot) ->
             user_ids: [user.id]
           }
 
-          pagerduty.get "/oncalls", query, (err, json) ->
+          # skip this schedule if the user isn't 
+          # a part of the assigned team
+          match = schedule.users.some (scheduleUser) ->
+            scheduleUser.id == userId
+          if not match
+            cb(null, { member: false, body: "" })
+            return
+
+          pagerduty.getAll "/oncalls", query, "oncalls", (err, oncalls) ->
             if err?
               cb(err)
               return
 
             buffer = ""
-            if json.oncalls
-              for oncall in json.oncalls
-                startTime = moment(oncall.start).tz(timezone).format()
-                endTime   = moment(oncall.end).tz(timezone).format()
-                buffer += "* #{startTime} - #{endTime} #{user.name} (#{schedule.name})\n"
-            else
-              buffer = "couldn't get entries for #{schedule.name}"
+            for oncall in oncalls
+              startTime = moment(oncall.start).tz(timezone).format()
+              endTime   = moment(oncall.end).tz(timezone).format()
+              buffer   += "* #{startTime} - #{endTime} #{user.name} (#{schedule.name})\n"
 
-            cb(null, buffer)
+            cb(null, { member: true, body: buffer })
 
         async.map schedules, renderSchedule, (err, results) ->
           if err?
             robot.emit 'error', err, msg
             return
+          
+          if (results.every (r) -> not r.member)
+            results = ["You are not assigned to any schedules"]
+          else 
+            results = (r.body for r in results when r.body isnt "")
+            unless results.length
+              results = ["You are not oncall this month!"]
           msg.send results.join("\n")
 
   # hubot pager override <schedule> <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.

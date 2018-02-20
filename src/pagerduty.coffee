@@ -1,5 +1,5 @@
 HttpClient = require 'scoped-http-client'
-Scrolls    = require('../../../lib/scrolls').context({script: 'pagerduty'})
+#Scrolls    = require('../../../lib/scrolls').context({script: 'pagerduty'})
 request    = require 'request'
 qs         = require 'query-string'
 
@@ -56,8 +56,30 @@ module.exports =
       unless res.statusCode is 200
         cb(new PagerDutyError("#{res.statusCode} back from #{path}"))
         return
-
+      
       cb(null, body)
+
+  getAll: (path, query, key, all_cb) ->
+    entries = []
+    `var self = this`
+
+    if not query["offset"]
+      query["offset"] = 0
+    
+    cb = (err, body) ->
+      if err?
+        all_cb(err)
+        return
+
+      entries = entries.concat body[key]
+      if body.more
+        query["offset"] += body.limit
+        `self.get(path, query, cb)`
+        return
+
+      all_cb(null, entries)
+
+    @get(path, query, cb)
 
   put: (path, data, customHeaders, cb) ->
     if pagerNoop
