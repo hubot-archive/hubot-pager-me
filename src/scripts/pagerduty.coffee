@@ -42,7 +42,7 @@ async = require('async')
 inspect = require('util').inspect
 moment = require('moment-timezone')
 request = require 'request'
-#Scrolls = require('../../../../lib/scrolls').context({script: 'pagerduty'})
+Scrolls = require('../../../../lib/scrolls').context({script: 'pagerduty'})
 
 pagerDutyUserEmail     = process.env.HUBOT_PAGERDUTY_USERNAME
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
