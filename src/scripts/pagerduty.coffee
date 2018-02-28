@@ -398,7 +398,7 @@ module.exports = (robot) ->
     else
       timezone = 'UTC'
 
-    msg.send "Retrieve schedules. This may take a few seconds..."
+    msg.send "Retrieving schedules. This may take a few seconds..."
 
     withScheduleMatching msg, msg.match[5], (schedule) ->
       scheduleId = schedule.id
