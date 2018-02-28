@@ -398,6 +398,8 @@ module.exports = (robot) ->
     else
       timezone = 'UTC'
 
+    msg.send "Retrieve schedules. This may take a few seconds..."
+
     withScheduleMatching msg, msg.match[5], (schedule) ->
       scheduleId = schedule.id
       return unless scheduleId
@@ -406,16 +408,17 @@ module.exports = (robot) ->
         url = "/schedules/#{scheduleId}/overrides"
         query['editable'] = 'true'
         query['overflow'] = 'true'
+        key = "overrides"
       else
         url = "/oncalls"
+        key = "oncalls"
         query['schedule_ids'] = [scheduleId]
 
-      pagerduty.get url, query, (err, json) ->
+      pagerduty.getAll url, query, key, (err, entries) ->
         if err?
           robot.emit 'error', err, msg
           return
 
-        entries = json.oncalls || json.overrides
         unless entries
           msg.send "None found!"
           return
@@ -423,24 +426,7 @@ module.exports = (robot) ->
         sortedEntries = entries.sort (a, b) ->
           moment(a.start).unix() - moment(b.start).unix()
 
-        buffer = ""
-        for entry in sortedEntries
-          user = "User unknown"
-          if entry.user.summary
-            user = entry.user.summary
-          startTime = moment(entry.start).tz(timezone).format()
-          endTime = "?"
-          epSummary = entry.escalation_policy.summary
-          if entry.end
-            endTime = moment(entry.end).tz(timezone).format()
-          if entry.id
-            buffer += "* (#{entry.id}) #{startTime} - #{endTime} #{user}: #{epSummary}\n"
-          else
-            buffer += "* #{startTime} - #{endTime} #{user}: #{epSummary}\n"
-        if buffer == ""
-          msg.send "None found!"
-        else
-          msg.send buffer
+        msg.send formatOncalls(sortedEntries, timezone)
 
   # hubot pager my schedule - show my on call shifts for the upcoming month in all schedules
   robot.respond /(pager|major)( me)? my schedule( ([^ ]+))?$/i, (msg) ->
@@ -472,24 +458,7 @@ module.exports = (robot) ->
           msg.send 'You are not oncall!'
           return
 
-        buffer = ""
-        schedules = {}
-        for oncall in oncalls 
-          startTime = moment(oncall.start).tz(timezone).format()
-          endTime   = moment(oncall.end).tz(timezone).format()
-          time      = "#{startTime} - #{endTime}"
-          if oncall.schedule?
-            scheduleId = oncall.schedule.id
-            if scheduleId not of schedules 
-              schedules[scheduleId] = []
-            if time not in schedules[scheduleId]
-              schedules[scheduleId].push time
-              buffer += "* #{time} #{user.name} (#{oncall.schedule.summary})\n"
-          else 
-            epSummary = oncall.escalation_policy.summary
-            buffer += "* #{time} #{user.name} (#{epSummary})\n"
-        
-        msg.send buffer
+        msg.send formatOncalls(oncalls, timezone)
 
   # hubot pager override <schedule> <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
   robot.respond /(pager|major)( me)? (override) ([\w\-]+) ([\w\-:\+]+) - ([\w\-:\+]+)( (.*))?$/i, (msg) ->
@@ -1111,3 +1080,27 @@ module.exports = (robot) ->
   memberOfSchedule = (schedule, userId) ->
     schedule.users.some (scheduleUser) ->
       scheduleUser.id == userId
+
+  formatOncalls = (oncalls, timezone) ->
+    buffer = ""
+    schedules = {}
+    for oncall in oncalls 
+      startTime = moment(oncall.start).tz(timezone).format()
+      endTime   = moment(oncall.end).tz(timezone).format()
+      time      = "#{startTime} - #{endTime}"
+      username  = oncall.user.summary
+      if oncall.schedule?
+        scheduleId = oncall.schedule.id
+        if scheduleId not of schedules 
+          schedules[scheduleId] = []
+        if time not in schedules[scheduleId]
+          schedules[scheduleId].push time
+          buffer += "* #{time} #{username} (#{oncall.schedule.summary})\n"
+      else if oncall.escalation_policy?
+        # no schedule embedded
+        epSummary = oncall.escalation_policy.summary
+        buffer += "* #{time} #{username} (#{epSummary})\n"
+      else 
+        # override
+        buffer += "* #{time} #{username}\n"
+    buffer
