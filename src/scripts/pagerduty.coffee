@@ -398,6 +398,8 @@ module.exports = (robot) ->
     else
       timezone = 'UTC'
 
+    msg.send "Retrieve schedules. This may take a few seconds..."
+
     withScheduleMatching msg, msg.match[5], (schedule) ->
       scheduleId = schedule.id
       return unless scheduleId
@@ -406,16 +408,17 @@ module.exports = (robot) ->
         url = "/schedules/#{scheduleId}/overrides"
         query['editable'] = 'true'
         query['overflow'] = 'true'
+        key = "overrides"
       else
         url = "/oncalls"
+        key = "oncalls"
         query['schedule_ids'] = [scheduleId]
 
-      pagerduty.get url, query, (err, json) ->
+      pagerduty.getAll url, query, key, (err, entries) ->
         if err?
           robot.emit 'error', err, msg
           return
 
-        entries = json.oncalls || json.overrides
         unless entries
           msg.send "None found!"
           return
@@ -423,24 +426,7 @@ module.exports = (robot) ->
         sortedEntries = entries.sort (a, b) ->
           moment(a.start).unix() - moment(b.start).unix()
 
-        buffer = ""
-        for entry in sortedEntries
-          user = "User unknown"
-          if entry.user.summary
-            user = entry.user.summary
-          startTime = moment(entry.start).tz(timezone).format()
-          endTime = "?"
-          epSummary = entry.escalation_policy.summary
-          if entry.end
-            endTime = moment(entry.end).tz(timezone).format()
-          if entry.id
-            buffer += "* (#{entry.id}) #{startTime} - #{endTime} #{user}: #{epSummary}\n"
-          else
-            buffer += "* #{startTime} - #{endTime} #{user}: #{epSummary}\n"
-        if buffer == ""
-          msg.send "None found!"
-        else
-          msg.send buffer
+        msg.send formatOncalls(sortedEntries, timezone)
 
   # hubot pager my schedule - show my on call shifts for the upcoming month in all schedules
   robot.respond /(pager|major)( me)? my schedule( ([^ ]+))?$/i, (msg) ->
@@ -456,57 +442,23 @@ module.exports = (robot) ->
         timezone = msg.match[4]
       else
         timezone = 'UTC'
+        
+      query = {
+        since: moment().format(),
+        until: moment().add(30, 'days').format(),
+        user_ids: [user.id]
+      }
 
-      pagerduty.getSchedules (err, schedules) ->
+      pagerduty.getAll "/oncalls", query, "oncalls", (err, oncalls) ->
         if err?
           robot.emit 'error', err, msg
           return
 
-        if schedules.length == 0
-          msg.send 'No schedules found!'
+        if oncalls.length == 0
+          msg.send 'You are not oncall!'
           return
 
-        renderSchedule = (schedule, cb) ->
-          query = {
-            since: moment().format(),
-            until: moment().add(30, 'days').format(),
-            schedule_ids: [schedule.id],
-            user_ids: [user.id]
-          }
-
-          # skip this schedule if the user isn't 
-          # a part of the assigned team
-          match = schedule.users.some (scheduleUser) ->
-            scheduleUser.id == userId
-          if not match
-            cb(null, { member: false, body: "" })
-            return
-
-          pagerduty.getAll "/oncalls", query, "oncalls", (err, oncalls) ->
-            if err?
-              cb(err)
-              return
-
-            buffer = ""
-            for oncall in oncalls
-              startTime = moment(oncall.start).tz(timezone).format()
-              endTime   = moment(oncall.end).tz(timezone).format()
-              buffer   += "* #{startTime} - #{endTime} #{user.name} (#{schedule.name})\n"
-
-            cb(null, { member: true, body: buffer })
-
-        async.map schedules, renderSchedule, (err, results) ->
-          if err?
-            robot.emit 'error', err, msg
-            return
-          
-          if (results.every (r) -> not r.member)
-            results = ["You are not assigned to any schedules"]
-          else 
-            results = (r.body for r in results when r.body isnt "")
-            unless results.length
-              results = ["You are not oncall this month!"]
-          msg.send results.join("\n")
+        msg.send formatOncalls(oncalls, timezone)
 
   # hubot pager override <schedule> <start> - <end> [username] - Create an schedule override from <start> until <end>. If [username] is left off, defaults to you. start and end should date-parsable dates, like 2014-06-24T09:06:45-07:00, see http://momentjs.com/docs/#/parsing/string/ for examples.
   robot.respond /(pager|major)( me)? (override) ([\w\-]+) ([\w\-:\+]+) - ([\w\-:\+]+)( (.*))?$/i, (msg) ->
@@ -645,21 +597,27 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
+    msg.send "Finding schedules, this may take a few seconds..."
+
     hubotUser = robot.getUserBySlackUser(msg.message.user)
 
     campfireUserToPagerDutyUser msg, hubotUser, (user) ->
       userId = user.id
 
       renderSchedule = (s, cb) ->
+        if not memberOfSchedule(s, userId)
+          cb(null, {member: false})
+          return 
+        
         withCurrentOncallId msg, s, (err, oncallUserid, oncallUsername, schedule) ->
           if err?
             cb(err)
             return
 
           if userId == oncallUserid
-            cb(null, "* Yes, you are on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+            cb(null, {member: true, body: "* Yes, you are on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"})
           else
-            cb(null, "* No, you are NOT on call for #{schedule.name} (but #{oncallUsername} is)- https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+            cb(null, {member: true, body: "* No, you are NOT on call for #{schedule.name} (but #{oncallUsername} is)- https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"})
 
       unless userId?
         msg.send "Couldn't figure out the pagerduty user connected to your account."
@@ -673,11 +631,18 @@ module.exports = (robot) ->
         if schedules.length == 0
           msg.send 'No schedules found!'
           return
+        
+        if (schedules.every (s) -> not memberOfSchedule(s, userId))
+          msg.send "You are not assigned to any schedules"
+          return
 
         async.map schedules, renderSchedule, (err, results) ->
           if err?
             robot.emit 'error', err, msg
             return
+          results = (r.body for r in results when r.member)
+          unless results.length
+            results = ["You are not oncall this month!"]
           msg.send results.join("\n")
 
   # hubot who's on call - return a list of services and who is on call for them
@@ -734,19 +699,19 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    pagerduty.get "/services", {}, (err, json) ->
+    pagerduty.getAll "/services", {}, "services", (err, services) ->
       if err?
         robot.emit 'error', err, msg
         return
 
-      if json.services.length == 0
+      if services.length == 0
         msg.send 'No services found!'
         return
 
       renderService = (service, cb) ->
         cb(null, "* #{service.id}: #{service.name} (#{service.status}) - https://#{pagerduty.subdomain}.pagerduty.com/services/#{service.id}")
 
-      async.map json.services, renderService, (err, results) ->
+      async.map services, renderService, (err, results) ->
         if err?
           robot.emit 'error', err, msg
           return
@@ -954,16 +919,16 @@ module.exports = (robot) ->
       until: oneHour,
       schedule_ids: [schedule.id]
     }
-    pagerduty.get "/oncalls", query, (err, json) ->
+    pagerduty.getAll "/oncalls", query, "oncalls", (err, oncalls) ->
       if err?
         cb(err, null, null)
         return
 
-      unless json.oncalls and json.oncalls.length > 0
+      unless oncalls and oncalls.length > 0
         cb(null, "nobody", schedule)
         return
 
-      userId = json.oncalls[0].user.id
+      userId = oncalls[0].user.id
       getPagerDutyUser userId, (err, user) ->
         if err?
           cb(err)
@@ -1088,13 +1053,13 @@ module.exports = (robot) ->
           cb(new PagerDutyError("#{res.statusCode} back from #{path}"))
 
   allUserEmails = (cb) ->
-    pagerduty.get "/users", (err, json) ->
+    pagerduty.getAll "/users", {}, "users", (err, returnedUsers) ->
       if err?
         cb(err)
         return
 
       users = {}
-      for user in json.users
+      for user in returnedUsers
         users[user.id] = user.email
       cb(null, users)
 
@@ -1111,3 +1076,31 @@ module.exports = (robot) ->
           if assignedEmail is userEmail
             filtered.push incident
       cb(null, filtered)
+
+  memberOfSchedule = (schedule, userId) ->
+    schedule.users.some (scheduleUser) ->
+      scheduleUser.id == userId
+
+  formatOncalls = (oncalls, timezone) ->
+    buffer = ""
+    schedules = {}
+    for oncall in oncalls 
+      startTime = moment(oncall.start).tz(timezone).format()
+      endTime   = moment(oncall.end).tz(timezone).format()
+      time      = "#{startTime} - #{endTime}"
+      username  = oncall.user.summary
+      if oncall.schedule?
+        scheduleId = oncall.schedule.id
+        if scheduleId not of schedules 
+          schedules[scheduleId] = []
+        if time not in schedules[scheduleId]
+          schedules[scheduleId].push time
+          buffer += "* #{time} #{username} (#{oncall.schedule.summary})\n"
+      else if oncall.escalation_policy?
+        # no schedule embedded
+        epSummary = oncall.escalation_policy.summary
+        buffer += "* #{time} #{username} (#{epSummary})\n"
+      else 
+        # override
+        buffer += "* #{time} #{username}\n"
+    buffer
