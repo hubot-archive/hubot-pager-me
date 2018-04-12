@@ -29,6 +29,8 @@ Then add **hubot-pager-me** to your `external-scripts.json`:
 * HUBOT_PAGERDUTY_API_KEY - Get one from https://<your subdomain>.pagerduty.com/api_keys
 * HUBOT_PAGERDUTY_SERVICE_API_KEY - Service API Key from a 'General API Service'. This should be assigned to a dummy escalation policy that doesn't actually notify, as hubot will trigger on this before reassigning it
 * HUBOT_PAGERDUTY_SERVICES - (optional) Provide a comma separated list of service identifiers (e.g. `PFGPBFY`) to restrict queries to only those services.
+* HUBOT_PAGERDUTY_SCHEDULES_BLACKLIST - (optional) Provide a comman seperated blacklist of schedule names to filter out when querying for 'whos on call'
+      (e.g. `Backup,Secondary` will remove all schedules with either the words 'Backup' or 'Secondary' in the schedule name)
 
 ### Webhook
 
