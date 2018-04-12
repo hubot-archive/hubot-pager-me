@@ -602,6 +602,10 @@ module.exports = (robot) ->
           robot.emit 'error', err, msg
           return
         if schedules.length > 0
+          if process.env.HUBOT_PAGERDUTY_SCHEDULES_BLACKLIST
+            schedules_blacklist_regex = new RegExp("(" + process.env.HUBOT_PAGERDUTY_SCHEDULES_BLACKLIST.replace(/,/g, '|') + ")")
+            schedules = schedules.filter (schedule) -> !schedule.name.match(schedules_blacklist_regex)
+
           async.map schedules, renderSchedule, (err) ->
             if err?
               robot.emit 'error', err, msg
