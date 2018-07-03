@@ -123,8 +123,9 @@ module.exports =
 
   getIncidents: (status, cb) ->
     query =
-      status: status
-      sort_by: "incident_number:asc"
+      sort_by: 'incident_number:asc'
+      'statuses[]': status.split(',')
+
     @get "/incidents", query, (err, json) ->
       if err?
         cb(err)

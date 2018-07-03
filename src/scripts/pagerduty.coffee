@@ -88,11 +88,11 @@ module.exports = (robot) ->
       msg.send formatIncident(incident['incident'])
 
   robot.respond /(pager|major)( me)? (inc|incidents|sup|problems)$/i, (msg) ->
-    pagerduty.getIncidents "triggered,acknowledged", (err, incidents) ->
+    pagerduty.getIncidents 'triggered,acknowledged', (err, incidents) ->
       if err?
         robot.emit 'error', err, msg
         return
-
+      
       if incidents.length > 0
         buffer = "Triggered:\n----------\n"
         for junk, incident of incidents.reverse()
@@ -854,13 +854,12 @@ module.exports = (robot) ->
         if foundIncidents.length == 0
           msg.reply "Couldn't find incident(s) #{incidentNumbers.join(', ')}. Use `#{robot.name} pager incidents` for listing."
         else
-          # loljson
           data = {
-            requester_id: requesterId
             incidents: foundIncidents.map (incident) ->
               {
-                'id':     incident.id,
-                'status': updatedStatus
+                id: incident.id,
+                type: 'incident_reference',
+                status: updatedStatus
               }
           }
 
