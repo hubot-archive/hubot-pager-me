@@ -57,7 +57,7 @@ module.exports = (robot) ->
                   else if msg.message.user.email_address
                     "I'm assuming your PagerDuty email is #{msg.message.user.email_address}. Change it with `#{robot.name} pager me as you@yourdomain.com`"
       if user
-        msg.send "I found your PagerDuty user https://#{pagerduty.subdomain}.pagerduty.com#{user.user_url}, #{emailNote}"
+        msg.send "I found your PagerDuty user #{user.html_url}, #{emailNote}"
       else
         msg.send "I couldn't find your user :( #{emailNote}"
 
@@ -85,7 +85,7 @@ module.exports = (robot) ->
         robot.emit 'error', err, msg
         return
 
-      msg.send formatIncident(incident)
+      msg.send formatIncident(incident['incident'])
 
   robot.respond /(pager|major)( me)? (inc|incidents|sup|problems)$/i, (msg) ->
     pagerduty.getIncidents "triggered,acknowledged", (err, incidents) ->
@@ -115,10 +115,10 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    fromUserName   = msg.message.user.name
-    query          = msg.match[5] or msg.match[6]
-    reason         = msg.match[7]
-    description    = "#{reason} - @#{fromUserName}"
+    fromUserName = msg.message.user.name
+    query        = msg.match[5] or msg.match[6]
+    reason       = msg.match[7]
+    description  = "#{reason} - @#{fromUserName}"
 
     # Figure out who we are
     campfireUserToPagerDutyUser msg, msg.message.user, false, (triggerdByPagerDutyUser) ->
@@ -151,15 +151,37 @@ module.exports = (robot) ->
               if json?.incidents.length == 0
                 msg.reply "Couldn't find the incident we just created to reassign. Please try again :/"
               else
+
+              data = null
+              if results.escalation_policy
                 data = {
-                  requester_id: triggerdByPagerDutyUserId,
                   incidents: json.incidents.map (incident) ->
                     {
-                      id:                incident.id
-                      assigned_to_user:  results.assigned_to_user
-                      escalation_policy: results.escalation_policy
+                      id: incident.id,
+                      type: 'incident_reference',
+                      escalation_policy: {
+                        id: results.escalation_policy,
+                        type: 'escalation_policy_reference'
+                      }
                     }
                 }
+              else
+                data = {
+                  incidents: json.incidents.map (incident) ->
+                    {
+                      id: incident.id,
+                      type: 'incident_reference',
+                      assignments: [
+                        {
+                          assignee: {
+                            id: results.assigned_to_user,
+                            type: 'user_reference'
+                          }
+                        }
+                      ]
+                    }
+                }
+                
 
                 pagerduty.put "/incidents", data , (err, json) ->
                   if err?
@@ -799,39 +821,18 @@ module.exports = (robot) ->
     data = null
     switch cmd
       when "trigger"
-        data = JSON.stringify { service_key: pagerDutyServiceApiKey, event_type: "trigger", description: description}
+        data = JSON.stringify { service_key: pagerDutyServiceApiKey, event_type: "trigger", description: description }
         pagerDutyIntegrationPost msg, data, (json) ->
           cb(json)
 
   formatIncident = (inc) ->
-     # { pd_nagios_object: 'service',
-     #   HOSTNAME: 'fs1a',
-     #   SERVICEDESC: 'snapshot_repositories',
-     #   SERVICESTATE: 'CRITICAL',
-     #   HOSTSTATE: 'UP' },
-
-    summary = if inc.trigger_summary_data
-              if inc.trigger_summary_data.pd_nagios_object == 'service'
-                 "#{inc.trigger_summary_data.HOSTNAME}/#{inc.trigger_summary_data.SERVICEDESC}"
-              else if inc.trigger_summary_data.pd_nagios_object == 'host'
-                 "#{inc.trigger_summary_data.HOSTNAME}/#{inc.trigger_summary_data.HOSTSTATE}"
-              # email services
-              else if inc.trigger_summary_data.subject
-                inc.trigger_summary_data.subject
-              else if inc.trigger_summary_data.description
-                inc.trigger_summary_data.description
-              else
-                ""
-            else
-              ""
-    assigned_to = if inc.assigned_to
-                    names = inc.assigned_to.map (assignment) -> assignment.object.name
-                    "- assigned to #{names.join(', ')}"
-                  else
-                    ""
-
-
-    "#{inc.incident_number}: #{inc.created_on} #{summary} #{assigned_to}\n"
+    summary = inc.title
+    assignee = inc.assignments?[0]?['assignee']?['summary']
+    if assignee
+      assigned_to = "- assigned to #{assignee}"
+    else
+      ''
+    "#{inc.incident_number}: #{inc.created_at} #{summary} #{assigned_to}\n"
 
   updateIncidents = (msg, incidentNumbers, statusFilter, updatedStatus) ->
     campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
@@ -881,8 +882,7 @@ module.exports = (robot) ->
 
   pagerDutyIntegrationPost = (msg, json, cb) ->
     msg.http('https://events.pagerduty.com/generic/2010-04-15/create_event.json')
-      .header("content-type","application/json")
-      .header("content-length", json.length)
+      .header('content-type', 'application/json')
       .post(json) (err, res, body) ->
         switch res.statusCode
           when 200
