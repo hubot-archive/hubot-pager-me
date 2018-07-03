@@ -92,7 +92,7 @@ module.exports = (robot) ->
       if err?
         robot.emit 'error', err, msg
         return
-      
+
       if incidents.length > 0
         buffer = "Triggered:\n----------\n"
         for junk, incident of incidents.reverse()
@@ -181,7 +181,7 @@ module.exports = (robot) ->
                       ]
                     }
                 }
-                
+
 
                 pagerduty.put "/incidents", data , (err, json) ->
                   if err?
@@ -216,26 +216,24 @@ module.exports = (robot) ->
         robot.emit 'error', err, msg
         return
 
-      ## Determine the email based on the adapter type (v4.0.0+ of the Slack adapter stores it in `profile.email`)
-      email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address || msg.message.user.profile.email
+      campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
+        filteredIncidents = if force
+                              incidents # don't filter at all
+                            else
+                              incidentsByUserId(incidents, user.id) # filter by id
 
-      filteredIncidents = if force
-                            incidents # don't filter at all
-                          else
-                            incidentsForEmail(incidents, email) # filter by email
+        if filteredIncidents.length is 0
+          # nothing assigned to the user, but there were others
+          if incidents.length > 0 and not force
+            msg.send "Nothing assigned to you to acknowledge. Acknowledge someone else's incident with `hubot pager ack <nnn>`"
+          else
+            msg.send "Nothing to acknowledge"
+          return
 
-      if filteredIncidents.length is 0
-        # nothing assigned to the user, but there were others
-        if incidents.length > 0 and not force
-          msg.send "Nothing assigned to you to acknowledge. Acknowledge someone else's incident with `hubot pager ack <nnn>`"
-        else
-          msg.send "Nothing to acknowledge"
-        return
+        incidentNumbers = (incident.incident_number for incident in filteredIncidents)
 
-      incidentNumbers = (incident.incident_number for incident in filteredIncidents)
-
-      # only acknowledge triggered things
-      updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged')
+        # only acknowledge triggered things
+        updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged')
 
   robot.respond /(?:pager|major)(?: me)? res(?:olve)?(?:d)? (.+)$/i, (msg) ->
     msg.finish()
@@ -891,7 +889,8 @@ module.exports = (robot) ->
             console.log res.statusCode
             console.log body
 
-  incidentsForEmail = (incidents, userEmail) ->
+  incidentsByUserId = (incidents, userId) ->
     incidents.filter (incident) ->
-      incident.assigned_to.some (assignment) ->
-        assignment.object.email is userEmail
+      assignments = incident.assignments.map (item) -> item.assignee.id
+      assignments.some (assignment) ->
+        assignment is userId
