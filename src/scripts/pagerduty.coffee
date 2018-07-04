@@ -573,15 +573,18 @@ module.exports = (robot) ->
     match.split(/[ ,]+/).map (incidentNumber) ->
       parseInt(incidentNumber)
 
-  campfireUserToPagerDutyUser = (msg, user, required, cb) ->
+  userEmail = (user) ->
+    user.pagerdutyEmail || user.email_address || user.profile?.email || process.env.HUBOT_PAGERDUTY_TEST_EMAIL
 
+  campfireUserToPagerDutyUser = (msg, user, required, cb) ->
     if typeof required is 'function'
       cb = required
       required = true
 
     ## Determine the email based on the adapter type (v4.0.0+ of the Slack adapter stores it in `profile.email`)
-    email  = user.pagerdutyEmail || user.email_address || user.profile.email || process.env.HUBOT_PAGERDUTY_TEST_EMAIL
-    speakerEmail = msg.message.user.pagerdutyEmail || msg.message.user.email_address || msg.message.user.profile.email
+    email = userEmail(user)
+    speakerEmail = userEmail(msg.message.user)
+
     if not email
       if not required
         cb null
