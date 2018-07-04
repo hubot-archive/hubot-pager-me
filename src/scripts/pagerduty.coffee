@@ -437,11 +437,11 @@ module.exports = (robot) ->
 
         if schedules.length > 0
           renderSchedule = (schedule, cb) ->
-            pagerduty.get "/schedules/#{schedule.id}/entries", query, (err, json) ->
+            pagerduty.get "/schedules/#{schedule.id}", query, (err, json) ->
               if err?
                 cb(err)
 
-              entries = json.entries
+              entries = json?.schedule?.final_schedule?.rendered_schedule_entries
 
               if entries
                 sortedEntries = entries.sort (a, b) ->
@@ -453,7 +453,7 @@ module.exports = (robot) ->
                     startTime = moment(entry.start).tz(timezone).format()
                     endTime   = moment(entry.end).tz(timezone).format()
 
-                    buffer += "* #{startTime} - #{endTime} #{entry.user.name} (#{schedule.name})\n"
+                    buffer += "* #{startTime} - #{endTime} #{entry.user.summary} (#{schedule.name})\n"
                 cb(null, buffer)
 
           async.map schedules, renderSchedule, (err, results) ->
