@@ -19,9 +19,9 @@ module.exports = (robot) ->
       renderSchedule = (s, cb) ->
         withCurrentOncallId msg, s, (oncallUserid, oncallUsername, schedule) ->
           if userId == oncallUserid
-            cb null, "* Yes, you are on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
+            cb null, "* Yes, you are on call for #{schedule.name} - #{schedule.html_url}"
           else
-            cb null, "* No, you are NOT on call for #{schedule.name} (but #{oncallUsername} is)- https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
+            cb null, "* No, you are NOT on call for #{schedule.name} (but #{oncallUsername} is)- #{schedule.html_url}"
 
       if !userId?
         msg.send "Couldn't figure out the pagerduty user connected to your account."
@@ -108,15 +108,15 @@ module.exports = (robot) ->
       start_time = moment().format()
       end_time = moment().add('minutes', minutes).format()
 
-      maintenance_window = {
-        'start_time': start_time,
-        'end_time': end_time,
-        'service_ids': service_ids
-      }
-      data = { 'maintenance_window': maintenance_window, 'requester_id': requester_id }
+      services = []
+      for service_id in service_ids
+        services.push id: service_id, type: 'service_reference'
+
+      maintenance_window = { start_time, end_time, services }
+      data = { maintenance_window, services }
 
       msg.send "Opening maintenance window for: #{service_ids}"
-      pagerduty.post "/maintenance_windows", data, (err, json) ->
+      pagerduty.post '/maintenance_windows', data, (err, json) ->
         if err?
           robot.emit 'error', err, msg
           return
@@ -213,7 +213,7 @@ module.exports = (robot) ->
         msg.send "Sorry, I can't figure out #{possessive} email address :( Can #{addressee} tell me with `#{robot.name} pager me as you@yourdomain.com`?"
         return
 
-    pagerduty.get "/users", {query: email}, (err, json) ->
+    pagerduty.get "/users", { query: email }, (err, json) ->
       if err?
         robot.emit 'error', err, msg
         return
