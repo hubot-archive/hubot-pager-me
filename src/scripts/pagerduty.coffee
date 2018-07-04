@@ -362,7 +362,7 @@ module.exports = (robot) ->
       overflow: 'true'
     }
 
-    thing = 'entries'
+    thing = ''
     if msg.match[3] && msg.match[3].match /overrides/
       thing = 'overrides'
       query['editable'] = 'true'
@@ -387,7 +387,7 @@ module.exports = (robot) ->
           robot.emit 'error', err, msg
           return
 
-        entries = json.entries || json.overrides
+        entries = json?.schedule?.final_schedule?.rendered_schedule_entries || json.overrides
         if entries
           sortedEntries = entries.sort (a, b) ->
             moment(a.start).unix() - moment(b.start).unix()
@@ -397,7 +397,7 @@ module.exports = (robot) ->
             startTime = moment(entry.start).tz(timezone).format()
             endTime   = moment(entry.end).tz(timezone).format()
             if entry.id
-              buffer += "* (#{entry.id}) #{startTime} - #{endTime} #{entry.user.name}\n"
+              buffer += "* (#{entry.id}) #{startTime} - #{endTime} #{entry.user.summary}\n"
             else
               buffer += "* #{startTime} - #{endTime} #{entry.user.name}\n"
           if buffer == ""
