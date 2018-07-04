@@ -342,7 +342,7 @@ module.exports = (robot) ->
       buffer = ''
       if schedules.length > 0
         for schedule in schedules
-          buffer += "* #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}\n"
+          buffer += "* #{schedule.name} - #{schedule.html_url}\n"
         msg.send buffer
       else
         msg.send 'No schedules found!'
