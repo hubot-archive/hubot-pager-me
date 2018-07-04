@@ -257,28 +257,28 @@ module.exports = (robot) ->
       return
 
     force = msg.match[5]?
-    pagerduty.getIncidents "acknowledged", (err, incidents) ->
+    pagerduty.getIncidents 'acknowledged', (err, incidents) ->
       if err?
         robot.emit 'error', err, msg
         return
 
-      email  = msg.message.user.pagerdutyEmail || msg.message.user.email_address
-      filteredIncidents = if force
-                            incidents # don't filter at all
-                          else
-                            incidentsForEmail(incidents, email) # filter by email
-      if filteredIncidents.length is 0
-        # nothing assigned to the user, but there were others
-        if incidents.length > 0 and not force
-          msg.send "Nothing assigned to you to resolve. Resolve someone else's incident with `hubot pager ack <nnn>`"
-        else
-          msg.send "Nothing to resolve"
-        return
+      campfireUserToPagerDutyUser msg, msg.message.user, (user) ->
+        filteredIncidents = if force
+                              incidents # don't filter at all
+                            else
+                              incidentsByUserId(incidents, user.id) # filter by id
+        if filteredIncidents.length is 0
+          # nothing assigned to the user, but there were others
+          if incidents.length > 0 and not force
+            msg.send "Nothing assigned to you to resolve. Resolve someone else's incident with `hubot pager ack <nnn>`"
+          else
+            msg.send "Nothing to resolve"
+          return
 
-      incidentNumbers = (incident.incident_number for incident in filteredIncidents)
+        incidentNumbers = (incident.incident_number for incident in filteredIncidents)
 
-      # only resolve things that are acknowledged
-      updateIncidents(msg, incidentNumbers, 'acknowledged', 'resolved')
+        # only resolve things that are acknowledged
+        updateIncidents(msg, incidentNumbers, 'acknowledged', 'resolved')
 
   robot.respond /(pager|major)( me)? notes (.+)$/i, (msg) ->
     msg.finish()
