@@ -493,11 +493,14 @@ module.exports = (robot) ->
           end_time = moment(msg.match[9]).format()
 
           override  = {
-            'start':     start_time,
-            'end':       end_time,
-            'user_id':   userId
+            start: start_time,
+            end: end_time,
+            user: {
+              id: userId,
+              type: 'user_reference'
+            }
           }
-          data = { 'override': override }
+          data = { override: override }
           pagerduty.post "/schedules/#{scheduleId}/overrides", data, (err, json) ->
             if err?
               robot.emit 'error', err, msg
@@ -506,7 +509,7 @@ module.exports = (robot) ->
             if json && json.override
               start = moment(json.override.start)
               end = moment(json.override.end)
-              msg.send "Override setup! #{json.override.user.name} has the pager from #{start.format()} until #{end.format()}"
+              msg.send "Override setup! #{json.override.user.summary} has the pager from #{start.format()} until #{end.format()}"
             else
               msg.send "That didn't work. Check Hubot's logs for an error!"
         else
