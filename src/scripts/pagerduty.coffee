@@ -294,7 +294,7 @@ module.exports = (robot) ->
 
       buffer = ""
       for note in json.notes
-        buffer += "#{note.created_at} #{note.user.name}: #{note.content}\n"
+        buffer += "#{note.created_at} #{note.user.summary}: #{note.content}\n"
       msg.send buffer
 
   robot.respond /(pager|major)( me)? note ([\d\w]+) (.+)$/i, (msg) ->
