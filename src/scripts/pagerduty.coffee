@@ -554,9 +554,12 @@ module.exports = (robot) ->
         minutes   = parseInt msg.match[3]
         end       = moment().add(minutes, 'minutes').format()
         override  = {
-          'start':     start,
-          'end':       end,
-          'user_id':   userId
+          start: start,
+          end: end,
+          user: {
+            id: userId,
+            type: 'user_reference'
+          }
         }
         withCurrentOncall msg, matchingSchedule, (old_username, schedule) ->
           data = { 'override': override }
@@ -568,7 +571,7 @@ module.exports = (robot) ->
             if json.override
               start = moment(json.override.start)
               end = moment(json.override.end)
-              msg.send "Rejoice, #{old_username}! #{json.override.user.name} has the pager on #{schedule.name} until #{end.format()}"
+              msg.send "Rejoice, #{old_username}! #{json.override.user.summary} has the pager on #{schedule.name} until #{end.format()}"
 
   parseIncidentNumbers = (match) ->
     match.split(/[ ,]+/).map (incidentNumber) ->
