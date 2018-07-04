@@ -19,9 +19,9 @@ module.exports = (robot) ->
       renderSchedule = (s, cb) ->
         withCurrentOncallId msg, s, (oncallUserid, oncallUsername, schedule) ->
           if userId == oncallUserid
-            cb null, "* Yes, you are on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
+            cb null, "* Yes, you are on call for #{schedule.name} - #{schedule.html_url}"
           else
-            cb null, "* No, you are NOT on call for #{schedule.name} (but #{oncallUsername} is)- https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}"
+            cb null, "* No, you are NOT on call for #{schedule.name} (but #{oncallUsername} is)- #{schedule.html_url}"
 
       if !userId?
         msg.send "Couldn't figure out the pagerduty user connected to your account."
@@ -51,7 +51,7 @@ module.exports = (robot) ->
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
         if (username)
-          messages.push("* #{username} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+          messages.push("* #{username} is on call for #{schedule.name} - #{schedule.html_url}")
         else
           robot.logger.debug "No user for schedule #{schedule.name}"
         cb null
@@ -90,7 +90,7 @@ module.exports = (robot) ->
       services = json.services
       if services.length > 0
         for service in services
-          buffer += "* #{service.id}: #{service.name} (#{service.status}) - https://#{pagerduty.subdomain}.pagerduty.com/services/#{service.id}\n"
+          buffer += "* #{service.id}: #{service.name} (#{service.status}) - #{service.html_url}\n"
         msg.send buffer
       else
         msg.send 'No services found!'
@@ -108,15 +108,15 @@ module.exports = (robot) ->
       start_time = moment().format()
       end_time = moment().add('minutes', minutes).format()
 
-      maintenance_window = {
-        'start_time': start_time,
-        'end_time': end_time,
-        'service_ids': service_ids
-      }
-      data = { 'maintenance_window': maintenance_window, 'requester_id': requester_id }
+      services = []
+      for service_id in service_ids
+        services.push id: service_id, type: 'service_reference'
+
+      maintenance_window = { start_time, end_time, services }
+      data = { maintenance_window, services }
 
       msg.send "Opening maintenance window for: #{service_ids}"
-      pagerduty.post "/maintenance_windows", data, (err, json) ->
+      pagerduty.post '/maintenance_windows', data, (err, json) ->
         if err?
           robot.emit 'error', err, msg
           return
@@ -125,3 +125,105 @@ module.exports = (robot) ->
           msg.send "Maintenance window created! ID: #{json.maintenance_window.id} Ends: #{json.maintenance_window.end_time}"
         else
           msg.send "That didn't work. Check Hubot's logs for an error!"
+
+  withCurrentOncall = (msg, schedule, cb) ->
+    withCurrentOncallUser msg, schedule, (user, s) ->
+      if (user)
+        cb(user.name, s)
+      else
+        cb(null, s)
+
+  withCurrentOncallId = (msg, schedule, cb) ->
+    withCurrentOncallUser msg, schedule, (user, s) ->
+      if (user)
+        cb(user.id, user.name, s)
+      else
+        cb(null, null, s)
+
+  withCurrentOncallUser = (msg, schedule, cb) ->
+    oneHour = moment().add(1, 'hours').format()
+    now = moment().format()
+
+    scheduleId = schedule.id
+    if (schedule instanceof Array && schedule[0])
+      scheduleId = schedule[0].id
+    unless scheduleId
+      msg.send "Unable to retrieve the schedule. Use 'pager schedules' to list all schedules."
+      return
+
+    query = {
+      since: now,
+      until: oneHour,
+    }
+    pagerduty.get "/schedules/#{scheduleId}/users", query, (err, json) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+      if json.users and json.users.length > 0
+        cb(json.users[0], schedule)
+      else
+        cb(null, schedule)
+
+  SchedulesMatching = (msg, q, cb) ->
+    query = {
+      query: q
+    }
+    pagerduty.getSchedules query, (err, schedules) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+
+      cb(schedules)
+
+  withScheduleMatching = (msg, q, cb) ->
+    SchedulesMatching msg, q, (schedules) ->
+      if schedules?.length < 1
+        msg.send "I couldn't find any schedules matching #{q}"
+      else
+        cb(schedule) for schedule in schedules
+      return
+
+  userEmail = (user) ->
+    user.pagerdutyEmail || user.email_address || user.profile?.email || process.env.HUBOT_PAGERDUTY_TEST_EMAIL
+
+  campfireUserToPagerDutyUser = (msg, user, required, cb) ->
+
+    if typeof required is 'function'
+      cb = required
+      required = true
+
+    ## Determine the email based on the adapter type (v4.0.0+ of the Slack adapter stores it in `profile.email`)
+    email = userEmail(user)
+    speakerEmail = userEmail(msg.message.user)
+
+    if not email
+      if not required
+        cb null
+        return
+      else
+        possessive = if email is speakerEmail
+                      "your"
+                     else
+                      "#{user.name}'s"
+        addressee = if email is speakerEmail
+                      "you"
+                    else
+                      "#{user.name}"
+
+        msg.send "Sorry, I can't figure out #{possessive} email address :( Can #{addressee} tell me with `#{robot.name} pager me as you@yourdomain.com`?"
+        return
+
+    pagerduty.get "/users", { query: email }, (err, json) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+
+      if json.users.length isnt 1
+        if json.users.length is 0 and not required
+          cb null
+          return
+        else
+          msg.send "Sorry, I expected to get 1 user back for #{email}, but got #{json.users.length} :sweat:. If your PagerDuty email is not #{email} use `/pager me as #{email}`"
+          return
+
+      cb(json.users[0])

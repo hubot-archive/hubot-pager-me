@@ -571,15 +571,18 @@ module.exports = (robot) ->
     match.split(/[ ,]+/).map (incidentNumber) ->
       parseInt(incidentNumber)
 
-  campfireUserToPagerDutyUser = (msg, user, required, cb) ->
+  userEmail = (user) ->
+    user.pagerdutyEmail || user.email_address || user.profile?.email || process.env.HUBOT_PAGERDUTY_TEST_EMAIL
 
+  campfireUserToPagerDutyUser = (msg, user, required, cb) ->
     if typeof required is 'function'
       cb = required
       required = true
 
     ## Determine the email based on the adapter type (v4.0.0+ of the Slack adapter stores it in `profile.email`)
-    email  = user.pagerdutyEmail || user.email_address || user.profile.email || process.env.HUBOT_PAGERDUTY_TEST_EMAIL
-    speakerEmail = msg.message.user.pagerdutyEmail || msg.message.user.email_address || msg.message.user.profile.email
+    email = userEmail(user)
+    speakerEmail = userEmail(msg.message.user)
+
     if not email
       if not required
         cb null
@@ -687,14 +690,13 @@ module.exports = (robot) ->
     query = {
       since: now,
       until: oneHour,
-      overflow: 'true'
     }
-    pagerduty.get "/schedules/#{scheduleId}/entries", query, (err, json) ->
+    pagerduty.get "/schedules/#{scheduleId}/users", query, (err, json) ->
       if err?
         robot.emit 'error', err, msg
         return
-      if json.entries and json.entries.length > 0
-        cb(json.entries[0].user, schedule)
+      if json.users and json.users.length > 0
+        cb(json.users[0], schedule)
       else
         cb(null, schedule)
 
