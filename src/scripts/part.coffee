@@ -90,7 +90,7 @@ module.exports = (robot) ->
       services = json.services
       if services.length > 0
         for service in services
-          buffer += "* #{service.id}: #{service.name} (#{service.status}) - https://#{pagerduty.subdomain}.pagerduty.com/services/#{service.id}\n"
+          buffer += "* #{service.id}: #{service.name} (#{service.status}) - #{service.html_url}\n"
         msg.send buffer
       else
         msg.send 'No services found!'
