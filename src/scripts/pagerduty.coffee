@@ -689,14 +689,13 @@ module.exports = (robot) ->
     query = {
       since: now,
       until: oneHour,
-      overflow: 'true'
     }
-    pagerduty.get "/schedules/#{scheduleId}/entries", query, (err, json) ->
+    pagerduty.get "/schedules/#{scheduleId}/users", query, (err, json) ->
       if err?
         robot.emit 'error', err, msg
         return
-      if json.entries and json.entries.length > 0
-        cb(json.entries[0].user, schedule)
+      if json.users and json.users.length > 0
+        cb(json.users[0], schedule)
       else
         cb(null, schedule)
 

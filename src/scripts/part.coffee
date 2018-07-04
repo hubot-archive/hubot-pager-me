@@ -51,7 +51,7 @@ module.exports = (robot) ->
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
         if (username)
-          messages.push("* #{username} is on call for #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+          messages.push("* #{username} is on call for #{schedule.name} - #{schedule.html_url}")
         else
           robot.logger.debug "No user for schedule #{schedule.name}"
         cb null
@@ -125,3 +125,57 @@ module.exports = (robot) ->
           msg.send "Maintenance window created! ID: #{json.maintenance_window.id} Ends: #{json.maintenance_window.end_time}"
         else
           msg.send "That didn't work. Check Hubot's logs for an error!"
+
+  withCurrentOncall = (msg, schedule, cb) ->
+    withCurrentOncallUser msg, schedule, (user, s) ->
+      if (user)
+        cb(user.name, s)
+      else
+        cb(null, s)
+
+  withCurrentOncallId = (msg, schedule, cb) ->
+    withCurrentOncallUser msg, schedule, (user, s) ->
+      cb(user.id, user.name, s)
+
+  withCurrentOncallUser = (msg, schedule, cb) ->
+    oneHour = moment().add(1, 'hours').format()
+    now = moment().format()
+
+    scheduleId = schedule.id
+    if (schedule instanceof Array && schedule[0])
+      scheduleId = schedule[0].id
+    unless scheduleId
+      msg.send "Unable to retrieve the schedule. Use 'pager schedules' to list all schedules."
+      return
+
+    query = {
+      since: now,
+      until: oneHour,
+    }
+    pagerduty.get "/schedules/#{scheduleId}/users", query, (err, json) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+      if json.users and json.users.length > 0
+        cb(json.users[0], schedule)
+      else
+        cb(null, schedule)
+
+  SchedulesMatching = (msg, q, cb) ->
+    query = {
+      query: q
+    }
+    pagerduty.getSchedules query, (err, schedules) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+
+      cb(schedules)
+
+  withScheduleMatching = (msg, q, cb) ->
+    SchedulesMatching msg, q, (schedules) ->
+      if schedules?.length < 1
+        msg.send "I couldn't find any schedules matching #{q}"
+      else
+        cb(schedule) for schedule in schedules
+      return
