@@ -23,9 +23,6 @@ module.exports =
     unless pagerDutyFromEmail?
       msg.send "PagerDuty From is missing:  Ensure that HUBOT_PAGERDUTY_FROM_EMAIL is set."
       missingAnything |= true
-    unless pagerDutySubdomain?
-      msg.send "PagerDuty Subdomain is missing:  Ensure that HUBOT_PAGERDUTY_SUBDOMAIN is set."
-      missingAnything |= true
     unless pagerDutyApiKey?
       msg.send "PagerDuty API Key is missing:  Ensure that HUBOT_PAGERDUTY_API_KEY is set."
       missingAnything |= true
