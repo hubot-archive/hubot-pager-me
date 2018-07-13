@@ -21,7 +21,6 @@
   },
   "dependencies": {
     "async": "^2.6.1",
-    "coffee-script": "~1.6",
     "moment-timezone": "~0.5.21",
     "scoped-http-client": "^0.11.0"
   },
