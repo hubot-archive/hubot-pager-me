@@ -2,21 +2,26 @@ HttpClient = require 'scoped-http-client'
 
 pagerDutyApiKey        = process.env.HUBOT_PAGERDUTY_API_KEY
 pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
-pagerDutyBaseUrl       = "https://#{pagerDutySubdomain}.pagerduty.com/api/v1"
+pagerDutyBaseUrl       = 'https://api.pagerduty.com'
 pagerDutyServices      = process.env.HUBOT_PAGERDUTY_SERVICES
+pagerDutyFromEmail     = process.env.HUBOT_PAGERDUTY_FROM_EMAIL
 pagerNoop              = process.env.HUBOT_PAGERDUTY_NOOP
-pagerNoop               = false if pagerNoop is "false" or pagerNoop  is "off"
+pagerNoop              = false if pagerNoop is 'false' or pagerNoop is 'off'
 
 class PagerDutyError extends Error
 module.exports =
   http: (path) ->
     HttpClient.create("#{pagerDutyBaseUrl}#{path}")
-      .headers(Authorization: "Token token=#{pagerDutyApiKey}", Accept: 'application/json')
+      .headers(
+        'Accept': 'application/vnd.pagerduty+json;version=2',
+        'Authorization': "Token token=#{pagerDutyApiKey}",
+        'From': pagerDutyFromEmail
+      )
 
   missingEnvironmentForApi: (msg) ->
     missingAnything = false
-    unless pagerDutySubdomain?
-      msg.send "PagerDuty Subdomain is missing:  Ensure that HUBOT_PAGERDUTY_SUBDOMAIN is set."
+    unless pagerDutyFromEmail?
+      msg.send "PagerDuty From is missing:  Ensure that HUBOT_PAGERDUTY_FROM_EMAIL is set."
       missingAnything |= true
     unless pagerDutyApiKey?
       msg.send "PagerDuty API Key is missing:  Ensure that HUBOT_PAGERDUTY_API_KEY is set."
@@ -52,8 +57,7 @@ module.exports =
 
     json = JSON.stringify(data)
     @http(url)
-      .header("content-type","application/json")
-      .header("content-length",json.length)
+      .header('content-type', 'application/json')
       .put(json) (err, res, body) ->
         if err?
           callback(err)
@@ -73,8 +77,7 @@ module.exports =
 
     json = JSON.stringify(data)
     @http(url)
-      .header("content-type","application/json")
-      .header("content-length",json.length)
+      .header('content-type', 'application/json')
       .post(json) (err, res, body) ->
         if err?
           return cb(err)
@@ -117,8 +120,9 @@ module.exports =
 
   getIncidents: (status, cb) ->
     query =
-      status:  status
-      sort_by: "incident_number:asc"
+      sort_by: 'incident_number:asc'
+      'statuses[]': status.split(',')
+
     @get "/incidents", query, (err, json) ->
       if err?
         cb(err)

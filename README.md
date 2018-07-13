@@ -4,10 +4,6 @@ PagerDuty integration for Hubot API v1
 
 ---
 
-_**Important:** This version of the Hubot package (`v2.1.x`) requires a V1 API token, which will be sunset in July 2017. Please use that until this package is updated. See #98 for details._
-
----
-
 ## Installation
 
 In your hubot repository, run:
@@ -24,9 +20,9 @@ Then add **hubot-pager-me** to your `external-scripts.json`:
 
 `pager me` requires a bit of configuration to get everything working:
 
-* HUBOT_PAGERDUTY_SUBDOMAIN - Your account subdomain
+* HUBOT_PAGERDUTY_FROM_EMAIL - Your account email
 * HUBOT_PAGERDUTY_USER_ID - The user id of a PagerDuty user for your bot. This is only required if you want chat users to be able to trigger incidents without their own PagerDuty user
-* HUBOT_PAGERDUTY_API_KEY - Get one from https://<your subdomain>.pagerduty.com/api_keys
+* HUBOT_PAGERDUTY_API_KEY - Get one from `https://<your subdomain>.pagerduty.com/api_keys`
 * HUBOT_PAGERDUTY_SERVICE_API_KEY - Service API Key from a 'General API Service'. This should be assigned to a dummy escalation policy that doesn't actually notify, as hubot will trigger on this before reassigning it
 * HUBOT_PAGERDUTY_SERVICES - (optional) Provide a comma separated list of service identifiers (e.g. `PFGPBFY`) to restrict queries to only those services.
 
@@ -39,7 +35,7 @@ Using a webhook requires a bit more configuration:
 
 To setup the webhooks and get the alerts in your chatrooms, you need to add the endpoint you define here (e.g /hooks) in
 the service settings of your Pagerduty accounts. You also need to define the room in which you want them to appear.
-(Unless you want to spam all the rooms with alerts, but we don't believe that should be the default behavior :)  
+(Unless you want to spam all the rooms with alerts, but we don't believe that should be the default behavior :)
 
 ## Example interactions
 
