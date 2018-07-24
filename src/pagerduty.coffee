@@ -5,6 +5,7 @@ pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
 pagerDutyBaseUrl       = 'https://api.pagerduty.com'
 pagerDutyServices      = process.env.HUBOT_PAGERDUTY_SERVICES
 pagerDutyFromEmail     = process.env.HUBOT_PAGERDUTY_FROM_EMAIL
+pagerDutyTeams         = process.env.HUBOT_PAGERDUTY_TEAMS
 pagerNoop              = process.env.HUBOT_PAGERDUTY_NOOP
 pagerNoop              = false if pagerNoop is 'false' or pagerNoop is 'off'
 
@@ -33,8 +34,11 @@ module.exports =
       cb = query
       query = {}
 
+    if pagerDutyTeams? && url.match /\/incidents/
+      query['teams_ids[]'] = pagerDutyTeams.split(',')
+
     if pagerDutyServices? && url.match /\/incidents/
-      query['service'] = pagerDutyServices
+      query['service_ids[]'] = pagerDutyServices.split(',')
 
     @http(url)
       .query(query)
