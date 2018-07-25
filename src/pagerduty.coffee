@@ -5,6 +5,7 @@ pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
 pagerDutyBaseUrl       = 'https://api.pagerduty.com'
 pagerDutyServices      = process.env.HUBOT_PAGERDUTY_SERVICES
 pagerDutyTeams         = process.env.HUBOT_PAGERDUTY_TEAMS
+pagerDutySchedules     = process.env.HUBOT_PAGERDUTY_SCHEDULES
 pagerDutyFromEmail     = process.env.HUBOT_PAGERDUTY_FROM_EMAIL
 pagerNoop              = process.env.HUBOT_PAGERDUTY_NOOP
 pagerNoop              = false if pagerNoop is 'false' or pagerNoop is 'off'
@@ -137,6 +138,22 @@ module.exports =
         cb(err)
         return
       cb(null, json.incidents)
+
+  getOncalls: (query, cb) ->
+    if typeof(query) is 'function'
+      cb = query
+      query = {}
+
+    if pagerDutySchedules?
+      query['schedule_ids[]'] = pagerDutySchedules.split(',')
+
+
+    @get "/oncalls", query, (err, json) ->
+      if err?
+        cb(err)
+        return
+
+      cb(null, json.oncalls)
 
   getSchedules: (query, cb) ->
     if typeof(query) is 'function'
