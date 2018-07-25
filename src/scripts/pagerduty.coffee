@@ -632,7 +632,7 @@ module.exports = (robot) ->
         cb null
 
     if oncallName?
-      withScheduleMatching msg, oncallName, (s) ->
+      withOncallMatching msg, oncallName, (s) ->
         renderOncall s, (err) ->
           if err?
             robot.emit 'error', err, msg
@@ -704,6 +704,89 @@ module.exports = (robot) ->
   parseIncidentNumbers = (match) ->
     match.split(/[ ,]+/).map (incidentNumber) ->
       parseInt(incidentNumber)
+
+  userEmail = (user) ->
+    user.pagerdutyEmail || user.email_address || user.profile?.email || process.env.HUBOT_PAGERDUTY_TEST_EMAIL
+
+  campfireUserToPagerDutyUser = (msg, user, required, cb) ->
+    if typeof required is 'function'
+      cb = required
+      required = true
+
+    ## Determine the email based on the adapter type (v4.0.0+ of the Slack adapter stores it in `profile.email`)
+    email = userEmail(user)
+    speakerEmail = userEmail(msg.message.user)
+
+    if not email
+      if not required
+        cb null
+        return
+      else
+        possessive = if email is speakerEmail
+                      "your"
+                     else
+                      "#{user.name}'s"
+        addressee = if email is speakerEmail
+                      "you"
+                    else
+                      "#{user.name}"
+
+        msg.send "Sorry, I can't figure out #{possessive} email address :( Can #{addressee} tell me with `#{robot.name} pager me as you@yourdomain.com`?"
+        return
+
+    pagerduty.get "/users", {query: email}, (err, json) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+
+      if json.users.length isnt 1
+        if json.users.length is 0 and not required
+          cb null
+          return
+        else
+          msg.send "Sorry, I expected to get 1 user back for #{email}, but got #{json.users.length} :sweat:. If your PagerDuty email is not #{email} use `/pager me as #{email}`"
+          return
+
+      cb(json.users[0])
+
+  SchedulesMatching = (msg, q, cb) ->
+    query = {
+      query: q
+    }
+    pagerduty.getSchedules query, (err, schedules) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+
+      cb(schedules)
+
+
+  OncallsMatching = (msg, q, cb) ->
+    query = {
+      query: q
+    }
+    pagerduty.getOncalls query, (err, oncalls) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+
+      cb(oncalls)
+
+  withScheduleMatching = (msg, q, cb) ->
+    SchedulesMatching msg, q, (schedules) ->
+      if schedules?.length < 1
+        msg.send "I couldn't find any schedules matching #{q}"
+      else
+        cb(schedule) for schedule in schedules
+      return
+
+  withOncallMatching = (msg, q, cb) ->
+    OncallsMatching msg, q, (oncalls) ->
+      if oncalls?.length < 1
+        msg.send "I couldn't find any oncalls matching #{q}"
+      else
+        cb(oncall) for oncall in oncalls
+      return
 
   reassignmentParametersForUserOrScheduleOrEscalationPolicy = (msg, string, cb) ->
     if campfireUser = robot.brain.userForName(string)
