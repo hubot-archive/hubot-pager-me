@@ -41,6 +41,7 @@ pagerduty = require('../pagerduty')
 async = require('async')
 inspect = require('util').inspect
 moment = require('moment-timezone')
+_ = require('lodash')
 
 pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
@@ -623,34 +624,31 @@ module.exports = (robot) ->
     if oncallName?.trim() is 'next'
       return
 
-    renderOncall = (s, cb) ->
-      withCurrentOncall msg, s, (username, oncall) ->
-        if (username)
-          messages.push("> #{oncall.name} - *#{username}*")
-        else
-          robot.logger.debug "No user for oncall #{oncall.name}"
-        cb null
+    renderOncall = (oncall, cb) ->
+      if (oncall.user.summary)
+        messages.push("> #{oncall.schedule.summary} - *#{oncall.user.summary}*")
+      else
+        robot.logger.debug "No user for oncall #{oncall.schedule.summary}"
+      cb null
 
-    if oncallName?
-      withOncallMatching msg, oncallName, (s) ->
-        renderOncall s, (err) ->
+    query = {
+      since: moment().format(),
+      until: moment().add(1, 'minute').format(),
+      earliest: true
+    }
+
+    pagerduty.getOncalls query, (err, oncalls) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+      if oncalls.length > 0
+        async.map oncalls, renderOncall, (err) ->
           if err?
             robot.emit 'error', err, msg
             return
-          msg.send messages.join("\n")
-    else
-      pagerduty.getOncalls (err, oncalls) ->
-        if err?
-          robot.emit 'error', err, msg
-          return
-        if oncalls.length > 0
-          async.map oncalls, renderOncall, (err) ->
-            if err?
-              robot.emit 'error', err, msg
-              return
-            msg.send messages.join("\n")
-        else
-          msg.send 'No oncall found!'
+          msg.send _.uniq(messages).sort().join("\n")
+      else
+        msg.send 'No oncall found!'
 
   robot.respond /(pager|major)( me)? services$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
@@ -759,18 +757,6 @@ module.exports = (robot) ->
         return
 
       cb(schedules)
-
-
-  OncallsMatching = (msg, q, cb) ->
-    query = {
-      query: q
-    }
-    pagerduty.getOncalls query, (err, oncalls) ->
-      if err?
-        robot.emit 'error', err, msg
-        return
-
-      cb(oncalls)
 
   withScheduleMatching = (msg, q, cb) ->
     SchedulesMatching msg, q, (schedules) ->

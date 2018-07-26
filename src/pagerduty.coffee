@@ -1,4 +1,5 @@
 HttpClient = require 'scoped-http-client'
+_ = require('lodash')
 
 pagerDutyApiKey        = process.env.HUBOT_PAGERDUTY_API_KEY
 pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
@@ -147,13 +148,23 @@ module.exports =
     if pagerDutySchedules?
       query['schedule_ids[]'] = pagerDutySchedules.split(',')
 
+    if pagerDutyEscalationsPolicies?
+      query['escalation_policy_ids[]'] = pagerDutyEscalationsPolicies.split(',')
+
+    console.error query
 
     @get "/oncalls", query, (err, json) ->
       if err?
         cb(err)
         return
+      console.error json.oncalls.length
+      # escalation_level filtering
+      oncalls = _.map json.oncalls, (o) ->
+        if o.escalation_level is 1 then return o
 
-      cb(null, json.oncalls)
+      filterdOncalls = _.without(oncalls, undefined)
+      console.error filterdOncalls.length
+      cb(null, filterdOncalls)
 
   getSchedules: (query, cb) ->
     if typeof(query) is 'function'
