@@ -603,52 +603,15 @@ module.exports = (robot) ->
 
   # who was on call?
   robot.respond /who was (on call|oncall)/i, (msg) ->
-    withTimeBasedOncall -72, msg, (usernames) ->
-      msg.send "> *Previous shift*:\n> #{usernames[0].join("\n> ")}"
+    getOncalls msg, -72
 
   # who is next on call?
   robot.respond /who(?:’s|'s|s| is|se)? ((next (on call|oncall))|((on call|oncall) next))/i, (msg) ->
-    withTimeBasedOncall 72, msg, (usernames) ->
-      msg.send "> *Upcoming shift*: \n> #{usernames[1].join("\n> ")}"
-
+    getOncalls msg, 72
 
   # who is on call?
   robot.respond /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?:\?)?(?: (?:for )?((["'])([^]*?)\2|(.*?))(?:\?|$))?$/i, (msg) ->
-    if pagerduty.missingEnvironmentForApi(msg)
-      return
-
-    messages = []
-
-    oncallName = msg.match[3] or msg.match[4]
-
-    if oncallName?.trim() is 'next'
-      return
-
-    renderOncall = (oncall, cb) ->
-      if (oncall.user.summary)
-        messages.push("> #{oncall.schedule.summary} - *#{oncall.user.summary}*")
-      else
-        robot.logger.debug "No user for oncall #{oncall.schedule.summary}"
-      cb null
-
-    query = {
-      since: moment().format(),
-      until: moment().add(1, 'minute').format(),
-      earliest: true
-    }
-
-    pagerduty.getOncalls query, (err, oncalls) ->
-      if err?
-        robot.emit 'error', err, msg
-        return
-      if oncalls.length > 0
-        async.map oncalls, renderOncall, (err) ->
-          if err?
-            robot.emit 'error', err, msg
-            return
-          msg.send _.uniq(messages).sort().join("\n")
-      else
-        msg.send 'No oncall found!'
+    getOncalls msg
 
   robot.respond /(pager|major)( me)? services$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
@@ -698,6 +661,61 @@ module.exports = (robot) ->
           msg.send "Maintenance window created! ID: #{json.maintenance_window.id} Ends: #{json.maintenance_window.end_time}"
         else
           msg.send "That didn't work. Check Hubot's logs for an error!"
+
+
+  getOncalls = (msg, hoursSpan) ->
+    if pagerduty.missingEnvironmentForApi(msg)
+      return
+
+    messages = []
+
+    oncallName = msg.match[3] or msg.match[4]
+
+    if oncallName?.trim() is 'next'
+      return
+
+    query = {
+      since: moment().format(),
+      until: moment().add(1, 'minute').format(),
+      earliest: true
+    }
+
+    if hoursSpan
+      if hoursSpan > 0
+        query.since = moment().format()
+        query.until = moment().add(hoursSpan, 'hours').format()
+      else
+        query.since = moment().subtract(-hoursSpan, 'hours').format()
+        query.until = moment().format()
+
+    pagerduty.getOncalls query, (err, oncalls) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+      if Object.keys(oncalls).length > 0
+        filteredOncalls = oncalls
+        _.forEach filteredOncalls, (value, key) ->
+          if hoursSpan < 0
+            values = value[value.length - 1]
+          else if hoursSpan > 0
+            if value.length > 1
+              values = value[1]
+            else
+              values = value[0]
+          else
+            values = value.join(", ")
+
+          messages.push("> #{key} - *#{values}*")
+        msg.send _.uniq(messages).sort().join('\n')
+      else
+        msg.send 'No oncall found!'
+
+  getFirstOncalls = (oncalls) ->
+    return oncalls
+
+  getLatestOncalls = (oncalls) ->
+    return oncalls
+
 
   parseIncidentNumbers = (match) ->
     match.split(/[ ,]+/).map (incidentNumber) ->

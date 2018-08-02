@@ -157,14 +157,20 @@ module.exports =
       if err?
         cb(err)
         return
-      console.error json.oncalls.length
       # escalation_level filtering
       oncalls = _.map json.oncalls, (o) ->
         if o.escalation_level is 1 then return o
-
       filterdOncalls = _.without(oncalls, undefined)
-      console.error filterdOncalls.length
-      cb(null, filterdOncalls)
+
+      oncallsBySchedules = _.transform(filterdOncalls, (result, value, key) ->
+        message = "#{value.user.summary} - #{value.start} - #{value.end}"
+        unless result[value.schedule.summary]
+          (result[value.schedule.summary] || (result[value.schedule.summary] = [])).push(message);
+        if result[value.schedule.summary].indexOf(message) == -1
+          (result[value.schedule.summary] || (result[value.schedule.summary] = [])).push(message);
+      , {})
+
+      cb(null, oncallsBySchedules)
 
   getSchedules: (query, cb) ->
     if typeof(query) is 'function'
