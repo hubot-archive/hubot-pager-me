@@ -705,7 +705,7 @@ module.exports = (robot) ->
           else
             values = value.join(", ")
 
-          messages.push("> #{key} - *#{values}*")
+          messages.push("> #{key} #{values}")
         msg.send _.uniq(messages).sort().join('\n')
       else
         msg.send 'No oncall found!'

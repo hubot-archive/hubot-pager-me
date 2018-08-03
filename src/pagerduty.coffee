@@ -1,5 +1,7 @@
 HttpClient = require 'scoped-http-client'
 _ = require('lodash')
+moment = require('moment-timezone')
+timezone = 'UTC'
 
 pagerDutyApiKey        = process.env.HUBOT_PAGERDUTY_API_KEY
 pagerDutySubdomain     = process.env.HUBOT_PAGERDUTY_SUBDOMAIN
@@ -163,7 +165,7 @@ module.exports =
       filterdOncalls = _.without(oncalls, undefined)
 
       oncallsBySchedules = _.transform(filterdOncalls, (result, value, key) ->
-        message = "#{value.user.summary} - #{value.start} - #{value.end}"
+        message = "(#{moment(value.start).tz(timezone).format('MMM Do, h:mm a')} - #{moment(value.end).tz(timezone).format('MMM Do, h:mm a')}) - *#{value.user.summary}*"
         unless result[value.schedule.summary]
           (result[value.schedule.summary] || (result[value.schedule.summary] = [])).push(message);
         if result[value.schedule.summary].indexOf(message) == -1
