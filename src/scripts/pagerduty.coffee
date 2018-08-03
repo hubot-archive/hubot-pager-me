@@ -688,7 +688,7 @@ module.exports = (robot) ->
         query.since = moment().subtract(-hoursSpan, 'hours').format()
         query.until = moment().format()
 
-    pagerduty.getOncalls query, (err, oncalls) ->
+    pagerduty.getOncalls query, msg.message.user.slack.slack.tz or 'UTC', (err, oncalls) ->
       if err?
         robot.emit 'error', err, msg
         return
