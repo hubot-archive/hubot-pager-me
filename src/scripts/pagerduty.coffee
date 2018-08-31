@@ -1,5 +1,5 @@
 # Description:
-#   Interact with PagerDuty services, schedules, and incidents with Hubot.  Schedules with "hidden" in the name will be ignored.
+#   Interact with PagerDuty services, schedules, and incidents with Hubot.
 #
 # Commands:
 #   hubot pager me as <email> - remember your pager email is <email>

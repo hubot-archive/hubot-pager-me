@@ -175,6 +175,4 @@ module.exports =
         cb(err)
         return
 
-      schedules = schedules.filter (x) -> x.indexOf("hidden") == -1
-
       cb(null, schedules)
