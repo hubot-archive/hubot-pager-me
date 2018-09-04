@@ -175,4 +175,11 @@ module.exports =
         cb(err)
         return
 
+      # Remove any schedules with "hidden" in the name
+      schedules = schedules.filter (schedule) ->
+        if schedule.name?
+          return schedule.name.indexOf("hidden") == -1
+        else
+          return true
+
       cb(null, schedules)
