@@ -104,6 +104,9 @@ module.exports = (robot) ->
         robot.emit 'error', err, msg
         return
 
+      incidents = incidents.filter (inc) ->
+         !/ninesapp\/canary/.test(inc.title)
+
       if incidents.length == 0
         msg.send "No open incidents"
         return
