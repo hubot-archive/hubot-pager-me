@@ -11,6 +11,7 @@
 #   hubot pager trigger <schedule> <severity> <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>. Severity must be one of: critical, error, warning or info.
 #   hubot pager incidents - return the current incidents
 #   hubot pager sup - return the current incidents
+#   hubot pager sup --canary - return the current incidents, including Nines' canary incidents
 #   hubot pager incident <incident> - return the incident NNN
 #   hubot pager note <incident> <content> - add note to incident #<incident> with <content>
 #   hubot pager notes <incident> - show notes for incident #<incident>
@@ -98,14 +99,15 @@ module.exports = (robot) ->
   # hubot pager incidents - return the current incidents
   # hubot pager sup - return the current incidents
   # hubot pager problems - return all open incidents
-  robot.respond /(pager|major)( me)? (inc|incidents|sup|problems)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (inc|incidents|sup|problems)( --canary)?$/i, (msg) ->
     pagerduty.getIncidents "triggered,acknowledged", (err, incidents) ->
       if err?
         robot.emit 'error', err, msg
         return
 
-      incidents = incidents.filter (inc) ->
-         !/ninesapp\/canary/.test(inc.title)
+      unless msg.match[4]
+        incidents = incidents.filter (inc) ->
+           !/ninesapp\/canary/.test(inc.title)
 
       if incidents.length == 0
         msg.send "No open incidents"
