@@ -665,7 +665,7 @@ module.exports = (robot) ->
           return
 
         Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: username})
-        if !pagerEnabledForScheduleOrEscalation(schedule) || username == "hubot"
+        if !pagerEnabledForScheduleOrEscalation(schedule) || username == "hubot" || username == undefined
           cb(null, undefined)
           return
 
