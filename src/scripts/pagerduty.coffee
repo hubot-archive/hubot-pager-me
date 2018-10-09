@@ -659,7 +659,7 @@ module.exports = (robot) ->
     scheduleName = msg.match[4]
 
     renderSchedule = (s, cb) ->
-      withCurrentOncall msg, s, (err, username, schedule) ->
+      withCurrentOncallId msg, s, (err, userId, username, schedule) ->
         if err?
           cb(err)
           return
@@ -669,7 +669,8 @@ module.exports = (robot) ->
           cb(null, undefined)
           return
 
-        cb(null, "* #{schedule.name}'s oncall is #{username} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+        url_start = "https://#{pagerduty.subdomain}.pagerduty.com"
+        cb(null, "• <#{url_start}/schedules##{schedule.id}|#{schedule.name}'s> oncall is <#{url_start}/users/#{userId}|#{username}>")
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, (s) ->
