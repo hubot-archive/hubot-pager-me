@@ -659,18 +659,17 @@ module.exports = (robot) ->
     scheduleName = msg.match[4]
 
     renderSchedule = (s, cb) ->
-      withCurrentOncallId msg, s, (err, userId, username, schedule) ->
+      withCurrentOncall msg, s, (err, username, schedule) ->
         if err?
           cb(err)
           return
 
         Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: username})
-        if !pagerEnabledForScheduleOrEscalation(schedule) || username == "hubot" || username == undefined
+        if !pagerEnabledForScheduleOrEscalation(schedule) || username == "hubot"
           cb(null, undefined)
           return
 
-        url_start = "https://#{pagerduty.subdomain}.pagerduty.com"
-        cb(null, "• <#{url_start}/schedules##{schedule.id}|#{schedule.name}'s> oncall is <#{url_start}/users/#{userId}|#{username}>")
+        cb(null, "* #{schedule.name}'s oncall is #{username} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, (s) ->
@@ -698,8 +697,7 @@ module.exports = (robot) ->
 
         results = (result for result in results when result?)
         Scrolls.log("info", {at: 'who-is-on-call/map-schedules'})
-        for chunk in chunkMessageLines(results, 7000)
-          msg.send chunk.join("\n")
+        msg.send results.join("\n")
 
   # hubot pager services - list services
   robot.respond /(pager|major)( me)? services$/i, (msg) ->
@@ -1111,21 +1109,3 @@ module.exports = (robot) ->
         # override
         buffer += "* #{time} #{username}\n"
     buffer
-
-
-  chunkMessageLines = (messageLines, boundary) ->
-    allChunks = []
-    thisChunk = []
-    charCount = 0
-
-    for line in messageLines
-      if charCount >= boundary
-        allChunks.push(thisChunk)
-        charCount = 0
-        thisChunk = []
-
-      thisChunk.push(line)
-      charCount += line.length
-
-    allChunks.push(thisChunk)
-    allChunks
