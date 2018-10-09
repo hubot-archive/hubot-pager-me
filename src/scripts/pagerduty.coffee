@@ -698,7 +698,8 @@ module.exports = (robot) ->
 
         results = (result for result in results when result?)
         Scrolls.log("info", {at: 'who-is-on-call/map-schedules'})
-        msg.send results.join("\n")
+        for chunk in chunkMessageLines(results, 7000)
+          msg.send chunk.join("\n")
 
   # hubot pager services - list services
   robot.respond /(pager|major)( me)? services$/i, (msg) ->
@@ -1110,3 +1111,21 @@ module.exports = (robot) ->
         # override
         buffer += "* #{time} #{username}\n"
     buffer
+
+
+  chunkMessageLines = (messageLines, boundary) ->
+    allChunks = []
+    thisChunk = []
+    charCount = 0
+
+    for line in messageLines
+      if charCount >= boundary
+        allChunks.push(thisChunk)
+        charCount = 0
+        thisChunk = []
+
+      thisChunk.push(line)
+      charCount += line.length
+
+    allChunks.push(thisChunk)
+    allChunks
