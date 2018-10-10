@@ -421,6 +421,8 @@ module.exports = (robot) ->
         key = "oncalls"
         query['schedule_ids'] = [scheduleId]
 
+      query['include'] = ['users']
+
       pagerduty.getAll url, query, key, (err, entries) ->
         if err?
           robot.emit 'error', err, msg
@@ -454,6 +456,7 @@ module.exports = (robot) ->
         since: moment().format(),
         until: moment().add(30, 'days').format(),
         user_ids: [user.id]
+        include: ['users']
       }
 
       pagerduty.getAll "/oncalls", query, "oncalls", (err, oncalls) ->
@@ -1100,21 +1103,22 @@ module.exports = (robot) ->
       startTime = moment(oncall.start).tz(timezone).format()
       endTime   = moment(oncall.end).tz(timezone).format()
       time      = "#{startTime} - #{endTime}"
-      username  = oncall.user.summary
+      username  = guessSlackHandleFromEmail(oncall.user) || oncall.user.summary
       if oncall.schedule?
         scheduleId = oncall.schedule.id
         if scheduleId not of schedules 
           schedules[scheduleId] = []
         if time not in schedules[scheduleId]
           schedules[scheduleId].push time
-          buffer += "* #{time} #{username} (#{oncall.schedule.summary})\n"
+          buffer += "• #{time} #{username} (<#{oncall.schedule.html_url}>|#{oncall.schedule.summary})\n"
       else if oncall.escalation_policy?
         # no schedule embedded
         epSummary = oncall.escalation_policy.summary
-        buffer += "* #{time} #{username} (#{epSummary})\n"
+        epURL = oncall.escalation_policy.html_url
+        buffer += "• #{time} #{username} (<#{epURL}>|#{epSummary})\n"
       else 
         # override
-        buffer += "* #{time} #{username}\n"
+        buffer += "• #{time} #{username}\n"
     buffer
 
 
