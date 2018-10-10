@@ -659,18 +659,21 @@ module.exports = (robot) ->
     scheduleName = msg.match[4]
 
     renderSchedule = (s, cb) ->
-      withCurrentOncallId msg, s, (err, userId, username, schedule) ->
+      withCurrentOncallUser msg, s, (err, user, schedule) ->
         if err?
           cb(err)
           return
 
-        Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: username})
-        if !pagerEnabledForScheduleOrEscalation(schedule) || username == "hubot" || username == undefined
+        Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: user.name})
+        if !pagerEnabledForScheduleOrEscalation(schedule) || user.name == "hubot" || user.name == undefined
           cb(null, undefined)
           return
 
+        slackHandle = guessSlackHandleFromEmail(user)
         url_start = "https://#{pagerduty.subdomain}.pagerduty.com"
-        cb(null, "• <#{url_start}/schedules##{schedule.id}|#{schedule.name}'s> oncall is <#{url_start}/users/#{userId}|#{username}>")
+        contact_links = ["<#{url_start}/users/#{user.id}|PagerDuty>"]
+        contact_links.push(slackHandle) if slackHandle
+        cb(null, "• <#{url_start}/schedules##{schedule.id}|#{schedule.name}'s> oncall is #{user.name} (#{contact_links.join(' | ')})")
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, (s) ->
@@ -1129,3 +1132,12 @@ module.exports = (robot) ->
 
     allChunks.push(thisChunk)
     allChunks
+
+  guessSlackHandleFromEmail = (user) ->
+    # Context: https://github.slack.com/archives/C0GNSSLUF/p1539181657000100
+    if user.email == "jp@github.com"
+      "@josh"
+    else if user.email.search(/github\.com/)
+      user.email.replace(/(.+)\@github\.com/, '@$1')
+    else
+      null
