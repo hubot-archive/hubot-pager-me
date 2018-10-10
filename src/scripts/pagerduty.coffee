@@ -376,13 +376,15 @@ module.exports = (robot) ->
         return
 
       renderSchedule = (schedule, cb) ->
-        cb(null, "* #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+        cb(null, "• <https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}|#{schedule.name}>")
 
       async.map schedules, renderSchedule, (err, results) ->
         if err?
           robot.emit 'error', err, msg
           return
-        msg.send results.join("\n")
+
+        for chunk in chunkMessageLines(results, 7000)
+          msg.send chunk.join("\n")
 
   # hubot pager schedule <schedule> - show <schedule>'s shifts for the upcoming month
   # hubot pager overrides <schedule> - show upcoming overrides for the next month
