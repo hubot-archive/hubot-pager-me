@@ -426,7 +426,7 @@ module.exports = (robot) ->
           robot.emit 'error', err, msg
           return
 
-        unless entries
+        unless entries.length > 0
           msg.send "None found!"
           return
 
