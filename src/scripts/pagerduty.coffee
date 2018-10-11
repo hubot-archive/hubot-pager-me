@@ -366,6 +366,8 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
+    msg.send "Retrieving schedules. This may take a few seconds..."
+
     pagerduty.getSchedules query, (err, schedules) ->
       if err?
         robot.emit 'error', err, msg
@@ -376,13 +378,15 @@ module.exports = (robot) ->
         return
 
       renderSchedule = (schedule, cb) ->
-        cb(null, "* #{schedule.name} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+        cb(null, "• <https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}|#{schedule.name}>")
 
       async.map schedules, renderSchedule, (err, results) ->
         if err?
           robot.emit 'error', err, msg
           return
-        msg.send results.join("\n")
+
+        for chunk in chunkMessageLines(results, 7000)
+          msg.send chunk.join("\n")
 
   # hubot pager schedule <schedule> - show <schedule>'s shifts for the upcoming month
   # hubot pager overrides <schedule> - show upcoming overrides for the next month
@@ -419,12 +423,14 @@ module.exports = (robot) ->
         key = "oncalls"
         query['schedule_ids'] = [scheduleId]
 
+      query['include'] = ['users']
+
       pagerduty.getAll url, query, key, (err, entries) ->
         if err?
           robot.emit 'error', err, msg
           return
 
-        unless entries
+        unless entries.length > 0
           msg.send "None found!"
           return
 
@@ -452,6 +458,7 @@ module.exports = (robot) ->
         since: moment().format(),
         until: moment().add(30, 'days').format(),
         user_ids: [user.id]
+        include: ['users']
       }
 
       pagerduty.getAll "/oncalls", query, "oncalls", (err, oncalls) ->
@@ -656,20 +663,24 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
+    msg.send "Retrieving schedules. This may take a few seconds..."
+
     scheduleName = msg.match[4]
 
     renderSchedule = (s, cb) ->
-      withCurrentOncall msg, s, (err, username, schedule) ->
+      withCurrentOncallUser msg, s, (err, user, schedule) ->
         if err?
           cb(err)
           return
 
-        Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: username})
-        if !pagerEnabledForScheduleOrEscalation(schedule) || username == "hubot"
+        Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: user.name})
+        if !pagerEnabledForScheduleOrEscalation(schedule) || user.name == "hubot" || user.name == undefined
           cb(null, undefined)
           return
 
-        cb(null, "* #{schedule.name}'s oncall is #{username} - https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}")
+        slackHandle = guessSlackHandleFromEmail(user)
+        slackString = " (#{slackHandle})" if slackHandle
+        cb(null, "• <https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}|#{schedule.name}'s> oncall is #{user.name}#{slackString}")
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, (s) ->
@@ -697,7 +708,8 @@ module.exports = (robot) ->
 
         results = (result for result in results when result?)
         Scrolls.log("info", {at: 'who-is-on-call/map-schedules'})
-        msg.send results.join("\n")
+        for chunk in chunkMessageLines(results, 7000)
+          msg.send chunk.join("\n")
 
   # hubot pager services - list services
   robot.respond /(pager|major)( me)? services$/i, (msg) ->
@@ -1093,19 +1105,47 @@ module.exports = (robot) ->
       startTime = moment(oncall.start).tz(timezone).format()
       endTime   = moment(oncall.end).tz(timezone).format()
       time      = "#{startTime} - #{endTime}"
-      username  = oncall.user.summary
+      username  = guessSlackHandleFromEmail(oncall.user) || oncall.user.summary
       if oncall.schedule?
         scheduleId = oncall.schedule.id
         if scheduleId not of schedules 
           schedules[scheduleId] = []
         if time not in schedules[scheduleId]
           schedules[scheduleId].push time
-          buffer += "* #{time} #{username} (#{oncall.schedule.summary})\n"
+          buffer += "• #{time} #{username} (<#{oncall.schedule.html_url}|#{oncall.schedule.summary}>)\n"
       else if oncall.escalation_policy?
         # no schedule embedded
         epSummary = oncall.escalation_policy.summary
-        buffer += "* #{time} #{username} (#{epSummary})\n"
+        epURL = oncall.escalation_policy.html_url
+        buffer += "• #{time} #{username} (<#{epURL}|#{epSummary}>)\n"
       else 
         # override
-        buffer += "* #{time} #{username}\n"
+        buffer += "• #{time} #{username}\n"
     buffer
+
+
+  chunkMessageLines = (messageLines, boundary) ->
+    allChunks = []
+    thisChunk = []
+    charCount = 0
+
+    for line in messageLines
+      if charCount >= boundary
+        allChunks.push(thisChunk)
+        charCount = 0
+        thisChunk = []
+
+      thisChunk.push(line)
+      charCount += line.length
+
+    allChunks.push(thisChunk)
+    allChunks
+
+  guessSlackHandleFromEmail = (user) ->
+    # Context: https://github.slack.com/archives/C0GNSSLUF/p1539181657000100
+    if user.email == "jp@github.com"
+      "`josh`"
+    else if user.email.search(/github\.com/)
+      user.email.replace(/(.+)\@github\.com/, '`$1`')
+    else
+      null
