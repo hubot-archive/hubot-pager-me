@@ -366,6 +366,8 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
+    msg.send "Retrieving schedules. This may take a few seconds..."
+
     pagerduty.getSchedules query, (err, schedules) ->
       if err?
         robot.emit 'error', err, msg
@@ -661,6 +663,8 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
+    msg.send "Retrieving schedules. This may take a few seconds..."
+
     scheduleName = msg.match[4]
 
     renderSchedule = (s, cb) ->
@@ -675,10 +679,8 @@ module.exports = (robot) ->
           return
 
         slackHandle = guessSlackHandleFromEmail(user)
-        url_start = "https://#{pagerduty.subdomain}.pagerduty.com"
-        contact_links = ["<#{url_start}/users/#{user.id}|PagerDuty>"]
-        contact_links.push(slackHandle) if slackHandle
-        cb(null, "• <#{url_start}/schedules##{schedule.id}|#{schedule.name}'s> oncall is #{user.name} (#{contact_links.join(' | ')})")
+        slackString = " (#{slackHandle})" if slackHandle
+        cb(null, "• <https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}|#{schedule.name}'s> oncall is #{user.name}#{slackString}")
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, (s) ->
@@ -1142,8 +1144,8 @@ module.exports = (robot) ->
   guessSlackHandleFromEmail = (user) ->
     # Context: https://github.slack.com/archives/C0GNSSLUF/p1539181657000100
     if user.email == "jp@github.com"
-      "`@josh`"
+      "`josh`"
     else if user.email.search(/github\.com/)
-      user.email.replace(/(.+)\@github\.com/, '`@$1`')
+      user.email.replace(/(.+)\@github\.com/, '`$1`')
     else
       null
