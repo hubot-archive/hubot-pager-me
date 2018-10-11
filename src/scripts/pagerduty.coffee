@@ -1112,12 +1112,12 @@ module.exports = (robot) ->
           schedules[scheduleId] = []
         if time not in schedules[scheduleId]
           schedules[scheduleId].push time
-          buffer += "• #{time} #{username} (<#{oncall.schedule.html_url}>|#{oncall.schedule.summary})\n"
+          buffer += "• #{time} #{username} (<#{oncall.schedule.html_url}|#{oncall.schedule.summary}>)\n"
       else if oncall.escalation_policy?
         # no schedule embedded
         epSummary = oncall.escalation_policy.summary
         epURL = oncall.escalation_policy.html_url
-        buffer += "• #{time} #{username} (<#{epURL}>|#{epSummary})\n"
+        buffer += "• #{time} #{username} (<#{epURL}|#{epSummary}>)\n"
       else 
         # override
         buffer += "• #{time} #{username}\n"
