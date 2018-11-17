@@ -108,16 +108,15 @@ module.exports = (robot) ->
 
   robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/i, (msg) ->
     msg.reply "Please include a user or schedule to page, like 'hubot pager infrastructure everything is on fire'."
-
-  robot.respond /(pager|major)( me)? (?:trigger|page) ((["'])([^]*?)\4|([\.\w\-]+)) (.+)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (?:trigger|page) ((["'])([^\4]*?)\4|“([^”]*?)”|‘([^’]*?)’|([\.\w\-]+)) (.+)$/i, (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
     fromUserName = msg.message.user.name
-    query        = msg.match[5] or msg.match[6]
-    reason       = msg.match[7]
+    query        = msg.match[5] or msg.match[6] or msg.match[7] or msg.match[8]
+    reason       = msg.match[9]
     description  = "#{reason} - @#{fromUserName}"
 
     # Figure out who we are
