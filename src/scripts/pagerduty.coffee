@@ -690,69 +690,6 @@ module.exports = (robot) ->
     match.split(/[ ,]+/).map (incidentNumber) ->
       parseInt(incidentNumber)
 
-  userEmail = (user) ->
-    user.pagerdutyEmail || user.email_address || user.profile?.email || process.env.HUBOT_PAGERDUTY_TEST_EMAIL
-
-  campfireUserToPagerDutyUser = (msg, user, required, cb) ->
-    if typeof required is 'function'
-      cb = required
-      required = true
-
-    ## Determine the email based on the adapter type (v4.0.0+ of the Slack adapter stores it in `profile.email`)
-    email = userEmail(user)
-    speakerEmail = userEmail(msg.message.user)
-
-    if not email
-      if not required
-        cb null
-        return
-      else
-        possessive = if email is speakerEmail
-                      "your"
-                     else
-                      "#{user.name}'s"
-        addressee = if email is speakerEmail
-                      "you"
-                    else
-                      "#{user.name}"
-
-        msg.send "Sorry, I can't figure out #{possessive} email address :( Can #{addressee} tell me with `#{robot.name} pager me as you@yourdomain.com`?"
-        return
-
-    pagerduty.get "/users", {query: email}, (err, json) ->
-      if err?
-        robot.emit 'error', err, msg
-        return
-
-      if json.users.length isnt 1
-        if json.users.length is 0 and not required
-          cb null
-          return
-        else
-          msg.send "Sorry, I expected to get 1 user back for #{email}, but got #{json.users.length} :sweat:. If your PagerDuty email is not #{email} use `/pager me as #{email}`"
-          return
-
-      cb(json.users[0])
-
-  SchedulesMatching = (msg, q, cb) ->
-    query = {
-      query: q
-    }
-    pagerduty.getSchedules query, (err, schedules) ->
-      if err?
-        robot.emit 'error', err, msg
-        return
-
-      cb(schedules)
-
-  withScheduleMatching = (msg, q, cb) ->
-    SchedulesMatching msg, q, (schedules) ->
-      if schedules?.length < 1
-        msg.send "I couldn't find any schedules matching #{q}"
-      else
-        cb(schedule) for schedule in schedules
-      return
-
   reassignmentParametersForUserOrScheduleOrEscalationPolicy = (msg, string, cb) ->
     if campfireUser = robot.brain.userForName(string)
       campfireUserToPagerDutyUser msg, campfireUser, (user) ->
@@ -783,41 +720,6 @@ module.exports = (robot) ->
                 cb(assigned_to_user: user.id,  name: user.name)
             else
               cb()
-
-  withCurrentOncall = (msg, schedule, cb) ->
-    withCurrentOncallUser msg, schedule, (user, s) ->
-      if (user)
-        cb(user.name, s)
-      else
-        cb(null, s)
-
-  withCurrentOncallId = (msg, schedule, cb) ->
-    withCurrentOncallUser msg, schedule, (user, s) ->
-      cb(user.id, user.name, s)
-
-  withCurrentOncallUser = (msg, schedule, cb) ->
-    oneHour = moment().add(1, 'hours').format()
-    now = moment().format()
-
-    scheduleId = schedule.id
-    if (schedule instanceof Array && schedule[0])
-      scheduleId = schedule[0].id
-    unless scheduleId
-      msg.send "Unable to retrieve the schedule. Use 'pager schedules' to list all schedules."
-      return
-
-    query = {
-      since: now,
-      until: oneHour,
-    }
-    pagerduty.get "/schedules/#{scheduleId}/users", query, (err, json) ->
-      if err?
-        robot.emit 'error', err, msg
-        return
-      if json.users and json.users.length > 0
-        cb(json.users[0], schedule)
-      else
-        cb(null, schedule)
 
   pagerDutyIntegrationAPI = (msg, cmd, description, cb) ->
     unless pagerDutyServiceApiKey?
