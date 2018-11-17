@@ -6,7 +6,7 @@ expect = chai.expect
 
 describe 'pagerduty', ->
   before ->
-    @triggerRegex = /(pager|major)( me)? (?:trigger|page) ((["'])([^]*?)\4|([\.\w\-]+)) (.+)$/i
+    @triggerRegex = /(pager|major)( me)? (?:trigger|page) ((["'])([^\4]*?)\4|“([^”]*?)”|‘([^’]*?)’|([\.\w\-]+)) (.+)$/i
     @schedulesRegex = /(pager|major)( me)? schedules( ((["'])([^]*?)\5|(.+)))?$/i
     @whosOnCallRegex = /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?:\?)?(?: (?:for )?((["'])([^]*?)\2|(.*?))(?:\?|$))?$/i
 
@@ -82,23 +82,23 @@ describe 'pagerduty', ->
 
   it 'trigger handles users with dots', ->
     msg = @triggerRegex.exec('pager trigger foo.bar baz')
-    expect(msg[6]).to.equal('foo.bar')
-    expect(msg[7]).to.equal('baz')
+    expect(msg[8]).to.equal('foo.bar')
+    expect(msg[9]).to.equal('baz')
 
   it 'trigger handles users with spaces', ->
     msg = @triggerRegex.exec('pager trigger "foo bar" baz')
     expect(msg[5]).to.equal('foo bar')
-    expect(msg[7]).to.equal('baz')
+    expect(msg[9]).to.equal('baz')
 
   it 'trigger handles users with spaces and single quotes', ->
     msg = @triggerRegex.exec("pager trigger 'foo bar' baz")
     expect(msg[5]).to.equal('foo bar')
-    expect(msg[7]).to.equal('baz')
+    expect(msg[9]).to.equal('baz')
 
   it 'trigger handles users without spaces', ->
     msg = @triggerRegex.exec('pager trigger foo bar baz')
-    expect(msg[6]).to.equal('foo')
-    expect(msg[7]).to.equal('bar baz')
+    expect(msg[8]).to.equal('foo')
+    expect(msg[9]).to.equal('bar baz')
 
   it 'schedules handles names with quotes', ->
     msg = @schedulesRegex.exec('pager schedules "foo bar"')
