@@ -29,6 +29,7 @@ Then add **hubot-pager-me** to your `external-scripts.json`:
 | `HUBOT_PAGERDUTY_SERVICE_API_KEY` | No`*`` | The [Incident Service Key](https://v2.developer.pagerduty.com/docs/incident-creation-api) to use when creating a new incident. This should be assigned to a dummy escalation policy that doesn't actually notify, as Hubot will trigger on this before reassigning it.
 | `HUBOT_PAGERDUTY_SERVICES` | No | Provide a comma separated list of service identifiers (e.g. `PFGPBFY,AFBCGH`) to restrict queries to only those services. |
 | `HUBOT_PAGERDUTY_TEAMS` | No | Provide a comma separated list of teams identifiers (e.g. `PFGPBFY,AFBCGH`) to restrict queries to only those teams. You need teams function on |
+| `HUBOT_PAGERDUTY_SCHEDULES` | No | Provide a comma separated list of schedules identifiers (e.g. `PFGPBFY,AFBCGH`) to restrict queries to only those schedules. |
 
 `*` - May be required for certain actions.
 
