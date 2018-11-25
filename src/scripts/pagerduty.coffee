@@ -44,6 +44,7 @@ moment = require('moment-timezone')
 
 pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
+pagerDutySchedules     = process.env.HUBOT_PAGERDUTY_SCHEDULES
 
 module.exports = (robot) ->
 
@@ -607,10 +608,15 @@ module.exports = (robot) ->
     scheduleName = msg.match[3] or msg.match[4]
 
     messages = []
+    allowed_schedules = []
+    if pagerDutySchedules?
+      allowed_schedules = pagerDutySchedules.split(",")
+
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
         if (username)
-          messages.push("* #{username} is on call for #{schedule.name} - #{schedule.html_url}")
+          if !allowed_schedules or schedule.id in allowed_schedules
+            messages.push("* #{username} is on call for #{schedule.name} - #{schedule.html_url}")
         else
           robot.logger.debug "No user for schedule #{schedule.name}"
         cb null
