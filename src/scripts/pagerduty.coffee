@@ -614,11 +614,18 @@ module.exports = (robot) ->
 
     renderSchedule = (s, cb) ->
       withCurrentOncall msg, s, (username, schedule) ->
+        # If there is an allowed schedules array, skip returned schedule not in it
+        if allowed_schedules.length and schedule.id not in allowed_schedules
+          robot.logger.debug "Schedule #{schedule.id} (#{schedule.name}) not in HUBOT_PAGERDUTY_SCHEDULES"
+          return cb null
+
+        # Ignore schedule if no user assigned to it 
         if (username)
-          if !allowed_schedules or schedule.id in allowed_schedules
-            messages.push("* #{username} is on call for #{schedule.name} - #{schedule.html_url}")
+          messages.push("* #{username} is on call for #{schedule.name} - #{schedule.html_url}")
         else
           robot.logger.debug "No user for schedule #{schedule.name}"
+
+        # Return callback
         cb null
 
     if scheduleName?
