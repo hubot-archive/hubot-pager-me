@@ -1,6 +1,9 @@
 # hubot-pager-me
 
-PagerDuty integration for Hubot
+[![npm version](https://badge.fury.io/js/hubot-pager-me.svg)](http://badge.fury.io/js/hubot-pager-me) [![Build Status](https://travis-ci.org/hubot-scripts/hubot-pager-me.svg?branch=master)](https://travis-ci.org/hubot-scripts/hubot-pager-me)
+
+PagerDuty integration for Hubot.
+
 
 ## Installation
 
@@ -16,37 +19,40 @@ Then add **hubot-pager-me** to your `external-scripts.json`:
 
 ## Configuration
 
-`pager me` requires a bit of configuration to get everything working:
+> **Upgrading from v2.x?** The `HUBOT_PAGERDUTY_SUBDOMAIN` parameter has been replaced with `HUBOT_PAGERDUTY_FROM_EMAIL`, which is [sent along as a header](https://v2.developer.pagerduty.com/docs/rest-api#http-request-headers) to indicate the actor for the incident creation workflow. This would be the email address for a bot user in PagerDuty.
 
-* HUBOT_PAGERDUTY_SUBDOMAIN - Your account subdomain
-* HUBOT_PAGERDUTY_USER_ID - The user id of a PagerDuty user for your bot. This is only required if you want chat users to be able to trigger incidents without their own PagerDuty user
-* HUBOT_PAGERDUTY_API_KEY - Get one from https://<your subdomain>.pagerduty.com/api_keys
-* HUBOT_PAGERDUTY_SERVICE_API_KEY - Service API Key from a 'General API Service'. This should be assigned to a dummy escalation policy that doesn't actually notify, as hubot will trigger on this before reassigning it
-* HUBOT_PAGERDUTY_SERVICES - (optional) Provide a comma separated list of service identifiers (e.g. `PFGPBFY`) to restrict queries to only those services.
+| Environment Variable | Required? | Description                               |
+| -------------------- | --------- | ----------------------------------------- |
+| `HUBOT_PAGERDUTY_API_KEY` | Yes | The [REST API Key](https://support.pagerduty.com/docs/using-the-api#section-generating-an-api-key) for this integration.
+| `HUBOT_PAGERDUTY_FROM_EMAIL` | Yes | The email of the default "actor" user for incident creation and modification. |
+| `HUBOT_PAGERDUTY_USER_ID`  | No`*` | The user ID of a PagerDuty user for your bot. This is only required if you want chat users to be able to trigger incidents without their own PagerDuty user.
+| `HUBOT_PAGERDUTY_SERVICE_API_KEY` | No`*` | The [Incident Service Key](https://v2.developer.pagerduty.com/docs/incident-creation-api) to use when creating a new incident. This should be assigned to a dummy escalation policy that doesn't actually notify, as Hubot will trigger on this before reassigning it.
+| `HUBOT_PAGERDUTY_SERVICES` | No | Provide a comma separated list of service identifiers (e.g. `PFGPBFY,AFBCGH`) to restrict queries to only those services. |
+| `HUBOT_PAGERDUTY_SCHEDULES` | No | Provide a comma separated list of schedules identifiers (e.g. `PFGPBFY,AFBCGH`) to restrict queries to only those schedules. |
+
+`*` - May be required for certain actions.
 
 ### Webhook
 
-Using a webhook requires a bit more configuration:
+| Environment Variable | Required? | Description                               |
+| -------------------- | --------- | ----------------------------------------- |
+| `HUBOT_PAGERDUTY_ENDPOINT` | Yes | PagerDuty webhook listener on your Hubot's server. Must be public. Example: `/hook`. |
+| `HUBOT_PAGERDUTY_ROOM` | Yes | Room in which you want the pagerduty webhook notifications to appear. Example: `#pagerduty` |
 
-* HUBOT_PAGERDUTY_ENDPOINT - Pagerduty Webhook listener e.g /hook
-* HUBOT_PAGERDUTY_ROOM - Room in which you want the pagerduty webhook notifications to appear
-
-To setup the webhooks and get the alerts in your chatrooms, you need to add the endpoint you define here (e.g /hooks) in
-the service settings of your Pagerduty accounts. You also need to define the room in which you want them to appear.
-(Unless you want to spam all the rooms with alerts, but we don't believe that should be the default behavior :)  
+To setup the webhooks and get the alerts in your chatrooms, you need to add the endpoint you define here (e.g `/hooks`) in
+the service settings of your PagerDuty accounts. You also need to define the room in which you want them to appear. That is, unless you want to spam all the rooms with alerts, but we don't believe that should be the default behavior. 😁
 
 ## Example interactions
 
 Trigger an incident assigned to a specific user:
 
 ```
-technicalpickles> hubotjpager trigger jnewland omgwtfbbq
+technicalpickles> hubot pager trigger jnewland omgwtfbbq
 hubot> technicalpickles: :pager: triggered! now assigning it to the right user...
 hubot> technicalpickles: :pager: assigned to jnewland!
 ```
 
 Trigger an incident assigned to an escalation policy:
-
 
 ```
 technicalpickles> hubot pager trigger ops site is down
@@ -105,28 +111,27 @@ hubot> * 2014-06-24T09:06:45-07:00 - 2014-06-25T03:00:00-07:00 technicalpickles
 
 ## Conventions
 
-hubot-pager-me makes some assumptions about how you are using PagerDuty:
+`hubot-pager-me` makes some assumptions about how you are using PagerDuty:
 
 * PagerDuty email matches chat email
   * override with `hubot pager me as <pagerduty email>`
-* Schedules' and Escalation Policies' names are letters and dashes (no spaces, digits)
-* The Service used by hubot-pager-me should not be assigned to an escalation policy with real people on it. Instead, it should be a dummy user that doesn't have any notification rules. If this isn't done, the escalation policy assigned to it will be notified, and then hubot will immediately reassign to the proper team
+* The Service used by hubot-pager-me should not be assigned to an escalation policy with real people on it. Instead, it should be a dummy user that doesn't have any notification rules. If this isn't done, the escalation policy assigned to it will be notified, and then Hubot will immediately reassign to the proper team
 
 ## Development
 
-Fork this repository, and clone it locally. To start using with an existing hubot for testing:
+Fork this repository, and clone it locally. To start using with an existing Hubot for testing:
 
-* Run `npm install` in hubot-pager-me repository
-* Run `npm link` in hubot-pager-me repository
-* Run `npm link hubot-pager-me` in your hubot directory
+* Run `npm install` in `hubot-pager-me` repository
+* Run `npm link` in `hubot-pager-me` repository
+* Run `npm link hubot-pager-me` in your Hubot directory
 * NOTE: if you are using something like [nodenv](https://github.com/wfarr/nodenv) or similar, make sure your `npm link` from the same node version
 
 There's a few environment variables useful for testing:
 
-* HUBOT_PAGERDUTY_NOOP: don't actually make POST/PUT HTTP requests
-* HUBOT_PAGERDUTY_TEST_EMAIL: force email of address to this for testing
+* `HUBOT_PAGERDUTY_NOOP`: Don't actually make POST/PUT HTTP requests.
+* `HUBOT_PAGERDUTY_TEST_EMAIL`: Force email of address to this for testing.
 
 ## Resources
 
-* http://developer.pagerduty.com/documentation/rest/webhooks
-* http://support.pagerduty.com/entries/21774694-Webhooks-
+* https://v2.developer.pagerduty.com/docs/getting-started
+* https://v2.developer.pagerduty.com/docs/webhooks-v2-overview
