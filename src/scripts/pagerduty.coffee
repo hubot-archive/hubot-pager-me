@@ -600,6 +600,41 @@ module.exports = (robot) ->
           else
             msg.send 'No schedules found!'
 
+  # Who's the "Build & Deploy Captain" in PagerDuty? Skips @optibot's handle being needed and allows for Slack reminders to trigger
+  robot.hear /who(?:[’|']s|s| is) the ["“](.*)["”] in PagerDuty\?/i, (msg) ->
+    if pagerduty.missingEnvironmentForApi(msg)
+      return
+
+    scheduleName = msg.match[2]
+
+    messages = []
+    allowed_schedules = []
+    if pagerDutySchedules?
+      allowed_schedules = pagerDutySchedules.split(",")
+
+    renderSchedule = (s, cb) ->
+      withCurrentOncall msg, s, (username, schedule) ->
+        # If there is an allowed schedules array, skip returned schedule not in it
+        if allowed_schedules.length and schedule.id not in allowed_schedules
+          robot.logger.debug "Schedule #{schedule.id} (#{schedule.name}) not in HUBOT_PAGERDUTY_SCHEDULES"
+          return cb null
+
+        # Ignore schedule if no user assigned to it 
+        if (username)
+          messages.push("* #{username} is on call for #{schedule.name} - #{schedule.html_url}")
+        else
+          robot.logger.debug "No user for schedule #{schedule.name}"
+
+        # Return callback
+        cb null
+
+    withScheduleMatching msg, scheduleName, (s) ->
+      renderSchedule s, (err) ->
+        if err?
+          robot.emit 'error'
+          return
+        msg.send messages.join("\n")
+
   # who is on call?
   robot.respond /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?:\?)?(?: (?:for )?((["'])([^]*?)\2|(.*?))(?:\?|$))?$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
