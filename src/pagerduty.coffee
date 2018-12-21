@@ -67,7 +67,10 @@ module.exports =
         switch res.statusCode
           when 200 then json_body = JSON.parse(body)
           else
-            return cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
+            if body?
+              return cb(new PagerDutyError("#{res.statusCode} back from #{url} with body: #{body}"))
+            else
+              return cb(new PagerDutyError("#{res.statusCode} back from #{url}"))
         cb null, json_body
 
   post: (url, data, cb) ->
