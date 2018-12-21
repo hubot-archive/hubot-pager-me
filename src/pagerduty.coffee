@@ -34,7 +34,7 @@ module.exports =
       query = {}
 
     if pagerDutyServices? && url.match /\/incidents/
-      query['service'] = pagerDutyServices
+      query['service_id'] = pagerDutyServices
 
     @http(url)
       .query(query)
@@ -110,13 +110,15 @@ module.exports =
             value = false
         cb null, value
 
-  getIncident: (incident, cb) ->
-    @get "/incidents/#{encodeURIComponent incident}", {}, (err, json) ->
+  getIncident: (incident_key, cb) ->
+    query =
+      incident_key: incident_key
+
+    @get "/incidents", query, (err, json) ->
       if err?
         cb(err)
         return
-
-      cb(null, json)
+      cb(null, json.incidents)
 
   getIncidents: (status, cb) ->
     query =
