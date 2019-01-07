@@ -831,9 +831,9 @@ module.exports = (robot) ->
           user = tryToFind(email, json.users)
           if !user
             msg.send "Sorry, I expected to get 1 user back for #{email}, but only found a list that didn't include the requested email :sweat:. Can you make sure that is actually a real user on PagerDuty?"
-            return
           else
             cb(user)
+          return
 
       cb(json.users[0])
 
