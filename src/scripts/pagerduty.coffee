@@ -828,10 +828,18 @@ module.exports = (robot) ->
           cb null
           return
         else
-          msg.send "Sorry, I expected to get 1 user back for #{email}, but got #{json.users.length} :sweat:. Can you make sure that is actually a real user on PagerDuty?"
-          return
+          user = tryToFind(email, json.users)
+          if !user
+            msg.send "Sorry, I expected to get 1 user back for #{email}, but only found a list that didn't include the requested email :sweat:. Can you make sure that is actually a real user on PagerDuty?"
+            return
+          else
+            cb(user)
 
       cb(json.users[0])
+
+  tryToFind = (email, users) ->
+    users.find (user) ->
+      user.email == email
 
   oneScheduleMatching = (msg, q, cb) ->
     query = {
