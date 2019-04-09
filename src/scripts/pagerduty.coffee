@@ -7,8 +7,8 @@
 #   hubot Am I on call - return if I'm currently on call or not
 #   hubot who's on call - return a list of services and who is on call for them
 #   hubot who's on call for <schedule> - return the username of who's on call for any schedule matching <search>
-#   hubot pager trigger <user> <severity> <msg> - create a new incident with <msg> and assign it to <user>. Severity must be one of: critical, error, warning or info.
-#   hubot pager trigger <schedule> <severity> <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>. Severity must be one of: critical, error, warning or info.
+#   hubot pager trigger <user> [<severity>] <msg> - create a new incident with <msg> and assign it to <user>. If specified, <severity> must be one of: critical, error, warning or info. If not specified, <severity> will default to 'critical'.
+#   hubot pager trigger <schedule> [<severity>] <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>. If specified, <severity> must be one of: critical, error, warning or info. If not specified, <severity> will default to 'critical'.
 #   hubot pager incidents - return the current incidents
 #   hubot pager sup - return the current incidents
 #   hubot pager sup --canary - return the current incidents, including Nines' canary incidents
@@ -129,7 +129,7 @@ module.exports = (robot) ->
 
   # hubot pager trigger <user> <severity> <msg> - create a new incident with <msg> and assign it to <user>. Severity must be one of: critical, error, warning or info.
   # hubot pager trigger <schedule> <severity> <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>. Severity must be one of: critical, error, warning or info.
-  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+) ([\w]+) (.+)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+)( (critical|error|warning|info) )?(.+)$/i, (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
@@ -138,21 +138,20 @@ module.exports = (robot) ->
     hubotUser = robot.getUserBySlackUser(msg.message.user)
     fromUserName   = hubotUser.name
     query          = msg.match[3]
-    severity       = msg.match[4]
-    reason         = msg.match[5]
+    severity       = msg.match[5]
+    reason         = msg.match[6]
     description    = "#{reason} - @#{fromUserName}"
 
     supportedSeverities = ['critical', 'error', 'warning', 'info']
     if severity not in supportedSeverities
-      msg.send "#{severity} is not supported. Choose one from: #{supportedSeverities.join(', ')}"
-      return
+      severity = 'critical'
 
     # Figure out who we are
     campfireUserToPagerDutyUser msg, hubotUser, false, (triggeredByPagerDutyUser) ->
       triggeredByPagerDutyUserEmail = if triggeredByPagerDutyUser?
                                         emailForUser(triggeredByPagerDutyUser)
                                       else if pagerDutyUserEmail
-                                        pagerDutyUserEmail   
+                                        pagerDutyUserEmail
       unless triggeredByPagerDutyUserEmail
         msg.send "Sorry, I can't figure your PagerDuty account, and I don't have my own :( Can you tell me your PagerDuty email with `#{robot.name} pager me as you@yourdomain.com`?"
         return
@@ -178,14 +177,14 @@ module.exports = (robot) ->
               if err?
                 robot.emit 'error', err, msg
                 return
-              
+
               if json?.incidents.length == 0
                 msg.reply "Couldn't find the incident we just created to reassign. Please try again :/"
                 return
 
               incident = json.incidents[0]
               data = {"type": "incident_reference"}
-              
+
               if results.assigned_to_user?
                 data['assignments'] = [{"assignee": {"id": results.assigned_to_user, "type": "user_reference"}}]
               if results.escalation_policy?
