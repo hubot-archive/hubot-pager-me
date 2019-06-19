@@ -107,7 +107,7 @@ module.exports = (robot) ->
 
       unless msg.match[4]
         incidents = incidents.filter (inc) ->
-           !/ninesapp\/canary/.test(inc.title)
+           !/(ninesapp\/|Prometheus )canary/.test(inc.title)
 
       if incidents.length == 0
         msg.send "No open incidents"
