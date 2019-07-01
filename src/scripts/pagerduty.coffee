@@ -182,16 +182,15 @@ module.exports = (robot) ->
                     }
                 }
 
+              pagerduty.put "/incidents", data , (err, json) ->
+                if err?
+                  robot.emit 'error', err, msg
+                  return
 
-                pagerduty.put "/incidents", data , (err, json) ->
-                  if err?
-                    robot.emit 'error', err, msg
-                    return
-
-                  if json?.incidents.length == 1
-                    msg.reply ":pager: assigned to #{results.name}!"
-                  else
-                    msg.reply "Problem reassigning the incident :/"
+                if json?.incidents.length == 1
+                  msg.reply ":pager: assigned to #{results.name}!"
+                else
+                  msg.reply "Problem reassigning the incident :/"
           , 10000
 
   robot.respond /(?:pager|major)(?: me)? ack(?:nowledge)? (.+)$/i, (msg) ->
