@@ -629,10 +629,10 @@ module.exports = (robot) ->
         cb null
 
     if scheduleName?
-      withScheduleMatching msg, scheduleName, (s) ->
-        renderSchedule s, (err) ->
+      SchedulesMatching msg, scheduleName, (s) ->
+        async.map s, renderSchedule, (err) ->
           if err?
-            robot.emit 'error'
+            robot.emit 'error', err, msg
             return
           msg.send messages.join("\n")
     else
