@@ -160,6 +160,12 @@ module.exports = (robot) ->
       reassignmentParametersForUserOrScheduleOrEscalationPolicy msg, query, (err, results) ->
         if err?
           robot.emit 'error', err, msg
+
+          # reassignmentParametersForUserOrScheduleOrEscalationPolicy constructs explicit,
+          # human-consumable errors with good messages. Send it to the user if we got one.
+          if err.message != ""
+            msg.reply err.message
+
           return
 
         pagerDutyIntegrationAPI msg, "trigger", query, description, severity, (err, json) ->
