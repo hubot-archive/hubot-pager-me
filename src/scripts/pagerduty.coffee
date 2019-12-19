@@ -704,7 +704,7 @@ module.exports = (robot) ->
           msg.send text
       return
     else
-      msg.send "Due to rate limiting please include the schedule name to see who's on call. E.g. who's on call for <schedule>"
+      msg.send "Due to rate limiting please include the schedule name to also see who's on call. E.g. `.who's on call for <schedule>`. Schedule names are being retrieved..."
 
     pagerduty.getSchedules (err, schedules) ->
       if err?
