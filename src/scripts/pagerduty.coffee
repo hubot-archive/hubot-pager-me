@@ -240,11 +240,11 @@ module.exports = (robot) ->
 
       email  = emailForUser(hubotUser)
       incidentsForEmail incidents, email, (err, filteredIncidents) ->
-        if err? 
-          msg.send err.message 
+        if err?
+          msg.send err.message
           return
-        
-        if force 
+
+        if force
           filteredIncidents = incidents
 
         if filteredIncidents.length is 0
@@ -286,16 +286,16 @@ module.exports = (robot) ->
       if err?
         robot.emit 'error', err, msg
         return
-      
+
       email  = emailForUser(hubotUser)
       incidentsForEmail incidents, email, (err, filteredIncidents) ->
-        if err? 
+        if err?
           robot.emit 'error', err, msg
           return
 
-        if force 
+        if force
           filteredIncidents = incidents
-        
+
         if filteredIncidents.length is 0
           # nothing assigned to the user, but there were others
           if incidents.length > 0 and not force
@@ -325,7 +325,7 @@ module.exports = (robot) ->
       buffer = ""
       for note in json.notes
         buffer += "#{note.created_at} #{note.user.summary}: #{note.content}\n"
-      if not buffer 
+      if not buffer
         buffer = "No notes!"
       msg.send buffer
 
@@ -403,7 +403,7 @@ module.exports = (robot) ->
       since: moment().format(),
       until: moment().add(30, 'days').format()
     }
-      
+
     if !msg.match[5]
       msg.reply "Please specify a schedule with 'pager #{msg.match[3]} <name>.'' Use 'pager schedules' to list all schedules."
       return
@@ -458,7 +458,7 @@ module.exports = (robot) ->
         timezone = msg.match[4]
       else
         timezone = 'UTC'
-        
+
       query = {
         since: moment().format(),
         until: moment().add(30, 'days').format(),
@@ -580,7 +580,7 @@ module.exports = (robot) ->
         override  = {
           'start': start,
           'end':   end,
-          'user':  { 
+          'user':  {
             'id':   userId,
             "type": "user_reference",
           },
@@ -606,7 +606,7 @@ module.exports = (robot) ->
               if err?
                 robot.emit 'error', err, msg
                 return
-              
+
               msg.send "Rejoice, @#{old_username}! @#{user.name} has the pager on #{schedule.name} until #{end.format()}"
 
   # hubot Am I on call - return if I'm currently on call or not
@@ -624,8 +624,8 @@ module.exports = (robot) ->
       renderSchedule = (s, cb) ->
         if not memberOfSchedule(s, userId)
           cb(null, {member: false})
-          return 
-        
+          return
+
         withCurrentOncallId msg, s, (err, oncallUserid, oncallUsername, schedule) ->
           if err?
             cb(err)
@@ -648,7 +648,7 @@ module.exports = (robot) ->
         if schedules.length == 0
           msg.send 'No schedules found!'
           return
-        
+
         if (schedules.every (s) -> not memberOfSchedule(s, userId))
           msg.send "You are not assigned to any schedules"
           return
@@ -680,12 +680,20 @@ module.exports = (robot) ->
 
         Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: user.name})
         if !pagerEnabledForScheduleOrEscalation(schedule) || user.name == "hubot" || user.name == undefined
-          cb(null, undefined)
+          cb(null, "No human on call")
           return
 
         slackHandle = guessSlackHandleFromEmail(user)
         slackString = " (#{slackHandle})" if slackHandle
         cb(null, "• <https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}|#{schedule.name}'s> oncall is #{user.name}#{slackString}")
+
+    renderScheduleNoUser = (s, cb) ->
+      Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: s.name})
+      if !pagerEnabledForScheduleOrEscalation(s)
+        cb(null, undefined)
+        return
+
+      cb(null, "• <https://#{pagerduty.subdomain}.pagerduty.com/schedules##{s.id}|#{s.name}>")
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, (s) ->
@@ -695,6 +703,8 @@ module.exports = (robot) ->
             return
           msg.send text
       return
+    else
+      msg.send "Due to rate limiting please include the schedule name to also see who's on call. E.g. `.who's on call for <schedule>`. Schedule names are being retrieved..."
 
     pagerduty.getSchedules (err, schedules) ->
       if err?
@@ -705,7 +715,7 @@ module.exports = (robot) ->
         msg.send 'No schedules found!'
         return
 
-      async.map schedules, renderSchedule, (err, results) ->
+      async.map schedules, renderScheduleNoUser, (err, results) ->
         if err?
           Scrolls.log("error", {at: 'who-is-on-call/map-schedules/error', error: err})
           robot.emit 'error', err, msg
@@ -1009,7 +1019,7 @@ module.exports = (robot) ->
                 inc.trigger_summary_data.description
               else
                 ""
-            else 
+            else
               "#{inc.title} #{inc.summary}"
 
     names = []
@@ -1018,9 +1028,9 @@ module.exports = (robot) ->
 
     if names
       assigned_to = "- assigned to #{names.join(",")}"
-    else 
+    else
       assigned_to = "- nobody currently assigned"
-    
+
     "#{inc.incident_number}: #{inc.created_at} #{summary} #{assigned_to}\n"
 
   updateIncidents = (msg, incidentNumbers, statusFilter, updatedStatus) ->
@@ -1095,10 +1105,10 @@ module.exports = (robot) ->
 
   incidentsForEmail = (incidents, userEmail, cb) ->
     allUserEmails (err, userEmails) ->
-      if err? 
+      if err?
         cb(err)
-        return 
-      
+        return
+
       filtered = []
       for incident in incidents
         for assignment in incident.assignments
@@ -1114,14 +1124,14 @@ module.exports = (robot) ->
   formatOncalls = (oncalls, timezone) ->
     buffer = ""
     schedules = {}
-    for oncall in oncalls 
+    for oncall in oncalls
       startTime = moment(oncall.start).tz(timezone).format()
       endTime   = moment(oncall.end).tz(timezone).format()
       time      = "#{startTime} - #{endTime}"
       username  = guessSlackHandleFromEmail(oncall.user) || oncall.user.summary
       if oncall.schedule?
         scheduleId = oncall.schedule.id
-        if scheduleId not of schedules 
+        if scheduleId not of schedules
           schedules[scheduleId] = []
         if time not in schedules[scheduleId]
           schedules[scheduleId].push time
@@ -1131,7 +1141,7 @@ module.exports = (robot) ->
         epSummary = oncall.escalation_policy.summary
         epURL = oncall.escalation_policy.html_url
         buffer += "• #{time} #{username} (<#{epURL}|#{epSummary}>)\n"
-      else 
+      else
         # override
         buffer += "• #{time} #{username}\n"
     buffer
