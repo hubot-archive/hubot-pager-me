@@ -680,13 +680,21 @@ module.exports = (robot) ->
 
         Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: schedule.name, username: user.name})
         if !pagerEnabledForScheduleOrEscalation(schedule) || user.name == "hubot" || user.name == undefined
-          cb(null, undefined)
+          cb(null, "No human on call")
           return
 
         slackHandle = guessSlackHandleFromEmail(user)
         slackString = " (#{slackHandle})" if slackHandle
         cb(null, "• <https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}|#{schedule.name}'s> oncall is #{user.name}#{slackString}")
+    
+    renderScheduleNoUser = (s, cb) ->
+      Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: s.name})
+      if !pagerEnabledForScheduleOrEscalation(s)
+        cb(null, undefined)
+        return
 
+      cb(null, "• <https://#{pagerduty.subdomain}.pagerduty.com/schedules##{s.id}|#{s.name}>")
+    
     if scheduleName?
       withScheduleMatching msg, scheduleName, (s) ->
         renderSchedule s, (err, text) ->
@@ -695,6 +703,8 @@ module.exports = (robot) ->
             return
           msg.send text
       return
+    else
+      msg.send "Due to rate limiting please include the schedule/escalation policy name to see who's on call"
 
     pagerduty.getSchedules (err, schedules) ->
       if err?
@@ -705,7 +715,7 @@ module.exports = (robot) ->
         msg.send 'No schedules found!'
         return
 
-      async.map schedules, renderSchedule, (err, results) ->
+      async.map schedules, renderScheduleNoUser, (err, results) ->
         if err?
           Scrolls.log("error", {at: 'who-is-on-call/map-schedules/error', error: err})
           robot.emit 'error', err, msg
