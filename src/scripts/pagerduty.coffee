@@ -147,10 +147,10 @@ module.exports = (robot) ->
       severity = 'critical'
 
     # Deprecate incident commanders
-    if query == "query"
+    if query == "incident-commander"
       deprecation_msg =  """
       The incident commander rotation has been deprecated in favour of decentralized incident management. Please consider paging one of the following teams:
-      
+
       |=====================================================================================================|
       | Product                         | Catalog Entry        | Pager                                      |
       |=================================|======================|============================================|
