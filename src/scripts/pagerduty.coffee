@@ -146,6 +146,28 @@ module.exports = (robot) ->
     if severity not in supportedSeverities
       severity = 'critical'
 
+    # Deprecate incident commanders
+    if query == "incident-commander"
+      deprecation_msg =  """
+      The incident commander rotation has been deprecated in favour of decentralized incident management. Please consider paging one of the following teams:
+
+      |=====================================================================================================|
+      | Product                         | Catalog Entry        | Pager                                      |
+      |=================================|======================|============================================|
+      | Git Operations                  | git-protocols        | `.pager trigger git-systems`               |
+      | API Requests                    | github/api           | `.pager trigger github-dotcom-oncall`      |
+      | Webhooks                        | github/webhooks      | `.pager trirger github-dotcom-oncall`      |
+      | Issues, Pull Requests, Projects | github/issues        | `.pager trigger github-dotcom-oncall`      |
+      |                                 | github/projects      | `.pager trigger github-dotcom-oncall`      |
+      |                                 | github/pull-requests | `.pager trigger github-dotcom-oncall`      |
+      | GitHub Actions                  | actions              | `.pager trigger actions-experience-oncall` |
+      | GitHub Packages                 | registry             | `.pager trigger package-registry-oncall`   |
+      | GitHub Pages                    | pages                | `.pager trigger pages`                     |
+      |=====================================================================================================|
+      """
+      msg.send deprecation_msg
+      return
+
     # Figure out who we are
     campfireUserToPagerDutyUser msg, hubotUser, false, (triggeredByPagerDutyUser) ->
       triggeredByPagerDutyUserEmail = if triggeredByPagerDutyUser?
