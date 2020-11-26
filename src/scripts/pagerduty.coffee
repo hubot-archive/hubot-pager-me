@@ -42,6 +42,7 @@ async = require('async')
 inspect = require('util').inspect
 moment = require('moment-timezone')
 _ = require('lodash')
+getCustomOncalls = require('./pagerduty-custom.coffee')
 
 pagerDutyUserId        = process.env.HUBOT_PAGERDUTY_USER_ID
 pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY
@@ -602,16 +603,16 @@ module.exports = (robot) ->
 
 
   # who was on call?
-  robot.respond /who was (on call|oncall)/i, (msg) ->
-    getOncalls msg, -72
+  robot.respond /who was (on call|oncall|on-call)/i, (msg) ->
+    getCustomOncalls 'was', msg
 
   # who is next on call?
-  robot.respond /who(?:’s|'s|s| is|se)? ((next (on call|oncall))|((on call|oncall) next))/i, (msg) ->
-    getOncalls msg, 72
+  robot.respond /who(?:’s|'s|s| is|se)? ((next (on call|oncall|on-call))|((on call|oncall|on-call) next))/i, (msg) ->
+    getCustomOncalls 'next', msg
 
   # who is on call?
   robot.respond /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?:\?)?(?: (?:for )?((["'])([^]*?)\2|(.*?))(?:\?|$))?$/i, (msg) ->
-    getOncalls msg
+    getCustomOncalls 'now', msg
 
   robot.respond /(pager|major)( me)? services$/i, (msg) ->
     if pagerduty.missingEnvironmentForApi(msg)
