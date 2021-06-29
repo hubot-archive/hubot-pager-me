@@ -1,9 +1,0 @@
-dist: xenial
-os: linux
-language: node_js
-node_js:
-  - "14" # stable
-  - "12" # LTS
-  - "10" # maintenance
-notifications:
-  email: false
