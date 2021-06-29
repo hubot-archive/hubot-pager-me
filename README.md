@@ -1,6 +1,6 @@
 # hubot-pager-me
 
-[![npm version](https://badge.fury.io/js/hubot-pager-me.svg)](http://badge.fury.io/js/hubot-pager-me) [![Build Status](https://travis-ci.org/hubot-scripts/hubot-pager-me.svg?branch=master)](https://travis-ci.org/hubot-scripts/hubot-pager-me)
+[![npm version](https://badge.fury.io/js/hubot-pager-me.svg)](http://badge.fury.io/js/hubot-pager-me) [![Node CI](https://github.com/hubot-scripts/hubot-pager-me/actions/workflows/nodejs.yml/badge.svg)](https://github.com/hubot-scripts/hubot-pager-me/actions/workflows/nodejs.yml)
 
 PagerDuty integration for Hubot.
 
