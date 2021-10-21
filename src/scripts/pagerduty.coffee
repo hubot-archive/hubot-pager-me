@@ -436,7 +436,7 @@ module.exports = (robot) ->
 
     msg.send "Retrieving schedules. This may take a few seconds..."
 
-    withScheduleMatching msg, msg.match[5], (schedule) ->
+    withScheduleMatching msg, msg.match[5], false, (schedule) ->
       scheduleId = schedule.id
       return unless scheduleId
 
@@ -518,7 +518,7 @@ module.exports = (robot) ->
       unless userId
         return
 
-      withScheduleMatching msg, msg.match[4], (schedule) ->
+      withScheduleMatching msg, msg.match[4], false, (schedule) ->
         scheduleId = schedule.id
         unless scheduleId
           return
@@ -557,7 +557,7 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    withScheduleMatching msg, msg.match[4], (schedule) ->
+    withScheduleMatching msg, msg.match[4], false, (schedule) ->
       scheduleId = schedule.id
       unless scheduleId
         return
@@ -592,7 +592,7 @@ module.exports = (robot) ->
         msg.reply "Please specify a schedule with 'pager me infrastructure 60'. Use 'pager schedules' to list all schedules."
         return
 
-      withScheduleMatching msg, msg.match[2], (matchingSchedule) ->
+      withScheduleMatching msg, msg.match[2], false, (matchingSchedule) ->
         unless matchingSchedule.id
           return
 
@@ -691,9 +691,7 @@ module.exports = (robot) ->
       return
 
     msg.send "Retrieving schedules. This may take a few seconds..."
-
-    scheduleName = msg.match[4]
-
+    
     renderSchedule = (s, cb) ->
       withCurrentOncallUser msg, s, (err, user, schedule) ->
         if err?
@@ -717,14 +715,17 @@ module.exports = (robot) ->
 
       cb(null, "• <https://#{pagerduty.subdomain}.pagerduty.com/schedules##{s.id}|#{s.name}>")
 
+    scheduleName = msg.match[4]
+
     if scheduleName?
-      withScheduleMatching msg, scheduleName, (s) ->
+      withScheduleMatching msg, scheduleName, true, (s) ->
         renderSchedule s, (err, text) ->
           if err?
             robot.emit 'error'
             return
           msg.send text
       return
+
     else
       msg.send "Due to rate limiting please include the schedule name to also see who's on call. E.g. `.who's on call for <schedule>`. Schedule names are being retrieved..."
 
@@ -899,14 +900,59 @@ module.exports = (robot) ->
           schedule = matchingExactly[0]
       cb(schedule)
 
-  withScheduleMatching = (msg, q, cb) ->
+  multipleScheduleMatching = (msg, q, cb) ->
+    query = {
+      query: q
+    }
+    pagerduty.getSchedules query, (err, schedules) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+
+      cb(schedules)
+
+  renderMultipleSchedules = (msg, schedules, cb) ->
+    withCurrentOncallUsers msg, schedules, (err, oncalls) ->
+      if err?
+        cb(err)
+        return
+
+      sortedOncalls = oncalls.sort (a, b) ->
+        a.schedule.summary.localeCompare b.schedule.summary
+
+      result = ""
+      for oncall in sortedOncalls
+        result = result.concat "• <https://#{pagerduty.subdomain}.pagerduty.com/schedules##{oncall.schedule.id}|#{oncall.schedule.summary}'s> oncall is #{oncall.user.summary} (`#{oncall.user.summary}`)\n"
+      cb(null, result)
+      return
+
+  withScheduleMatching = (msg, q, returnMultipleSchedules, cb) ->
     oneScheduleMatching msg, q, (schedule) ->
       if schedule
         cb(schedule)
       else
-        # maybe look for a specific name match here?
-        msg.send "I couldn't determine exactly which schedule you meant by #{q}. Can you be more specific?"
+        if returnMultipleSchedules?
+          withMultipleScheduleMatching msg, q, (schedules) ->
+            renderMultipleSchedules msg, schedules, (err, text) ->
+              if err?
+                robot.emit 'error'
+                return
+              msg.send text
+          return
+        else
+          msg.send "I couldn't determine exactly which schedule you meant by #{q}. Can you be more specific?"
+          return
+  withMultipleScheduleMatching = (msg, q, cb) ->
+    multipleScheduleMatching msg, q, (schedules) ->
+      if schedules.length > 25
+        # Not all schedules will have a current oncall user, so the results displayed may be less than 25.
+        msg.send "#{schedules.length} schedules were found. Returning oncall results for the first 25 schedules."
+        cb(schedules[0..25])
+      else if schedules.length == 0
+        msg.send "No results"
         return
+      else    
+        cb(schedules)
 
   reassignmentParametersForUserOrScheduleOrEscalationPolicy = (msg, string, cb) ->
     if campfireUser = robot.brain.userForName(string)
@@ -996,6 +1042,37 @@ module.exports = (robot) ->
           cb(err)
           return
         cb(null, user, schedule)
+
+  withCurrentOncallUsers = (msg, schedules, cb) ->
+    oneHour = moment().add(1, 'hours').format()
+    now = moment().format()
+
+    scheduleIds = schedules.map (s) -> s.id
+    query = {
+      since: now,
+      until: oneHour,
+      schedule_ids: scheduleIds,
+    }
+    pagerduty.getAll "/oncalls", query, "oncalls", (err, oncalls) ->
+      if err?
+        cb(err, null, null)
+        return
+
+      unless oncalls and oncalls.length > 0
+        cb(null, "nobody", schedule)
+        return
+
+      # Because we can have multiple oncalls for a schedule (due to escalation policies),
+      # just use the first oncall result for a given schedule id
+      scheduleIds = new Set()
+      uniqueOncalls = []
+      oncalls.forEach (oncall) ->
+        if scheduleIds.has(oncall.schedule.id)
+          return
+        scheduleIds.add(oncall.schedule.id)
+        uniqueOncalls.push(oncall)
+
+      cb(null, uniqueOncalls)
 
   getPagerDutyUser = (userId, cb) ->
     pagerduty.get "/users/#{userId}", (err, json) ->
