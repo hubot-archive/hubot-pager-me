@@ -161,7 +161,7 @@ module.exports = (robot) ->
       |                                 | github/projects      | `.pager trigger github-dotcom-oncall`      |
       |                                 | github/pull-requests | `.pager trigger github-dotcom-oncall`      |
       | GitHub Actions                  | actions              | `.pager trigger actions-experience-oncall` |
-      | GitHub Packages                 | registry             | `.pager trigger package-registry-oncall`   |
+      | GitHub Packages                 | registry             | `.pager trigger packages`   |
       | GitHub Pages                    | pages                | `.pager trigger pages`                     |
       |=====================================================================================================|
       """
