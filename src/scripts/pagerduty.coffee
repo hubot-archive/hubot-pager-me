@@ -129,7 +129,7 @@ module.exports = (robot) ->
 
   # hubot pager trigger <user> <severity> <msg> - create a new incident with <msg> and assign it to <user>. Severity must be one of: critical, error, warning or info.
   # hubot pager trigger <schedule> <severity> <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>. Severity must be one of: critical, error, warning or info.
-  robot.respond /(pager|major)( me)? (?:trigger|page) (?:@?)([\w\-]+)( (critical|error|warning|info) )?(.+)$/i, (msg) ->
+  robot.respond /(pager|major)( me)? (?:trigger|page) (?:@?)([\w\-]+)( (critical|error|warning|info) )?(.+)?$/i, (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
@@ -145,6 +145,10 @@ module.exports = (robot) ->
     supportedSeverities = ['critical', 'error', 'warning', 'info']
     if severity not in supportedSeverities
       severity = 'critical'
+
+    if !reason
+      msg.send "Please include a reason for paging, like 'hubot pager @username THE SKY IS FALLING!'."
+      return
 
     # Deprecate incident commanders
     if query == "incident-commander"
