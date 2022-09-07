@@ -19,21 +19,21 @@
   "dependencies": {
     "async": "^1.4.2",
     "coffee-script": "~1.6",
-    "moment-timezone": "~0.4.0",
-    "request": "^2.83.0",
-    "query-string": "^5.0.1"
+    "moment-timezone": "^0.5.37",
+    "query-string": "^5.0.1",
+    "request": "^2.83.0"
   },
   "devDependencies": {
     "chai": "^2.1.1",
     "coffee-script": "1.6.3",
-    "grunt": "^0.4.5",
-    "grunt-cli": "^0.1.13",
-    "grunt-contrib-watch": "~0.6.1",
+    "grunt": "^1.5.3",
+    "grunt-cli": "^1.4.3",
+    "grunt-contrib-watch": "^1.1.0",
     "grunt-mocha-test": "~0.12.7",
-    "grunt-release": "~0.11.0",
+    "grunt-release": "^0.14.0",
     "hubot": "2.x",
-    "matchdep": "~0.3.0",
-    "mocha": "^2.1.0",
+    "matchdep": "^2.0.0",
+    "mocha": "^10.0.0",
     "sinon": "^1.13.0",
     "sinon-chai": "^2.7.0"
   },
