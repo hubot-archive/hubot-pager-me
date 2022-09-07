@@ -31,7 +31,7 @@
     "grunt-contrib-watch": "^1.1.0",
     "grunt-mocha-test": "~0.12.7",
     "grunt-release": "^0.14.0",
-    "hubot": "2.x",
+    "hubot": "3.x",
     "matchdep": "^2.0.0",
     "mocha": "^10.0.0",
     "sinon": "^1.13.0",
