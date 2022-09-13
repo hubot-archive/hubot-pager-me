@@ -150,28 +150,6 @@ module.exports = (robot) ->
       msg.send "Please include a reason for paging, like 'hubot pager @username THE SKY IS FALLING!'."
       return
 
-    # Deprecate incident commanders
-    if query == "incident-commander"
-      deprecation_msg =  """
-      The incident commander rotation has been deprecated in favour of decentralized incident management. Please consider paging one of the following teams:
-
-      |=====================================================================================================|
-      | Product                         | Catalog Entry        | Pager                                      |
-      |=================================|======================|============================================|
-      | Git Operations                  | git-protocols        | `.pager trigger git-systems`               |
-      | API Requests                    | github/api           | `.pager trigger github-dotcom-oncall`      |
-      | Webhooks                        | github/webhooks      | `.pager trirger github-dotcom-oncall`      |
-      | Issues, Pull Requests, Projects | github/issues        | `.pager trigger github-dotcom-oncall`      |
-      |                                 | github/projects      | `.pager trigger github-dotcom-oncall`      |
-      |                                 | github/pull-requests | `.pager trigger github-dotcom-oncall`      |
-      | GitHub Actions                  | actions              | `.pager trigger actions-experience-oncall` |
-      | GitHub Packages                 | registry             | `.pager trigger packages`   |
-      | GitHub Pages                    | pages                | `.pager trigger pages`                     |
-      |=====================================================================================================|
-      """
-      msg.send deprecation_msg
-      return
-
     # Figure out who we are
     campfireUserToPagerDutyUser msg, hubotUser, false, (triggeredByPagerDutyUser) ->
       triggeredByPagerDutyUserEmail = if triggeredByPagerDutyUser?
