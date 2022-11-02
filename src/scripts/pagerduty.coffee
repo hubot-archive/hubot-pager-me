@@ -55,7 +55,7 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    hubotUser = robot.getUserBySlackUser(msg.message.user)
+    hubotUser = msg.message.user
 
     campfireUserToPagerDutyUser msg, hubotUser, (user) ->
       emailNote = if hubotUser.pagerdutyEmail
@@ -73,14 +73,14 @@ module.exports = (robot) ->
 
   # hubot pager me as <email> - remember your pager email is <email>
   robot.respond /pager(?: me)? as (.*)$/i, (msg) ->
-    hubotUser = robot.getUserBySlackUser(msg.message.user)
+    hubotUser = msg.message.user
     email = msg.match[1]
     hubotUser.pagerdutyEmail = email
     msg.send "Okay, I'll remember your PagerDuty email is #{email}"
 
   # hubot pager forget me - forget your pager email
   robot.respond /pager forget me$/i, (msg) ->
-    hubotUser = robot.getUserBySlackUser(msg.message.user)
+    hubotUser = msg.message.user
     hubotUser.pagerdutyEmail = undefined
     msg.send "Okay, I've forgotten your PagerDuty email"
 
@@ -135,7 +135,7 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    hubotUser = robot.getUserBySlackUser(msg.message.user)
+    hubotUser = msg.message.user
     fromUserName   = hubotUser.name
     query          = msg.match[3]
     severity       = msg.match[5]
@@ -233,7 +233,7 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    hubotUser = robot.getUserBySlackUser(msg.message.user)
+    hubotUser = msg.message.user
 
     force = msg.match[4]?
 
@@ -283,7 +283,7 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    hubotUser = robot.getUserBySlackUser(msg.message.user)
+    hubotUser = msg.message.user
 
     force = msg.match[5]?
     pagerduty.getIncidents "acknowledged", (err, incidents) ->
@@ -337,7 +337,7 @@ module.exports = (robot) ->
   robot.respond /(pager|major)( me)? note ([\d\w]+) (.+)$/i, (msg) ->
     msg.finish()
 
-    hubotUser = robot.getUserBySlackUser(msg.message.user)
+    hubotUser = msg.message.user
 
     if pagerduty.missingEnvironmentForApi(msg)
       return
@@ -453,7 +453,7 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    hubotUser = robot.getUserBySlackUser(msg.message.user)
+    hubotUser = msg.message.user
 
     campfireUserToPagerDutyUser msg, hubotUser, (user) ->
       userId = user.id
@@ -493,7 +493,7 @@ module.exports = (robot) ->
         msg.send "Sorry, I don't seem to know who that is. Are you sure they are in chat?"
         return
     else
-      overrideUser = robot.getUserBySlackUser(msg.message.user)
+      overrideUser = msg.message.user
 
     campfireUserToPagerDutyUser msg, overrideUser, (user) ->
       userId = user.id
@@ -562,7 +562,7 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    hubotUser = robot.getUserBySlackUser(msg.message.user)
+    hubotUser = msg.message.user
 
     campfireUserToPagerDutyUser msg, hubotUser, (user) ->
 
@@ -620,7 +620,7 @@ module.exports = (robot) ->
 
     msg.send "Finding schedules, this may take a few seconds..."
 
-    hubotUser = robot.getUserBySlackUser(msg.message.user)
+    hubotUser = msg.message.user
 
     campfireUserToPagerDutyUser msg, hubotUser, (user) ->
       userId = user.id
@@ -759,7 +759,7 @@ module.exports = (robot) ->
     if pagerduty.missingEnvironmentForApi(msg)
       return
 
-    hubotUser = robot.getUserBySlackUser(msg.message.user)
+    hubotUser = msg.message.user
 
     campfireUserToPagerDutyUser msg, hubotUser, (user) ->
       requesterEmail = emailForUser(user)
