@@ -1041,7 +1041,7 @@ module.exports = (robot) ->
         return
 
       unless oncalls and oncalls.length > 0
-        cb(null, "nobody", schedule)
+        cb(null, "nobody", schedules)
         return
 
       # Because we can have multiple oncalls for a schedule (due to escalation policies),
