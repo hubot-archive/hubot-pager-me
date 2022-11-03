@@ -163,7 +163,7 @@ module.exports = (robot) ->
       # Figure out what we're trying to page
       reassignmentParametersForUserOrScheduleOrEscalationPolicy msg, query, (err, results) ->
         if err?
-          robot.emit 'error', err, msg
+          robot.logger.error(err)
 
           # reassignmentParametersForUserOrScheduleOrEscalationPolicy constructs explicit,
           # human-consumable errors with good messages. Send it to the user if we got one.
