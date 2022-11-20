@@ -899,6 +899,10 @@ module.exports = (robot) ->
         cb(err)
         return
 
+      if oncalls is "nobody"
+        result = "No human on call for #{schedules.map(({ name }) => "`#{name}`").join(" and ")}"
+        return cb(null, result)
+      
       sortedOncalls = oncalls.sort (a, b) ->
         a.schedule.summary.localeCompare b.schedule.summary
 
