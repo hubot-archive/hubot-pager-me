@@ -125,11 +125,11 @@ module.exports = (robot) ->
 
   # hubot pager trigger (no user/schedule)
   robot.respond /(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/i, (msg) ->
-    msg.reply "Please include a user or schedule to page, like 'hubot pager infrastructure everything is on fire'."
+    msg.reply "Please include a user or schedule to page, like 'hubot page infrastructure everything is on fire'."
 
   # hubot pager trigger <user> <severity> <msg> - create a new incident with <msg> and assign it to <user>. Severity must be one of: critical, error, warning or info.
   # hubot pager trigger <schedule> <severity> <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>. Severity must be one of: critical, error, warning or info.
-  robot.respond /(pager|major)( me)? (?:trigger|page) (?:@?)([\w\-]+)( (critical|error|warning|info) )?(.+)?$/i, (msg) ->
+  robot.respond /(?:(pager|major)( me)? (?:trigger|page)|page) (?:@?)([\w\-]+)( (critical|error|warning|info) )?(.+)?$/i, (msg) ->
     msg.finish()
 
     if pagerduty.missingEnvironmentForApi(msg)
@@ -147,7 +147,7 @@ module.exports = (robot) ->
       severity = 'critical'
 
     if !reason
-      msg.send "Please include a reason for paging, like 'hubot pager @username THE SKY IS FALLING!'."
+      msg.send "Please include a reason for paging, like 'hubot page @username THE SKY IS FALLING!'."
       return
 
     # Figure out who we are
