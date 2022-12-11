@@ -21,16 +21,16 @@
   },
   "dependencies": {
     "async": "^3.2.4",
-    "moment-timezone": "^0.5.37",
+    "moment-timezone": "^0.5.39",
     "scoped-http-client": "^0.11.0"
   },
   "devDependencies": {
-    "chai": "^4.3.6",
+    "chai": "^4.3.7",
     "coffee-script": "^1.12.7",
-    "husky": "^8.0.1",
-    "mocha": "^10.0.0",
-    "release-it": "^15.4.1",
-    "sinon": "^14.0.0",
+    "husky": "^8.0.2",
+    "mocha": "^10.1.0",
+    "release-it": "^15.5.1",
+    "sinon": "^15.0.0",
     "sinon-chai": "^3.7.0"
   },
   "main": "index.coffee",
