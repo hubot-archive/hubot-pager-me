@@ -99,7 +99,7 @@ module.exports =
       Scrolls.log('info', {at: 'put/response', path: path, status: res.statusCode, body: body})
 
       unless res.statusCode is 200
-        cb(new PagerDutyError("#{res.statusCode} back from #{path}"))
+        cb(new PagerDutyError("#{res.statusCode} back from #{path} (#{body.incident.errors.join(', ')}"))
         return
 
       cb(null, body)
