@@ -689,6 +689,12 @@ module.exports = (robot) ->
         slackString = " (#{slackHandle})" if slackHandle
         cb(null, "• <https://#{pagerduty.subdomain}.pagerduty.com/schedules##{schedule.id}|#{schedule.name}'s> oncall is #{user.name}#{slackString}")
 
+    renderOneOrMoreSchedules = (s, cb) ->
+      if Array.isArray(s) && s.length > 1
+        renderMultipleSchedules(msg, s, cb)
+      else
+        renderSchedule(s, cb)
+
     renderScheduleNoUser = (s, cb) ->
       Scrolls.log("info", {at: 'who-is-on-call/renderSchedule', schedule: s.name})
       if !pagerEnabledForScheduleOrEscalation(s)
@@ -697,15 +703,46 @@ module.exports = (robot) ->
 
       cb(null, "• <https://#{pagerduty.subdomain}.pagerduty.com/schedules##{s.id}|#{s.name}>")
 
+    renderEscalationPolicy = (escalation_policy, cb) ->
+       withCurrentOncallUserForEscalation  msg, escalation_policy, (err, user) ->
+        if err?
+          cb(err)
+          return
+
+        Scrolls.log("info", {at: 'who-is-on-call/renderEscalationPolicy', escalation_policy: escalation_policy.name, username: user.name})
+        if !pagerEnabledForScheduleOrEscalation(escalation_policy) || user.name == "hubot" || user.name == undefined
+          cb(null, null)
+          return
+
+        slackHandle = guessSlackHandleFromEmail(user)
+        slackString = " (#{slackHandle})" if slackHandle
+        cb(null, "• <https://#{pagerduty.subdomain}.pagerduty.com/escalation_policies##{escalation_policy.id}|#{escalation_policy.name}'s> oncall is #{user.name}#{slackString}")
+
     scheduleName = msg.match[4]
 
     if scheduleName?
       withScheduleMatching msg, scheduleName, true, (s) ->
-        renderSchedule s, (err, text) ->
+        renderOneOrMoreSchedules s, (err, text) ->
           if err?
             robot.emit 'error'
             return
-          msg.send text
+          # If no on-calls found, try to find a matching escalation policy
+          if /No human on call/i.test(text)
+            oneEscalationMatching msg, scheduleName, (escalation_policy) ->
+              if !escalation_policy
+                msg.send text
+                return
+
+              renderEscalationPolicy escalation_policy, (err, escalation_text) ->
+                if err?
+                  robot.emit 'error'
+                  msg.send text
+                  return
+
+                msg.send escalation_text || text
+                return
+          else
+            msg.send text
       return
 
     else
@@ -902,7 +939,7 @@ module.exports = (robot) ->
       if oncalls is "nobody"
         result = "No human on call for #{schedules.map(({ name }) => "`#{name}`").join(" and ")}"
         return cb(null, result)
-      
+
       sortedOncalls = oncalls.sort (a, b) ->
         a.schedule.summary.localeCompare b.schedule.summary
 
@@ -919,12 +956,7 @@ module.exports = (robot) ->
       else
         if returnMultipleSchedules?
           withMultipleScheduleMatching msg, q, (schedules) ->
-            renderMultipleSchedules msg, schedules, (err, text) ->
-              if err?
-                robot.emit 'error'
-                return
-              msg.send text
-          return
+            cb(schedules)
         else
           msg.send "I couldn't determine exactly which schedule you meant by #{q}. Can you be more specific?"
           return
@@ -939,6 +971,27 @@ module.exports = (robot) ->
         return
       else    
         cb(schedules)
+    
+  oneEscalationMatching = (msg, q, cb) ->
+    query = {
+      query: q
+    }
+    pagerduty.getEscalationPolicies query, (err, escalation_policies) ->
+      if err?
+        robot.emit 'error', err, msg
+        return
+
+      # Single result returned
+      if escalation_policies?.length = 1
+        escalation_policy = escalation_policies[0]
+
+      # Multiple results returned and one is exact (case-insensitive)
+      if escalation_policies?.length > 1
+        matchingExactly = escalation_policies.filter (e) ->
+          e.name.toLowerCase() == q.toLowerCase()
+        if matchingExactly.length == 1
+          escalation_policy = matchingExactly[0]
+      cb(escalation_policy)
 
   reassignmentParametersForUserOrScheduleOrEscalationPolicy = (msg, string, cb) ->
     if campfireUser = robot.brain.userForName(string)
@@ -1059,6 +1112,26 @@ module.exports = (robot) ->
         uniqueOncalls.push(oncall)
 
       cb(null, uniqueOncalls)
+
+  withCurrentOncallUserForEscalation = (msg, escalation_policy, cb) ->
+    query = {
+      escalation_policy_ids: [escalation_policy.id]
+    }
+    pagerduty.getAll "/oncalls", query, "oncalls", (err, oncalls) ->
+      if err?
+        cb(err, null, null)
+        return
+
+      unless oncalls and oncalls.length > 0
+        cb(null, "nobody", escalation_policy)
+        return
+
+      userId = oncalls[0].user.id
+      getPagerDutyUser userId, (err, user) ->
+        if err?
+          cb(err)
+          return
+        cb(null, user, escalation_policy)
 
   getPagerDutyUser = (userId, cb) ->
     pagerduty.get "/users/#{userId}", (err, json) ->

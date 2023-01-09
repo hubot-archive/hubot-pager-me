@@ -183,3 +183,16 @@ module.exports =
           return true
 
       cb(null, schedules)
+  
+  getEscalationPolicies: (query, cb) ->
+    if typeof(query) is 'function'
+      cb = query
+      query = {}
+
+    @getAll "/escalation_policies", query, "escalation_policies", (err, escalation_policies) ->
+      if err?
+        cb(err)
+        return
+
+      cb(null, escalation_policies)
+
