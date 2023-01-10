@@ -1126,7 +1126,10 @@ module.exports = (robot) ->
         cb(null, "nobody", escalation_policy)
         return
 
-      userId = oncalls[0].user.id
+      sortedOncalls = oncalls.sort (a, b) ->
+        a.escalation_level - b.escalation_level
+
+      userId = sortedOncalls[0].user.id
       getPagerDutyUser userId, (err, user) ->
         if err?
           cb(err)
