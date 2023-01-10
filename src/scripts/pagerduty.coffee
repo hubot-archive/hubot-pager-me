@@ -724,7 +724,7 @@ module.exports = (robot) ->
       withScheduleMatching msg, scheduleName, true, (s) ->
         renderOneOrMoreSchedules s, (err, text) ->
           if err?
-            robot.emit 'error'
+            robot.emit 'error', err, msg
             return
           # If no on-calls found, try to find a matching escalation policy
           if /No human on call/i.test(text)
@@ -735,7 +735,7 @@ module.exports = (robot) ->
 
               renderEscalationPolicy escalation_policy, (err, escalation_text) ->
                 if err?
-                  robot.emit 'error'
+                  robot.emit 'error', err, msg
                   msg.send text
                   return
 
