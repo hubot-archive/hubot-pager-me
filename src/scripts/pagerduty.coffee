@@ -724,7 +724,10 @@ module.exports = (robot) ->
       withScheduleMatching msg, scheduleName, true, (s) ->
         renderOneOrMoreSchedules s, (err, text) ->
           if err?
-            robot.emit 'error', err, msg
+            if /404/i.test(err.message)
+              msg.send "Failed to find oncall for #{scheduleName}: #{err.message}"
+            else
+              robot.emit 'error', err, msg
             return
           # If no on-calls found, try to find a matching escalation policy
           if /No human on call/i.test(text)
