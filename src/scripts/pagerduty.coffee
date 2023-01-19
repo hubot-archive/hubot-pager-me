@@ -985,7 +985,7 @@ module.exports = (robot) ->
         return
 
       # Single result returned
-      if escalation_policies?.length = 1
+      if escalation_policies?.length == 1
         escalation_policy = escalation_policies[0]
 
       # Multiple results returned and one is exact (case-insensitive)
