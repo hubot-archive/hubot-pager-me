@@ -157,7 +157,7 @@ module.exports =
   getIncidents: (statuses, cb) ->
     query =
       statuses:  statuses.split ","
-      sort_by: "incident_number:asc"
+      sort_by: "incident_number:desc"
     @get "/incidents", query, (err, json) ->
       if err?
         cb(err)
@@ -195,4 +195,3 @@ module.exports =
         return
 
       cb(null, escalation_policies)
-
