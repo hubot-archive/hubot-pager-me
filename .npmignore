@@ -1,0 +1,6 @@
+.github
+.husky
+script
+test
+.release-it.json
+CHANGELOG.md
