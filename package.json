@@ -17,7 +17,7 @@
     "url": "https://github.com/hubot-scripts/hubot-pager-me/issues"
   },
   "peerDependencies": {
-    "hubot": "^3 || ^4"
+    "hubot": ">=2 <10 || 0.0.0-development"
   },
   "dependencies": {
     "async": "^3.2.4",
