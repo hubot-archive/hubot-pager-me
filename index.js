@@ -9,15 +9,17 @@
 const fs = require('fs');
 const path = require('path');
 
-module.exports = function(robot, scripts) {
+module.exports = function (robot, scripts) {
   const scriptsPath = path.resolve(__dirname, 'src', 'scripts');
-  return fs.exists(scriptsPath, function(exists) {
+  return fs.exists(scriptsPath, function (exists) {
     if (exists) {
       return (() => {
         const result = [];
         for (var script of Array.from(fs.readdirSync(scriptsPath))) {
-          if ((scripts != null) && !Array.from(scripts).includes('*')) {
-            if (Array.from(scripts).includes(script)) { result.push(robot.loadFile(scriptsPath, script)); } else {
+          if (scripts != null && !Array.from(scripts).includes('*')) {
+            if (Array.from(scripts).includes(script)) {
+              result.push(robot.loadFile(scriptsPath, script));
+            } else {
               result.push(undefined);
             }
           } else {

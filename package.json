@@ -23,6 +23,7 @@
     "async": "^3.2.4",
     "moment-timezone": "^0.5.43",
     "nyc": "^15.1.0",
+    "prettier": "^3.0.2",
     "scoped-http-client": "^0.11.0"
   },
   "devDependencies": {
@@ -38,6 +39,7 @@
     "release": "release-it",
     "test": "mocha test/**/*-test.js --reporter spec",
     "test-with-coverage": "nyc --reporter=text mocha test/**/*-test.js",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "format": "prettier --config .prettierrc **/*.js --write"
   }
 }
