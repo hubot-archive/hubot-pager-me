@@ -1,9 +1,3 @@
-/*
- * decaffeinate suggestions:
- * DS102: Remove unnecessary code created because of implicit returns
- * DS207: Consider shorter variations of null checks
- * Full docs: https://github.com/decaffeinate/decaffeinate/blob/main/docs/suggestions.md
- */
 const HttpClient = require('scoped-http-client');
 
 const pagerDutyApiKey        = process.env.HUBOT_PAGERDUTY_API_KEY;
@@ -48,7 +42,7 @@ module.exports = {
       query['service_id'] = pagerDutyServices;
     }
 
-    return this.http(url)
+    this.http(url)
       .query(query)
       .get()(function(err, res, body) {
         if (err != null) {
@@ -73,7 +67,7 @@ module.exports = {
     }
 
     const json = JSON.stringify(data);
-    return this.http(url)
+    this.http(url)
       .header('content-type', 'application/json')
       .put(json)(function(err, res, body) {
         if (err != null) {
@@ -102,7 +96,7 @@ module.exports = {
     }
 
     const json = JSON.stringify(data);
-    return this.http(url)
+    this.http(url)
       .header('content-type', 'application/json')
       .post(json)(function(err, res, body) {
         if (err != null) {
@@ -113,9 +107,12 @@ module.exports = {
         switch (res.statusCode) {
           case 201: json_body = JSON.parse(body); break;
           default:
-            return cb(new PagerDutyError(`${res.statusCode} back from ${url}`));
+            {
+              cb(new PagerDutyError(`${res.statusCode} back from ${url}`));
+              return
+            }
         }
-        return cb(null, json_body);
+        cb(null, json_body);
     });
   },
 
@@ -126,12 +123,13 @@ module.exports = {
     }
 
     const auth = `Token token=${pagerDutyApiKey}`;
-    return this.http(url)
+    this.http(url)
       .header("content-length",0)
       .delete()(function(err, res, body) {
         let value;
         if (err != null) {
-          return cb(err);
+          cb(err);
+          return;
         }
         const json_body = null;
         switch (res.statusCode) {
@@ -143,7 +141,8 @@ module.exports = {
             console.log(body);
             value = false;
         }
-        return cb(null, value);
+        
+        cb(null, value);
     });
   },
 
@@ -151,12 +150,12 @@ module.exports = {
     const query =
       {incident_key};
 
-    return this.get("/incidents", query, function(err, json) {
+    this.get("/incidents", query, function (err, json) {
       if (err != null) {
         cb(err);
         return;
       }
-      return cb(null, json.incidents);
+      cb(null, json.incidents);
     });
   },
 
@@ -166,12 +165,13 @@ module.exports = {
       'statuses[]': status.split(',')
     };
 
-    return this.get("/incidents", query, function(err, json) {
+    this.get("/incidents", query, function(err, json) {
       if (err != null) {
         cb(err);
         return;
       }
-      return cb(null, json.incidents);
+      
+      cb(null, json.incidents);
     });
   },
 
@@ -181,13 +181,13 @@ module.exports = {
       query = {};
     }
 
-    return this.get("/schedules", query, function(err, json) {
+    this.get("/schedules", query, function (err, json) {
       if (err != null) {
         cb(err);
         return;
       }
 
-      return cb(null, json.schedules);
+      cb(null, json.schedules);
     });
   },
 
