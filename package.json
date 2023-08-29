@@ -41,5 +41,9 @@
     "test-with-coverage": "nyc --reporter=text mocha test/**/*-test.js",
     "prepare": "husky install",
     "format": "prettier --config .prettierrc **/*.js --write"
-  }
+  },
+  "files": [
+    "src/**/*.js",
+    "index.js"
+  ]
 }
