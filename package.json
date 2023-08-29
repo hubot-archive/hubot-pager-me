@@ -33,10 +33,10 @@
     "sinon": "^15.2.0",
     "sinon-chai": "^3.7.0"
   },
-  "main": "index.coffee",
+  "main": "index.js",
   "scripts": {
     "release": "release-it",
-    "test": "mocha --require coffee-script/register \"test/**/*.coffee\" --reporter spec",
+    "test": "mocha --require coffee-script/register \"test/**/*-test.js\" --reporter spec",
     "prepare": "husky install"
   }
 }
