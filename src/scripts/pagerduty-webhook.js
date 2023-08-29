@@ -12,7 +12,8 @@ module.exports = function (robot) {
   if (pagerEndpoint && pagerRoom) {
     robot.router.post(pagerEndpoint, function (req, res) {
       robot.messageRoom(pagerRoom, parseWebhook(req, res));
-      return res.end();
+      res.end();
+      return;
     });
   }
 
@@ -42,15 +43,16 @@ module.exports = function (robot) {
     return returnMessage.join('\n');
   };
 
-  const getUserForIncident = function (incident) {
+  function getUserForIncident(incident) {
     if (incident.assigned_to_user) {
       return incident.assigned_to_user.email;
-    } else if (incident.resolved_by_user) {
-      return incident.resolved_by_user.email;
-    } else {
-      return '(???)';
     }
-  };
+    if (incident.resolved_by_user) {
+      return incident.resolved_by_user.email;
+    }
+
+    return '(???)';
+  }
 
   return (generateIncidentString = function (incident, hookType) {
     console.log('hookType is ' + hookType);
