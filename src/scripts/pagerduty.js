@@ -62,9 +62,9 @@ module.exports = function (robot) {
         }
       })();
       if (user) {
-        return msg.send(`I found your PagerDuty user ${user.html_url}, ${emailNote}`);
+        msg.send(`I found your PagerDuty user ${user.html_url}, ${emailNote}`);
       } else {
-        return msg.send(`I couldn't find your user :( ${emailNote}`);
+        msg.send(`I couldn't find your user :( ${emailNote}`);
       }
     });
 
@@ -78,18 +78,18 @@ module.exports = function (robot) {
       }
       return result;
     })();
-    return msg.send(cmds.join('\n'));
+    msg.send(cmds.join('\n'));
   });
 
   robot.respond(/pager(?: me)? as (.*)$/i, function (msg) {
     const email = msg.match[1];
     msg.message.user.pagerdutyEmail = email;
-    return msg.send(`Okay, I'll remember your PagerDuty email is ${email}`);
+    msg.send(`Okay, I'll remember your PagerDuty email is ${email}`);
   });
 
   robot.respond(/pager forget me$/i, function (msg) {
     msg.message.user.pagerdutyEmail = undefined;
-    return msg.send("Okay, I've forgotten your PagerDuty email");
+    msg.send("Okay, I've forgotten your PagerDuty email");
   });
 
   robot.respond(/(pager|major)( me)? incident (.*)$/i, function (msg) {
@@ -105,7 +105,7 @@ module.exports = function (robot) {
         return;
       }
 
-      return msg.send(formatIncident(incident['incident']));
+      msg.send(formatIncident(incident['incident']));
     });
   });
 
@@ -116,28 +116,29 @@ module.exports = function (robot) {
         return;
       }
 
-      if (incidents.length > 0) {
-        let incident, junk;
-        let buffer = 'Triggered:\n----------\n';
-        const object = incidents.reverse();
-        for (junk in object) {
-          incident = object[junk];
-          if (incident.status === 'triggered') {
-            buffer = buffer + formatIncident(incident);
-          }
-        }
-        buffer = buffer + '\nAcknowledged:\n-------------\n';
-        const object1 = incidents.reverse();
-        for (junk in object1) {
-          incident = object1[junk];
-          if (incident.status === 'acknowledged') {
-            buffer = buffer + formatIncident(incident);
-          }
-        }
-        return msg.send(buffer);
-      } else {
-        return msg.send('No open incidents');
+      if (incidents.length == 0) {
+        msg.send('No open incidents');
+        return;
       }
+
+      let incident, junk;
+      let buffer = 'Triggered:\n----------\n';
+      const object = incidents.reverse();
+      for (junk in object) {
+        incident = object[junk];
+        if (incident.status === 'triggered') {
+          buffer = buffer + formatIncident(incident);
+        }
+      }
+      buffer = buffer + '\nAcknowledged:\n-------------\n';
+      const object1 = incidents.reverse();
+      for (junk in object1) {
+        incident = object1[junk];
+        if (incident.status === 'acknowledged') {
+          buffer = buffer + formatIncident(incident);
+        }
+      }
+      msg.send(buffer);
     })
   );
 
@@ -159,7 +160,7 @@ module.exports = function (robot) {
       const description = `${reason} - @${fromUserName}`;
 
       // Figure out who we are
-      return campfireUserToPagerDutyUser(msg, msg.message.user, false, function (triggerdByPagerDutyUser) {
+      campfireUserToPagerDutyUser(msg, msg.message.user, false, function (triggerdByPagerDutyUser) {
         const triggerdByPagerDutyUserId = (() => {
           if (triggerdByPagerDutyUser != null) {
             return triggerdByPagerDutyUser.id;
@@ -175,7 +176,7 @@ module.exports = function (robot) {
         }
 
         // Figure out what we're trying to page
-        return reassignmentParametersForUserOrScheduleOrEscalationPolicy(msg, query, function (results) {
+        reassignmentParametersForUserOrScheduleOrEscalationPolicy(msg, query, function (results) {
           if (!(results.assigned_to_user || results.escalation_policy)) {
             msg.reply(`Couldn't find a user or unique schedule or escalation policy matching ${query} :/`);
             return;
@@ -261,7 +262,7 @@ module.exports = function (robot) {
 
     // only acknowledge triggered things, since it doesn't make sense to re-acknowledge if it's already in re-acknowledge
     // if it ever doesn't need acknowledge again, it means it's timed out and has become 'triggered' again anyways
-    return updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged');
+    updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged');
   });
 
   robot.respond(/(pager|major)( me)? ack(nowledge)?(!)?$/i, function (msg) {
@@ -271,7 +272,7 @@ module.exports = function (robot) {
 
     const force = msg.match[4] != null;
 
-    return pagerduty.getIncidents('triggered,acknowledged', function (err, incidents) {
+    pagerduty.getIncidents('triggered,acknowledged', function (err, incidents) {
       if (err != null) {
         robot.emit('error', err, msg);
         return;
@@ -359,7 +360,7 @@ module.exports = function (robot) {
     }
 
     const incidentId = msg.match[3];
-    return pagerduty.get(`/incidents/${incidentId}/notes`, {}, function (err, json) {
+    pagerduty.get(`/incidents/${incidentId}/notes`, {}, function (err, json) {
       if (err != null) {
         robot.emit('error', err, msg);
         return;
@@ -369,7 +370,7 @@ module.exports = function (robot) {
       for (var note of Array.from(json.notes)) {
         buffer += `${note.created_at} ${note.user.summary}: ${note.content}\n`;
       }
-      return msg.send(buffer);
+      msg.send(buffer);
     });
   });
 
@@ -383,7 +384,7 @@ module.exports = function (robot) {
     const incidentId = msg.match[3];
     const content = msg.match[4];
 
-    return campfireUserToPagerDutyUser(msg, msg.message.user, function (user) {
+    campfireUserToPagerDutyUser(msg, msg.message.user, function (user) {
       const userId = user.id;
       if (!userId) {
         return;
@@ -396,16 +397,16 @@ module.exports = function (robot) {
         requester_id: userId,
       };
 
-      return pagerduty.post(`/incidents/${incidentId}/notes`, data, function (err, json) {
+      pagerduty.post(`/incidents/${incidentId}/notes`, data, function (err, json) {
         if (err != null) {
           robot.emit('error', err, msg);
           return;
         }
 
         if (json && json.note) {
-          return msg.send(`Got it! Note created: ${json.note.content}`);
+          msg.send(`Got it! Note created: ${json.note.content}`);
         } else {
-          return msg.send("Sorry, I couldn't do it :(");
+          msg.send("Sorry, I couldn't do it :(");
         }
       });
     });
@@ -422,21 +423,22 @@ module.exports = function (robot) {
       return;
     }
 
-    return pagerduty.getSchedules(query, function (err, schedules) {
+    pagerduty.getSchedules(query, function (err, schedules) {
       if (err != null) {
         robot.emit('error', err, msg);
         return;
       }
 
-      let buffer = '';
-      if (schedules.length > 0) {
-        for (var schedule of Array.from(schedules)) {
-          buffer += `* ${schedule.name} - ${schedule.html_url}\n`;
-        }
-        return msg.send(buffer);
-      } else {
-        return msg.send('No schedules found!');
+      if (schedules.length == 0) {
+        msg.send('No schedules found!');
+        return;
       }
+
+      let buffer = '';
+      for (var schedule of Array.from(schedules)) {
+        buffer += `* ${schedule.name} - ${schedule.html_url}\n`;
+      }
+      msg.send(buffer);
     });
   });
 
@@ -481,13 +483,13 @@ module.exports = function (robot) {
         timezone = 'UTC';
       }
 
-      return withScheduleMatching(msg, scheduleName, function (schedule) {
+      withScheduleMatching(msg, scheduleName, function (schedule) {
         const scheduleId = schedule.id;
         if (!scheduleId) {
           return;
         }
 
-        return pagerduty.get(`/schedules/${scheduleId}/${thing}`, query, function (err, json) {
+        pagerduty.get(`/schedules/${scheduleId}/${thing}`, query, function (err, json) {
           if (err != null) {
             robot.emit('error', err, msg);
             return;
@@ -512,12 +514,12 @@ module.exports = function (robot) {
               }
             }
             if (buffer === '') {
-              return msg.send('None found!');
+              msg.send('None found!');
             } else {
-              return msg.send(buffer);
+              msg.send(buffer);
             }
           } else {
-            return msg.send('None found!');
+            msg.send('None found!');
           }
         });
       });
@@ -536,7 +538,7 @@ module.exports = function (robot) {
       days = 30;
     }
 
-    return campfireUserToPagerDutyUser(msg, msg.message.user, function (user) {
+    campfireUserToPagerDutyUser(msg, msg.message.user, function (user) {
       let timezone;
       const userId = user.id;
 
@@ -552,7 +554,7 @@ module.exports = function (robot) {
         timezone = 'UTC';
       }
 
-      return pagerduty.getSchedules(function (err, schedules) {
+      pagerduty.getSchedules(function (err, schedules) {
         if (err != null) {
           robot.emit('error', err, msg);
           return;
@@ -582,7 +584,7 @@ module.exports = function (robot) {
                     buffer += `* ${startTime} - ${endTime} ${entry.user.summary} (${schedule.name})\n`;
                   }
                 }
-                return cb(null, buffer);
+                cb(null, buffer);
               }
             });
 
@@ -591,10 +593,10 @@ module.exports = function (robot) {
               robot.emit('error', err, msg);
               return;
             }
-            return msg.send(results.join(''));
+            msg.send(results.join(''));
           });
         } else {
-          return msg.send('No schedules found!');
+          msg.send('No schedules found!');
         }
       });
     });
@@ -621,13 +623,13 @@ module.exports = function (robot) {
         overrideUser = msg.message.user;
       }
 
-      return campfireUserToPagerDutyUser(msg, overrideUser, function (user) {
+      campfireUserToPagerDutyUser(msg, overrideUser, function (user) {
         const userId = user.id;
         if (!userId) {
           return;
         }
 
-        return withScheduleMatching(msg, scheduleName, function (schedule) {
+        withScheduleMatching(msg, scheduleName, function (schedule) {
           const scheduleId = schedule.id;
           if (!scheduleId) {
             return;
@@ -655,17 +657,17 @@ module.exports = function (robot) {
               if (json && json.override) {
                 const start = moment(json.override.start);
                 const end = moment(json.override.end);
-                return msg.send(
+                msg.send(
                   `Override setup! ${
                     json.override.user.summary
                   } has the pager from ${start.format()} until ${end.format()}`
                 );
               } else {
-                return msg.send("That didn't work. Check Hubot's logs for an error!");
+                msg.send("That didn't work. Check Hubot's logs for an error!");
               }
             });
           } else {
-            return msg.send('Please use a http://momentjs.com/ compatible date!');
+            msg.send('Please use a http://momentjs.com/ compatible date!');
           }
         });
       });
@@ -679,17 +681,17 @@ module.exports = function (robot) {
 
     const scheduleName = msg.match[6] || msg.match[7];
 
-    return withScheduleMatching(msg, scheduleName, function (schedule) {
+    withScheduleMatching(msg, scheduleName, function (schedule) {
       const scheduleId = schedule.id;
       if (!scheduleId) {
         return;
       }
 
-      return pagerduty.delete(`/schedules/${scheduleId}/overrides/${msg.match[9]}`, function (err, success) {
+      pagerduty.delete(`/schedules/${scheduleId}/overrides/${msg.match[9]}`, function (err, success) {
         if (success) {
-          return msg.send(':boom:');
+          msg.send(':boom:');
         } else {
-          return msg.send('Something went weird.');
+          msg.send('Something went weird.');
         }
       });
     });
@@ -702,7 +704,7 @@ module.exports = function (robot) {
       return;
     }
 
-    return campfireUserToPagerDutyUser(msg, msg.message.user, function (user) {
+    campfireUserToPagerDutyUser(msg, msg.message.user, function (user) {
       const userId = user.id;
       if (!userId) {
         return;
@@ -715,7 +717,7 @@ module.exports = function (robot) {
         return;
       }
 
-      return withScheduleMatching(msg, msg.match[2], function (matchingSchedule) {
+      withScheduleMatching(msg, msg.match[2], function (matchingSchedule) {
         if (!matchingSchedule.id) {
           return;
         }
@@ -731,7 +733,7 @@ module.exports = function (robot) {
             type: 'user_reference',
           },
         };
-        return withCurrentOncall(msg, matchingSchedule, function (old_username, schedule) {
+        withCurrentOncall(msg, matchingSchedule, function (old_username, schedule) {
           const data = { override: override };
           return pagerduty.post(`/schedules/${schedule.id}/overrides`, data, function (err, json) {
             if (err != null) {
@@ -742,7 +744,7 @@ module.exports = function (robot) {
             if (json.override) {
               start = moment(json.override.start);
               end = moment(json.override.end);
-              return msg.send(
+              msg.send(
                 `Rejoice, ${old_username}! ${json.override.user.summary} has the pager on ${
                   schedule.name
                 } until ${end.format()}`
@@ -759,17 +761,17 @@ module.exports = function (robot) {
       return;
     }
 
-    return campfireUserToPagerDutyUser(msg, msg.message.user, function (user) {
+    campfireUserToPagerDutyUser(msg, msg.message.user, function (user) {
       const userId = user.id;
 
       const renderSchedule = (s, cb) =>
         withCurrentOncallId(msg, s, function (oncallUserid, oncallUsername, schedule) {
           if (userId === oncallUserid) {
-            return cb(null, `* Yes, you are on call for ${schedule.name} - ${schedule.html_url}`);
+            cb(null, `* Yes, you are on call for ${schedule.name} - ${schedule.html_url}`);
           } else if (oncallUsername === null) {
-            return cb(null, `* No, you are NOT on call for ${schedule.name} - ${schedule.html_url}`);
+            cb(null, `* No, you are NOT on call for ${schedule.name} - ${schedule.html_url}`);
           } else {
-            return cb(
+            cb(
               null,
               `* No, you are NOT on call for ${schedule.name} (but ${oncallUsername} is) - ${schedule.html_url}`
             );
@@ -777,25 +779,25 @@ module.exports = function (robot) {
         });
 
       if (userId == null) {
-        return msg.send("Couldn't figure out the pagerduty user connected to your account.");
+        msg.send("Couldn't figure out the pagerduty user connected to your account.");
       } else {
-        return pagerduty.getSchedules(function (err, schedules) {
+        pagerduty.getSchedules(function (err, schedules) {
           if (err != null) {
             robot.emit('error', err, msg);
             return;
           }
 
-          if (schedules.length > 0) {
-            return async.map(schedules, renderSchedule, function (err, results) {
-              if (err != null) {
-                robot.emit('error', err, msg);
-                return;
-              }
-              return msg.send(results.join('\n'));
-            });
-          } else {
-            return msg.send('No schedules found!');
+          if (schedules.length == 0) {
+            msg.send('No schedules found!');
           }
+
+          async.map(schedules, renderSchedule, function (err, results) {
+            if (err != null) {
+              robot.emit('error', err, msg);
+              return;
+            }
+            msg.send(results.join('\n'));
+          });
         });
       }
     });
@@ -822,7 +824,8 @@ module.exports = function (robot) {
           // If there is an allowed schedules array, skip returned schedule not in it
           if (allowed_schedules.length && !Array.from(allowed_schedules).includes(schedule.id)) {
             robot.logger.debug(`Schedule ${schedule.id} (${schedule.name}) not in HUBOT_PAGERDUTY_SCHEDULES`);
-            return cb(null);
+            cb(null);
+            return;
           }
 
           // Ignore schedule if no user assigned to it
@@ -833,36 +836,37 @@ module.exports = function (robot) {
           }
 
           // Return callback
-          return cb(null);
+          cb(null);
         });
 
       if (scheduleName != null) {
-        return SchedulesMatching(msg, scheduleName, (s) =>
+        SchedulesMatching(msg, scheduleName, (s) =>
           async.map(s, renderSchedule, function (err) {
             if (err != null) {
               robot.emit('error', err, msg);
               return;
             }
-            return msg.send(messages.join('\n'));
+            msg.send(messages.join('\n'));
           })
         );
       } else {
-        return pagerduty.getSchedules(function (err, schedules) {
+        pagerduty.getSchedules(function (err, schedules) {
           if (err != null) {
             robot.emit('error', err, msg);
             return;
           }
-          if (schedules.length > 0) {
-            return async.map(schedules, renderSchedule, function (err) {
-              if (err != null) {
-                robot.emit('error', err, msg);
-                return;
-              }
-              return msg.send(messages.join('\n'));
-            });
-          } else {
-            return msg.send('No schedules found!');
+          if (schedules.length == 0) {
+            msg.send('No schedules found!');
+            return;
           }
+
+          async.map(schedules, renderSchedule, function (err) {
+            if (err != null) {
+              robot.emit('error', err, msg);
+              return;
+            }
+            msg.send(messages.join('\n'));
+          });
         });
       }
     }
@@ -881,14 +885,15 @@ module.exports = function (robot) {
 
       let buffer = '';
       const { services } = json;
-      if (services.length > 0) {
-        for (var service of Array.from(services)) {
-          buffer += `* ${service.id}: ${service.name} (${service.status}) - ${service.html_url}\n`;
-        }
-        return msg.send(buffer);
-      } else {
-        return msg.send('No services found!');
+      if (services.length == 0) {
+        msg.send('No services found!');
+        return;
       }
+
+      for (var service of Array.from(services)) {
+        buffer += `* ${service.id}: ${service.name} (${service.status}) - ${service.html_url}\n`;
+      }
+      msg.send(buffer);
     });
   });
 
@@ -917,19 +922,20 @@ module.exports = function (robot) {
       const data = { maintenance_window, services };
 
       msg.send(`Opening maintenance window for: ${service_ids}`);
-      return pagerduty.post('/maintenance_windows', data, function (err, json) {
+      pagerduty.post('/maintenance_windows', data, function (err, json) {
         if (err != null) {
           robot.emit('error', err, msg);
           return;
         }
 
         if (json && json.maintenance_window) {
-          return msg.send(
+          msg.send(
             `Maintenance window created! ID: ${json.maintenance_window.id} Ends: ${json.maintenance_window.end_time}`
           );
-        } else {
-          return msg.send("That didn't work. Check Hubot's logs for an error!");
+          return;
         }
+
+        msg.send("That didn't work. Check Hubot's logs for an error!");
       });
     });
   });
@@ -968,11 +974,11 @@ module.exports = function (robot) {
         } else {
           return SchedulesMatching(msg, string, function (schedule) {
             if (schedule) {
-              return withCurrentOncallUser(msg, schedule, (user, schedule) =>
+              withCurrentOncallUser(msg, schedule, (user, schedule) =>
                 cb({ assigned_to_user: user.id, name: user.name })
               );
             } else {
-              return cb();
+              cb();
             }
           });
         }
@@ -991,7 +997,7 @@ module.exports = function (robot) {
     switch (cmd) {
       case 'trigger':
         data = JSON.stringify({ service_key: pagerDutyServiceApiKey, event_type: 'trigger', description });
-        return pagerDutyIntegrationPost(msg, data, (json) => cb(json));
+        pagerDutyIntegrationPost(msg, data, (json) => cb(json));
     }
   };
 
@@ -1201,7 +1207,7 @@ module.exports = function (robot) {
       }
     }
 
-    return pagerduty.get('/users', { query: email }, function (err, json) {
+    pagerduty.get('/users', { query: email }, function (err, json) {
       if (err != null) {
         robot.emit('error', err, msg);
         return;
@@ -1219,7 +1225,7 @@ module.exports = function (robot) {
         }
       }
 
-      return cb(json.users[0]);
+      cb(json.users[0]);
     });
   });
 };
