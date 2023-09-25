@@ -608,7 +608,7 @@ module.exports = (robot) ->
                 robot.emit 'error', err, msg
                 return
 
-              msg.send "Rejoice, @#{old_username}! @#{user.name} has the pager on #{schedule.name} until #{end.format()}"
+              msg.send "Rejoice, `#{old_username}`! @#{user.name} has the pager on #{schedule.name} until #{end.format()}"
 
   # hubot Am I on call - return if I'm currently on call or not
   robot.respond /am i on (call|oncall|on-call)/i, (msg) ->
