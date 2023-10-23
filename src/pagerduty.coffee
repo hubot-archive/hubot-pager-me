@@ -1,6 +1,6 @@
 HttpClient = require 'scoped-http-client'
 Scrolls    = require('../../../lib/scrolls').context({script: 'pagerduty'})
-request    = require 'request'
+request    = require '@cypress/request'
 qs         = require 'query-string'
 
 pagerDutyApiKey        = process.env.HUBOT_PAGERDUTY_API_KEY
