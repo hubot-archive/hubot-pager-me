@@ -17,11 +17,11 @@
     "url": "https://github.com/hubot-scripts/hubot-pager-me/issues"
   },
   "dependencies": {
-    "@cypress/request": "^3.0.1",
     "async": "^1.4.2",
     "coffee-script": "~1.6",
     "moment-timezone": "^0.5.37",
-    "query-string": "^5.0.1"
+    "query-string": "^5.0.1",
+    "request": "^2.83.0"
   },
   "devDependencies": {
     "chai": "^2.1.1",

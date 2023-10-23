@@ -42,7 +42,7 @@ pagerduty = require('../pagerduty')
 async = require('async')
 inspect = require('util').inspect
 moment = require('moment-timezone')
-request = require '@cypress/request'
+request = require 'request'
 Scrolls = require('../../../../lib/scrolls').context({script: 'pagerduty'})
 
 pagerDutyUserEmail     = process.env.HUBOT_PAGERDUTY_USERNAME
