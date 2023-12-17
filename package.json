@@ -17,7 +17,7 @@
     "url": "https://github.com/hubot-scripts/hubot-pager-me/issues"
   },
   "peerDependencies": {
-    "hubot": ">=2 <10 || 0.0.0-development"
+    "hubot": ">=3 || 0.0.0-development"
   },
   "dependencies": {
     "async": "^3.2.4",
@@ -30,20 +30,21 @@
     "chai": "^4.3.8",
     "husky": "^8.0.3",
     "mocha": "^10.2.0",
-    "release-it": "^16.1.5",
     "sinon": "^15.2.0",
     "sinon-chai": "^3.7.0"
   },
   "main": "index.js",
   "scripts": {
-    "release": "release-it",
-    "test": "mocha test/**/*-test.js --reporter spec",
-    "test-with-coverage": "nyc --reporter=text mocha test/**/*-test.js",
+    "test": "script/test",
+    "test-with-coverage": "nyc --reporter=text script/test",
     "prepare": "husky install",
     "format": "prettier --config .prettierrc **/*.js --write"
   },
   "files": [
     "src/**/*.js",
     "index.js"
-  ]
+  ],
+  "volta": {
+    "node": "18.19.0"
+  }
 }
