@@ -92,7 +92,7 @@ module.exports = function (robot) {
     msg.send("Okay, I've forgotten your PagerDuty email");
   });
 
-  robot.respond(/(pager|major)( me)? incident (.*)$/i, function (msg) {
+  robot.respond(/(pager|major)( me)? incident ([a-z0-9]+)$/i, function (msg) {
     msg.finish();
 
     if (pagerduty.missingEnvironmentForApi(msg)) {
@@ -102,6 +102,12 @@ module.exports = function (robot) {
     return pagerduty.getIncident(msg.match[3], function (err, incident) {
       if (err != null) {
         robot.emit('error', err, msg);
+        return;
+      }
+
+      if (!incident || !incident['incident']) {
+        logger.debug(incident);
+        msg.send('No matching incident found for `msg.match[3]`.');
         return;
       }
 
