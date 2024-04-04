@@ -105,6 +105,12 @@ module.exports = function (robot) {
         return;
       }
 
+      if (!incident || !incident['incident']) {
+        logger.debug(incident);
+        msg.send('No matching incident found for `msg.match[3]`.');
+        return;
+      }
+
       msg.send(formatIncident(incident['incident']));
     });
   });
