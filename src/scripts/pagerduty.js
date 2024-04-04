@@ -48,7 +48,7 @@ const pagerDutySchedules = process.env.HUBOT_PAGERDUTY_SCHEDULES;
 
 module.exports = function (robot) {
   let campfireUserToPagerDutyUser;
-  robot.respond(/pager( me)?$/i, function (msg) {
+  robot.respond(/pager( me)?$/, function (msg) {
     if (pagerduty.missingEnvironmentForApi(msg)) {
       return;
     }
@@ -81,18 +81,18 @@ module.exports = function (robot) {
     msg.send(cmds.join('\n'));
   });
 
-  robot.respond(/pager(?: me)? as (.*)$/i, function (msg) {
+  robot.respond(/pager(?: me)? as (.*)$/, function (msg) {
     const email = msg.match[1];
     msg.message.user.pagerdutyEmail = email;
     msg.send(`Okay, I'll remember your PagerDuty email is ${email}`);
   });
 
-  robot.respond(/pager forget me$/i, function (msg) {
+  robot.respond(/pager forget me$/, function (msg) {
     msg.message.user.pagerdutyEmail = undefined;
     msg.send("Okay, I've forgotten your PagerDuty email");
   });
 
-  robot.respond(/(pager|major)( me)? incident (.*)$/i, function (msg) {
+  robot.respond(/(pager|major)( me)? incident (.*)$/, function (msg) {
     msg.finish();
 
     if (pagerduty.missingEnvironmentForApi(msg)) {
@@ -109,7 +109,7 @@ module.exports = function (robot) {
     });
   });
 
-  robot.respond(/(pager|major)( me)? (inc|incidents|sup|problems)$/i, (msg) =>
+  robot.respond(/(pager|major)( me)? (inc|incidents|sup|problems)$/, (msg) =>
     pagerduty.getIncidents('triggered,acknowledged', function (err, incidents) {
       if (err != null) {
         robot.emit('error', err, msg);
@@ -142,7 +142,7 @@ module.exports = function (robot) {
     })
   );
 
-  robot.respond(/(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/i, (msg) =>
+  robot.respond(/(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/, (msg) =>
     msg.reply("Please include a user or schedule to page, like 'hubot pager infrastructure everything is on fire'.")
   );
   robot.respond(
@@ -252,7 +252,7 @@ module.exports = function (robot) {
     }
   );
 
-  robot.respond(/(?:pager|major)(?: me)? ack(?:nowledge)? (.+)$/i, function (msg) {
+  robot.respond(/(?:pager|major)(?: me)? ack(?:nowledge)? (.+)$/, function (msg) {
     msg.finish();
     if (pagerduty.missingEnvironmentForApi(msg)) {
       return;
@@ -265,7 +265,7 @@ module.exports = function (robot) {
     updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'acknowledged');
   });
 
-  robot.respond(/(pager|major)( me)? ack(nowledge)?(!)?$/i, function (msg) {
+  robot.respond(/(pager|major)( me)? ack(nowledge)?(!)?$/, function (msg) {
     if (pagerduty.missingEnvironmentForApi(msg)) {
       return;
     }
@@ -303,7 +303,7 @@ module.exports = function (robot) {
     });
   });
 
-  robot.respond(/(?:pager|major)(?: me)? res(?:olve)?(?:d)? (.+)$/i, function (msg) {
+  robot.respond(/(?:pager|major)(?: me)? res(?:olve)?(?:d)? (.+)$/, function (msg) {
     msg.finish();
 
     if (pagerduty.missingEnvironmentForApi(msg)) {
@@ -316,7 +316,7 @@ module.exports = function (robot) {
     return updateIncidents(msg, incidentNumbers, 'triggered,acknowledged', 'resolved');
   });
 
-  robot.respond(/(pager|major)( me)? res(olve)?(d)?(!)?$/i, function (msg) {
+  robot.respond(/(pager|major)( me)? res(olve)?(d)?(!)?$/, function (msg) {
     if (pagerduty.missingEnvironmentForApi(msg)) {
       return;
     }
@@ -352,7 +352,7 @@ module.exports = function (robot) {
     });
   });
 
-  robot.respond(/(pager|major)( me)? notes (.+)$/i, function (msg) {
+  robot.respond(/(pager|major)( me)? notes (.+)$/, function (msg) {
     msg.finish();
 
     if (pagerduty.missingEnvironmentForApi(msg)) {
@@ -374,7 +374,7 @@ module.exports = function (robot) {
     });
   });
 
-  robot.respond(/(pager|major)( me)? note ([\d\w]+) (.+)$/i, function (msg) {
+  robot.respond(/(pager|major)( me)? note ([\d\w]+) (.+)$/, function (msg) {
     msg.finish();
 
     if (pagerduty.missingEnvironmentForApi(msg)) {
@@ -412,7 +412,7 @@ module.exports = function (robot) {
     });
   });
 
-  robot.respond(/(pager|major)( me)? schedules( ((["'])([^]*?)\5|(.+)))?$/i, function (msg) {
+  robot.respond(/(pager|major)( me)? schedules( ((["'])([^]*?)\5|(.+)))?$/, function (msg) {
     const query = {};
     const scheduleName = msg.match[6] || msg.match[7];
     if (scheduleName) {
@@ -443,7 +443,7 @@ module.exports = function (robot) {
   });
 
   robot.respond(
-    /(pager|major)( me)? (schedule|overrides)( ((["'])([^]*?)\6|([\w\-]+)))?( ([^ ]+)\s*(\d+)?)?$/i,
+    /(pager|major)( me)? (schedule|overrides)( ((["'])([^]*?)\6|([\w\-]+)))?( ([^ ]+)\s*(\d+)?)?$/,
     function (msg) {
       let days, timezone;
       if (pagerduty.missingEnvironmentForApi(msg)) {
@@ -526,7 +526,7 @@ module.exports = function (robot) {
     }
   );
 
-  robot.respond(/(pager|major)( me)? my schedule( ([^ ]+)\s?(\d+))?$/i, function (msg) {
+  robot.respond(/(pager|major)( me)? my schedule( ([^ ]+)\s?(\d+))?$/, function (msg) {
     let days;
     if (pagerduty.missingEnvironmentForApi(msg)) {
       return;
@@ -603,7 +603,7 @@ module.exports = function (robot) {
   });
 
   robot.respond(
-    /(pager|major)( me)? (override) ((["'])([^]*?)\5|([\w\-]+)) ([\w\-:\+]+) - ([\w\-:\+]+)( (.*))?$/i,
+    /(pager|major)( me)? (override) ((["'])([^]*?)\5|([\w\-]+)) ([\w\-:\+]+) - ([\w\-:\+]+)( (.*))?$/,
     function (msg) {
       let overrideUser;
       if (pagerduty.missingEnvironmentForApi(msg)) {
@@ -674,7 +674,7 @@ module.exports = function (robot) {
     }
   );
 
-  robot.respond(/(pager|major)( me)? (overrides?) ((["'])([^]*?)\5|([\w\-]+)) (delete) (.*)$/i, function (msg) {
+  robot.respond(/(pager|major)( me)? (overrides?) ((["'])([^]*?)\5|([\w\-]+)) (delete) (.*)$/, function (msg) {
     if (pagerduty.missingEnvironmentForApi(msg)) {
       return;
     }
@@ -697,7 +697,7 @@ module.exports = function (robot) {
     });
   });
 
-  robot.respond(/pager( me)? (?!schedules?\b|overrides?\b|my schedule\b)(.+) (\d+)$/i, function (msg) {
+  robot.respond(/pager( me)? (?!schedules?\b|overrides?\b|my schedule\b)(.+) (\d+)$/, function (msg) {
     msg.finish();
 
     if (pagerduty.missingEnvironmentForApi(msg)) {
@@ -756,7 +756,7 @@ module.exports = function (robot) {
     });
   });
 
-  robot.respond(/am i on (call|oncall|on-call)/i, function (msg) {
+  robot.respond(/am i on (call|oncall|on-call)/, function (msg) {
     if (pagerduty.missingEnvironmentForApi(msg)) {
       return;
     }
@@ -805,7 +805,7 @@ module.exports = function (robot) {
 
   // who is on call?
   robot.respond(
-    /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?:\?)?(?: (?:for )?((["'])([^]*?)\2|(.*?))(?:\?|$))?$/i,
+    /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?:\?)?(?: (?:for )?((["'])([^]*?)\2|(.*?))(?:\?|$))?$/,
     function (msg) {
       if (pagerduty.missingEnvironmentForApi(msg)) {
         return;
@@ -872,7 +872,7 @@ module.exports = function (robot) {
     }
   );
 
-  robot.respond(/(pager|major)( me)? services$/i, function (msg) {
+  robot.respond(/(pager|major)( me)? services$/, function (msg) {
     if (pagerduty.missingEnvironmentForApi(msg)) {
       return;
     }
@@ -897,7 +897,7 @@ module.exports = function (robot) {
     });
   });
 
-  robot.respond(/(pager|major)( me)? maintenance (\d+) (.+)$/i, function (msg) {
+  robot.respond(/(pager|major)( me)? maintenance (\d+) (.+)$/, function (msg) {
     if (pagerduty.missingEnvironmentForApi(msg)) {
       return;
     }
