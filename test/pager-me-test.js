@@ -35,7 +35,7 @@ describe('pagerduty', function () {
   });
 
   it('registers a pager incident listener', function () {
-    expect(this.robot.respond).to.have.been.calledWith(/(pager|major)( me)? incident (.*)$/i);
+    expect(this.robot.respond).to.have.been.calledWith(/(pager|major)( me)? incident ([a-z0-9]+)$/i);
   });
 
   it('registers a pager sup listener', function () {

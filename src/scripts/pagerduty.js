@@ -92,7 +92,7 @@ module.exports = function (robot) {
     msg.send("Okay, I've forgotten your PagerDuty email");
   });
 
-  robot.respond(/(pager|major)( me)? incident (.*)$/i, function (msg) {
+  robot.respond(/(pager|major)( me)? incident ([a-z0-9]+)$/i, function (msg) {
     msg.finish();
 
     if (pagerduty.missingEnvironmentForApi(msg)) {
