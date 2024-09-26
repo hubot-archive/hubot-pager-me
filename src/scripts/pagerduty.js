@@ -49,6 +49,7 @@ const pagerDutyDefaultSchedule = process.env.HUBOT_PAGERDUTY_DEFAULT_SCHEDULE;
 
 module.exports = function (robot) {
   let campfireUserToPagerDutyUser;
+
   robot.respond(/pager( me)?$/i, function (msg) {
     if (pagerduty.missingEnvironmentForApi(msg)) {
       return;
@@ -716,7 +717,7 @@ module.exports = function (robot) {
     });
   });
 
-  robot.respond(/pager( me)? (?!schedules?\b|overrides?\b|my schedule\b)"?(.+)"? (\d+)$/i, function (msg) {
+  robot.respond(/pager( me)? (?!schedules?\b|overrides?\b|my schedule\b)(.+) (\d+)$/i, function (msg) {
     msg.finish();
 
     if (pagerduty.missingEnvironmentForApi(msg)) {
@@ -735,7 +736,7 @@ module.exports = function (robot) {
         );
         return;
       }
-
+      const schedule = msg.match[2].replace(/(^"|"$)/mg, '');
       withScheduleMatching(msg, msg.match[2], function (matchingSchedule) {
         if (!matchingSchedule.id) {
           return;

@@ -98,7 +98,7 @@ describe('pagerduty', function () {
 
   it('registers a pager link listener', function () {
     expect(this.robot.respond).to.have.been.calledWith(
-      /pager( me)? (?!schedules?\b|overrides?\b|my schedule\b)"?(.+)"? (\d+)$/i
+      /pager( me)? (?!schedules?\b|overrides?\b|my schedule\b)(.+) (\d+)$/i
     );
   });
 
