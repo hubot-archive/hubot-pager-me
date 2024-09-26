@@ -164,15 +164,15 @@ module.exports = function (robot) {
       if (pagerduty.missingEnvironmentForApi(msg)) {
         return;
       }
-      const fromUserName = msg.message.user.name;
-      robot.logger.debug(`Triggering a default page to ${pagerDutyDefaultSchedule}!`);
       if (!pagerDutyDefaultSchedule) {
         msg.send("No default schedule configured! Cannot send a page! Please set HUBOT_PAGERDUTY_DEFAULT_SCHEDULE");
         return;
       }
+      const fromUserName = msg.message.user.name;
       query = pagerDutyDefaultSchedule;
       reason = msg.match[4] || "We Need Help!"
       description = `${reason} - @${fromUserName}`;
+      robot.logger.debug(`Triggering a default page to ${pagerDutyDefaultSchedule} saying ${description}!`);
       incidentTrigger(msg, query, description);
     }
   );
@@ -187,9 +187,9 @@ module.exports = function (robot) {
       }
       const fromUserName = msg.message.user.name;
       const query = msg.match[5] || msg.match[6] || msg.match[7] || msg.match[8];
-      robot.logger.info(`Triggering a page to ${query}!`);
       const reason = msg.match[9] || "We Need Help!";
       const description = `${reason} - @${fromUserName}`;
+      robot.logger.debug(`Triggering a page to ${query} saying ${description}!`);
       incidentTrigger(msg, query, description);
     }
   );
