@@ -4,7 +4,7 @@
 // Commands:
 //   hubot pager me as <email> - remember your pager email is <email>
 //   hubot pager forget me - forget your pager email
-//   hubot Am I on call - return if I'm currently on call or not
+//   hubot am I on call - return if I'm currently on call or not
 //   hubot who's on call - return a list of services and who is on call for them
 //   hubot who's on call for <schedule> - return the username of who's on call for any schedule matching <search>
 //   hubot pager trigger <user> <msg> - create a new incident with <msg> and assign it to <user>
@@ -45,6 +45,7 @@ const moment = require('moment-timezone');
 const pagerDutyUserId = process.env.HUBOT_PAGERDUTY_USER_ID;
 const pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY;
 const pagerDutySchedules = process.env.HUBOT_PAGERDUTY_SCHEDULES;
+const pagerDutyDefaultSchedule = process.env.HUBOT_PAGERDUTY_DEFAULT_SCHEDULE;
 
 module.exports = function (robot) {
   let campfireUserToPagerDutyUser;
@@ -145,19 +146,31 @@ module.exports = function (robot) {
   robot.respond(/(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/i, (msg) =>
     msg.reply("Please include a user or schedule to page, like 'hubot pager infrastructure everything is on fire'.")
   );
+
   robot.respond(
-    /(pager|major)( me)? (?:trigger|page) ((["'])([^\4]*?)\4|“([^”]*?)”|‘([^’]*?)’|([\.\w\-]+)) (.+)$/i,
+    /(pager|major)( me)? (?:trigger|page) ?((["'])([^\4]*?)\4|“([^”]*?)”|‘([^’]*?)’|([\.\w\-]+))? ?(.+)?$/i,
     function (msg) {
       msg.finish();
 
       if (pagerduty.missingEnvironmentForApi(msg)) {
         return;
       }
-
       const fromUserName = msg.message.user.name;
-      let query = msg.match[5] || msg.match[6] || msg.match[7] || msg.match[8];
-      const reason = msg.match[9];
-      const description = `${reason} - @${fromUserName}`;
+      let query, description;
+      if (!msg.match[4] && !msg.match[5] && !msg.match[6] && !msg.match[7] && !msg.match[8] && !msg.match[9]) {
+        robot.logger.info(`Triggering a default page to ${pagerDutyDefaultSchedule}!`);
+        if (!pagerDutyDefaultSchedule) {
+          msg.send("No default schedule configured! Cannot send a page! Please set HUBOT_PAGERDUTY_DEFAULT_SCHEDULE");
+          return;
+        }
+        query = pagerDutyDefaultSchedule;
+        description = `Generic Page - @${fromUserName}`;
+      } else {
+        query = msg.match[5] || msg.match[6] || msg.match[7] || msg.match[8];
+        robot.logger.info(`Triggering a page to ${query}!`);
+        const reason = msg.match[9];
+        description = `${reason} - @${fromUserName}`;
+      }
 
       // Figure out who we are
       campfireUserToPagerDutyUser(msg, msg.message.user, false, function (triggerdByPagerDutyUser) {
@@ -697,7 +710,7 @@ module.exports = function (robot) {
     });
   });
 
-  robot.respond(/pager( me)? (?!schedules?\b|overrides?\b|my schedule\b)(.+) (\d+)$/i, function (msg) {
+  robot.respond(/pager( me)? (?!schedules?\b|overrides?\b|my schedule\b)"?(.+)"? (\d+)$/i, function (msg) {
     msg.finish();
 
     if (pagerduty.missingEnvironmentForApi(msg)) {
