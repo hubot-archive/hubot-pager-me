@@ -46,6 +46,10 @@ describe('pagerduty', function () {
     expect(this.robot.respond).to.have.been.calledWith(/(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/i);
   });
 
+  it('registers a pager default trigger with message listener', function () {
+    expect(this.robot.respond).to.have.been.calledWith(/(pager|major)( me)? default (?:trigger|page) ?(.+)?$/i);
+  });
+
   it('registers a pager trigger with message listener', function () {
     expect(this.robot.respond).to.have.been.calledWith(this.triggerRegex);
   });

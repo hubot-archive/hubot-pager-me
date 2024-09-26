@@ -8,6 +8,7 @@
 //   hubot who's on call - return a list of services and who is on call for them
 //   hubot who's on call for <schedule> - return the username of who's on call for any schedule matching <search>
 //   hubot pager trigger <user> <msg> - create a new incident with <msg> and assign it to <user>
+//   hubot pager default trigger <msg> - create a new incident with <msg> and assign it the user currently on call for our default schedule
 //   hubot pager trigger <schedule> <msg> - create a new incident with <msg> and assign it the user currently on call for <schedule>
 //   hubot pager incidents - return the current incidents
 //   hubot pager sup - return the current incidents
@@ -46,6 +47,99 @@ const pagerDutyUserId = process.env.HUBOT_PAGERDUTY_USER_ID;
 const pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY;
 const pagerDutySchedules = process.env.HUBOT_PAGERDUTY_SCHEDULES;
 const pagerDutyDefaultSchedule = process.env.HUBOT_PAGERDUTY_DEFAULT_SCHEDULE;
+
+function incidentTrigger(robot, msg, query, description) {
+  // Figure out who we are
+  campfireUserToPagerDutyUser(msg, msg.message.user, false, function (triggerdByPagerDutyUser) {
+    const triggerdByPagerDutyUserId = (() => {
+      if (triggerdByPagerDutyUser != null) {
+        return triggerdByPagerDutyUser.id;
+      } else if (pagerDutyUserId) {
+        return pagerDutyUserId;
+      }
+    })();
+    if (!triggerdByPagerDutyUserId) {
+      msg.send(
+        `Sorry, I can't figure your PagerDuty account, and I don't have my own :( Can you tell me your PagerDuty email with \`${robot.name} pager me as you@yourdomain.com\` or make sure you've set the HUBOT_PAGERDUTY_USER_ID environment variable?`
+      );
+      return;
+    }
+
+    // Figure out what we're trying to page
+    reassignmentParametersForUserOrScheduleOrEscalationPolicy(msg, query, function (results) {
+      if (!(results.assigned_to_user || results.escalation_policy)) {
+        msg.reply(`Couldn't find a user or unique schedule or escalation policy matching ${query} :/`);
+        return;
+      }
+
+      return pagerDutyIntegrationAPI(msg, 'trigger', description, function (json) {
+        query = { incident_key: json.incident_key };
+
+        msg.reply(':pager: triggered! now assigning it to the right user...');
+
+        return setTimeout(
+          () =>
+            pagerduty.get('/incidents', query, function (err, json) {
+              if (err != null) {
+                robot.emit('error', err, msg);
+                return;
+              }
+
+              if ((json != null ? json.incidents.length : undefined) === 0) {
+                msg.reply("Couldn't find the incident we just created to reassign. Please try again :/");
+              } else {
+              }
+
+              let data = null;
+              if (results.escalation_policy) {
+                data = {
+                  incidents: json.incidents.map((incident) => ({
+                    id: incident.id,
+                    type: 'incident_reference',
+
+                    escalation_policy: {
+                      id: results.escalation_policy,
+                      type: 'escalation_policy_reference',
+                    },
+                  })),
+                };
+              } else {
+                data = {
+                  incidents: json.incidents.map((incident) => ({
+                    id: incident.id,
+                    type: 'incident_reference',
+
+                    assignments: [
+                      {
+                        assignee: {
+                          id: results.assigned_to_user,
+                          type: 'user_reference',
+                        },
+                      },
+                    ],
+                  })),
+                };
+              }
+
+              return pagerduty.put('/incidents', data, function (err, json) {
+                if (err != null) {
+                  robot.emit('error', err, msg);
+                  return;
+                }
+
+                if ((json != null ? json.incidents.length : undefined) === 1) {
+                  return msg.reply(`:pager: assigned to ${results.name}!`);
+                } else {
+                  return msg.reply('Problem reassigning the incident :/');
+                }
+              });
+            }),
+          10000
+        );
+      });
+    });
+  });
+}
 
 module.exports = function (robot) {
   let campfireUserToPagerDutyUser;
@@ -155,6 +249,27 @@ module.exports = function (robot) {
   );
 
   robot.respond(
+    /(pager|major)( me)? default (?:trigger|page) ?(.+)?$/i,
+    function (msg) {
+      msg.finish();
+
+      if (pagerduty.missingEnvironmentForApi(msg)) {
+        return;
+      }
+      const fromUserName = msg.message.user.name;
+      robot.logger.debug(`Triggering a default page to ${pagerDutyDefaultSchedule}!`);
+      if (!pagerDutyDefaultSchedule) {
+        msg.send("No default schedule configured! Cannot send a page! Please set HUBOT_PAGERDUTY_DEFAULT_SCHEDULE");
+        return;
+      }
+      query = pagerDutyDefaultSchedule;
+      reason = msg.match[4] || "We Need Help!"
+      description = `${reason} - @${fromUserName}`;
+      incidentTrigger(robot, msg, query, description);
+    }
+  );
+
+  robot.respond(
     /(pager|major)( me)? (?:trigger|page) ?((["'])([^\4]*?)\4|“([^”]*?)”|‘([^’]*?)’|([\.\w\-]+))? ?(.+)?$/i,
     function (msg) {
       msg.finish();
@@ -163,112 +278,11 @@ module.exports = function (robot) {
         return;
       }
       const fromUserName = msg.message.user.name;
-      let query, description;
-      if (!msg.match[4] && !msg.match[5] && !msg.match[6] && !msg.match[7] && !msg.match[8] && !msg.match[9]) {
-        robot.logger.info(`Triggering a default page to ${pagerDutyDefaultSchedule}!`);
-        if (!pagerDutyDefaultSchedule) {
-          msg.send("No default schedule configured! Cannot send a page! Please set HUBOT_PAGERDUTY_DEFAULT_SCHEDULE");
-          return;
-        }
-        query = pagerDutyDefaultSchedule;
-        description = `Generic Page - @${fromUserName}`;
-      } else {
-        query = msg.match[5] || msg.match[6] || msg.match[7] || msg.match[8];
-        robot.logger.info(`Triggering a page to ${query}!`);
-        const reason = msg.match[9];
-        description = `${reason} - @${fromUserName}`;
-      }
-
-      // Figure out who we are
-      campfireUserToPagerDutyUser(msg, msg.message.user, false, function (triggerdByPagerDutyUser) {
-        const triggerdByPagerDutyUserId = (() => {
-          if (triggerdByPagerDutyUser != null) {
-            return triggerdByPagerDutyUser.id;
-          } else if (pagerDutyUserId) {
-            return pagerDutyUserId;
-          }
-        })();
-        if (!triggerdByPagerDutyUserId) {
-          msg.send(
-            `Sorry, I can't figure your PagerDuty account, and I don't have my own :( Can you tell me your PagerDuty email with \`${robot.name} pager me as you@yourdomain.com\` or make sure you've set the HUBOT_PAGERDUTY_USER_ID environment variable?`
-          );
-          return;
-        }
-
-        // Figure out what we're trying to page
-        reassignmentParametersForUserOrScheduleOrEscalationPolicy(msg, query, function (results) {
-          if (!(results.assigned_to_user || results.escalation_policy)) {
-            msg.reply(`Couldn't find a user or unique schedule or escalation policy matching ${query} :/`);
-            return;
-          }
-
-          return pagerDutyIntegrationAPI(msg, 'trigger', description, function (json) {
-            query = { incident_key: json.incident_key };
-
-            msg.reply(':pager: triggered! now assigning it to the right user...');
-
-            return setTimeout(
-              () =>
-                pagerduty.get('/incidents', query, function (err, json) {
-                  if (err != null) {
-                    robot.emit('error', err, msg);
-                    return;
-                  }
-
-                  if ((json != null ? json.incidents.length : undefined) === 0) {
-                    msg.reply("Couldn't find the incident we just created to reassign. Please try again :/");
-                  } else {
-                  }
-
-                  let data = null;
-                  if (results.escalation_policy) {
-                    data = {
-                      incidents: json.incidents.map((incident) => ({
-                        id: incident.id,
-                        type: 'incident_reference',
-
-                        escalation_policy: {
-                          id: results.escalation_policy,
-                          type: 'escalation_policy_reference',
-                        },
-                      })),
-                    };
-                  } else {
-                    data = {
-                      incidents: json.incidents.map((incident) => ({
-                        id: incident.id,
-                        type: 'incident_reference',
-
-                        assignments: [
-                          {
-                            assignee: {
-                              id: results.assigned_to_user,
-                              type: 'user_reference',
-                            },
-                          },
-                        ],
-                      })),
-                    };
-                  }
-
-                  return pagerduty.put('/incidents', data, function (err, json) {
-                    if (err != null) {
-                      robot.emit('error', err, msg);
-                      return;
-                    }
-
-                    if ((json != null ? json.incidents.length : undefined) === 1) {
-                      return msg.reply(`:pager: assigned to ${results.name}!`);
-                    } else {
-                      return msg.reply('Problem reassigning the incident :/');
-                    }
-                  });
-                }),
-              10000
-            );
-          });
-        });
-      });
+      const query = msg.match[5] || msg.match[6] || msg.match[7] || msg.match[8];
+      robot.logger.info(`Triggering a page to ${query}!`);
+      const reason = msg.match[9];
+      const description = `${reason} - @${fromUserName}`;
+      incidentTrigger(robot, msg, user, query, description);
     }
   );
 
