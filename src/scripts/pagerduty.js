@@ -48,7 +48,7 @@ const pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY;
 const pagerDutySchedules = process.env.HUBOT_PAGERDUTY_SCHEDULES;
 const pagerDutyDefaultSchedule = process.env.HUBOT_PAGERDUTY_DEFAULT_SCHEDULE;
 
-function incidentTrigger(robot, campfileUserToPagerDutyUser, msg, query, description) {
+function incidentTrigger(robot, campfireUserToPagerDutyUser, msg, query, description) {
   // Figure out who we are
   campfireUserToPagerDutyUser(msg, msg.message.user, false, function (triggerdByPagerDutyUser) {
     const triggerdByPagerDutyUserId = (() => {
