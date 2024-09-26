@@ -737,13 +737,13 @@ module.exports = function (robot) {
         return;
       }
       const schedule = msg.match[2].replace(/(^"|"$)/mg, '');
-      withScheduleMatching(msg, msg.match[2], function (matchingSchedule) {
+      const minutes = parseInt(msg.match[3]);
+      withScheduleMatching(msg, schedule, function (matchingSchedule) {
         if (!matchingSchedule.id) {
           return;
         }
 
         let start = moment().format();
-        const minutes = parseInt(msg.match[3]);
         let end = moment().add(minutes, 'minutes').format();
         const override = {
           start,
