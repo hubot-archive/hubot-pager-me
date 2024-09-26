@@ -7,7 +7,7 @@ const { expect } = chai;
 describe('pagerduty', function () {
   before(function () {
     this.triggerRegex =
-      /(pager|major)( me)? (?:trigger|page) ?((["'])([^\4]*?)\4|“([^”]*?)”|‘([^’]*?)’|([\.\w\-]+))? ?(.+)?$/i;
+      /(pager|major)( me)? (?:trigger|page) ((["'])([^\4]*?)\4|“([^”]*?)”|‘([^’]*?)’|([\.\w\-]+)) ?(.+)?$/i;
     this.schedulesRegex = /(pager|major)( me)? schedules( ((["'])([^]*?)\5|(.+)))?$/i;
     this.whosOnCallRegex =
       /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?:\?)?(?: (?:for )?((["'])([^]*?)\2|(.*?))(?:\?|$))?$/i;
