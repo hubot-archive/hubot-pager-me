@@ -48,7 +48,7 @@ const pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY;
 const pagerDutySchedules = process.env.HUBOT_PAGERDUTY_SCHEDULES;
 const pagerDutyDefaultSchedule = process.env.HUBOT_PAGERDUTY_DEFAULT_SCHEDULE;
 
-function incidentTrigger(robot, msg, query, description) {
+function incidentTrigger(robot, campfileUserToPagerDutyUser, msg, query, description) {
   // Figure out who we are
   campfireUserToPagerDutyUser(msg, msg.message.user, false, function (triggerdByPagerDutyUser) {
     const triggerdByPagerDutyUserId = (() => {
@@ -265,7 +265,7 @@ module.exports = function (robot) {
       query = pagerDutyDefaultSchedule;
       reason = msg.match[4] || "We Need Help!"
       description = `${reason} - @${fromUserName}`;
-      incidentTrigger(robot, msg, query, description);
+      incidentTrigger(robot, campfireUserToPagerDutyUser, msg, query, description);
     }
   );
 
@@ -282,7 +282,7 @@ module.exports = function (robot) {
       robot.logger.info(`Triggering a page to ${query}!`);
       const reason = msg.match[9];
       const description = `${reason} - @${fromUserName}`;
-      incidentTrigger(robot, msg, user, query, description);
+      incidentTrigger(robot, campfireUserToPagerDutyUser, msg, query, description);
     }
   );
 
