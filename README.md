@@ -27,8 +27,9 @@ Then add **hubot-pager-me** to your `external-scripts.json`:
 | `HUBOT_PAGERDUTY_FROM_EMAIL` | Yes | The email of the default "actor" user for incident creation and modification. |
 | `HUBOT_PAGERDUTY_USER_ID`  | No`*` | The user ID of a PagerDuty user for your bot. This is only required if you want chat users to be able to trigger incidents without their own PagerDuty user.
 | `HUBOT_PAGERDUTY_SERVICE_API_KEY` | No`*` | The [Incident Service Key](https://v2.developer.pagerduty.com/docs/incident-creation-api) to use when creating a new incident. This should be assigned to a dummy escalation policy that doesn't actually notify, as Hubot will trigger on this before reassigning it.
-| `HUBOT_PAGERDUTY_SERVICES` | No | Provide a comma separated list of service identifiers (e.g. `PFGPBFY,AFBCGH`) to restrict queries to only those services. |
-| `HUBOT_PAGERDUTY_SCHEDULES` | No | Provide a comma separated list of schedules identifiers (e.g. `PFGPBFY,AFBCGH`) to restrict queries to only those schedules. |
+| `HUBOT_PAGERDUTY_SERVICES` | No | Provide a comma separated list of service identifiers (e.g. `PFGPBFY,AFBCGH`) to restrict queries to only those services.
+| `HUBOT_PAGERDUTY_SCHEDULES` | No | Provide a comma separated list of schedules identifiers (e.g. `PFGPBFY,AFBCGH`) to restrict queries to only those schedules.
+| `HUBOT_PAGERDUTY_DEFAULT_SCHEDULE` | No | A specific schedule that can be triggered using `pager default trigger` to reduce typing for users.
 
 `*` - May be required for certain actions.
 

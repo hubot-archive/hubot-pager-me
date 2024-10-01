@@ -7,7 +7,7 @@ const { expect } = chai;
 describe('pagerduty', function () {
   before(function () {
     this.triggerRegex =
-      /(pager|major)( me)? (?:trigger|page) ((["'])([^\4]*?)\4|“([^”]*?)”|‘([^’]*?)’|([\.\w\-]+)) (.+)$/i;
+      /(pager|major)( me)? (?:trigger|page) ((["'])([^\4]*?)\4|“([^”]*?)”|‘([^’]*?)’|([\.\w\-]+)) ?(.+)?$/i;
     this.schedulesRegex = /(pager|major)( me)? schedules( ((["'])([^]*?)\5|(.+)))?$/i;
     this.whosOnCallRegex =
       /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?:\?)?(?: (?:for )?((["'])([^]*?)\2|(.*?))(?:\?|$))?$/i;
@@ -44,6 +44,10 @@ describe('pagerduty', function () {
 
   it('registers a pager trigger listener', function () {
     expect(this.robot.respond).to.have.been.calledWith(/(pager|major)( me)? (?:trigger|page) ([\w\-]+)$/i);
+  });
+
+  it('registers a pager default trigger with message listener', function () {
+    expect(this.robot.respond).to.have.been.calledWith(/(pager|major)( me)? default (?:trigger|page) ?(.+)?$/i);
   });
 
   it('registers a pager trigger with message listener', function () {
