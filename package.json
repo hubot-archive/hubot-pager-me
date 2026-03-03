@@ -4,6 +4,7 @@
   "version": "4.1.1",
   "author": "Josh Nichols <technicalpickles@github.com>",
   "license": "MIT",
+  "homepage": "https://github.com/hubot-archive/hubot-pager-me/",
   "keywords": [
     "hubot",
     "hubot-scripts",
@@ -11,10 +12,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git://github.com/hubot-scripts/hubot-pager-me.git"
+    "url": "git://github.com/hubot-archive/hubot-pager-me.git"
   },
   "bugs": {
-    "url": "https://github.com/hubot-scripts/hubot-pager-me/issues"
+    "url": "https://github.com/hubot-archive/hubot-pager-me/issues"
   },
   "peerDependencies": {
     "hubot": ">=3 || 0.0.0-development"
