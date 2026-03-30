@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> This `CHANGELOG` is no longer directly maintained. Instead, [see the release history on GitHub](https://github.com/hubot-archive/hubot-pager-me/releases).
+
 2.1.1
 =====
 

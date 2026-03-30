@@ -38,7 +38,7 @@
 // Authors:
 //   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin, Michael Warkentin
 
-const pagerduty = require('../pagerduty');
+const pagerduty = require('./lib/pagerduty-client');
 const async = require('async');
 const { inspect } = require('util');
 const moment = require('moment-timezone');

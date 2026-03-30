@@ -21,11 +21,11 @@
     "hubot": ">=3 || 0.0.0-development"
   },
   "dependencies": {
+    "@pagerduty/pdjs": "^2.2.4",
     "async": "^3.2.4",
     "moment-timezone": "^0.5.43",
     "nyc": "^15.1.0",
-    "prettier": "^3.0.2",
-    "scoped-http-client": "^0.11.0"
+    "prettier": "^3.0.2"
   },
   "devDependencies": {
     "chai": "^4.3.8",
@@ -35,6 +35,10 @@
     "sinon-chai": "^3.7.0"
   },
   "main": "index.js",
+  "types": "src/index.d.ts",
+  "nyc": {
+    "include": ["src/**/*.js"]
+  },
   "scripts": {
     "test": "script/test",
     "test-with-coverage": "nyc --reporter=text script/test",
@@ -43,6 +47,7 @@
   },
   "files": [
     "src/**/*.js",
+    "src/**/*.d.ts",
     "index.js"
   ],
   "volta": {
