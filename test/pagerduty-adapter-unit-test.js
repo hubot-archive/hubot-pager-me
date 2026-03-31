@@ -79,16 +79,20 @@ describe('PagerDuty PDjs Adapter', function () {
       delete require.cache[require.resolve('../src/lib/pagerduty-client')];
 
       const adapter = require('../src/lib/pagerduty-client');
-      const originalLog = console.log;
-      console.log = sinon.spy();
+      const mockLogger = {
+        debug: sinon.spy(),
+        info: sinon.spy(),
+        warn: sinon.spy(),
+        error: sinon.spy(),
+      };
+      adapter.setLogger(mockLogger);
 
       adapter.post('/test', { data: 'test' }, function () {
         // callback should not be called in noop
       });
 
-      expect(console.log).to.have.been.called;
-      expect(console.log.firstCall.args[0]).to.include('Would have POST');
-      console.log = originalLog;
+      expect(mockLogger.info).to.have.been.called;
+      expect(mockLogger.info.firstCall.args[0]).to.include('Would have POST');
     });
 
     it('respects noop=false setting', function (done) {
@@ -96,16 +100,20 @@ describe('PagerDuty PDjs Adapter', function () {
       delete require.cache[require.resolve('../src/lib/pagerduty-client')];
 
       const adapter = require('../src/lib/pagerduty-client');
-      const originalLog = console.log;
-      console.log = sinon.spy();
+      const mockLogger = {
+        debug: sinon.spy(),
+        info: sinon.spy(),
+        warn: sinon.spy(),
+        error: sinon.spy(),
+      };
+      adapter.setLogger(mockLogger);
       const postStub = sinon.stub(adapter, '_postAsync').resolves({ status: 200 });
 
       adapter.post('/test', { data: 'test' }, function (err, json) {
         expect(err).to.equal(null);
         expect(json).to.deep.equal({ status: 200 });
         expect(postStub).to.have.been.calledOnce;
-        expect(console.log).to.not.have.been.called;
-        console.log = originalLog;
+        expect(mockLogger.info).to.not.have.been.called;
         postStub.restore();
         done();
       });

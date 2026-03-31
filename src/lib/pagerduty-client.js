@@ -1,5 +1,13 @@
 const { api } = require('@pagerduty/pdjs');
 
+const fallbackLog = (...args) => console.log(...args);
+const fallbackLogger = {
+  debug: fallbackLog,
+  info: fallbackLog,
+  warn: fallbackLog,
+  error: fallbackLog,
+};
+
 function getPagerDutyApiKey() {
   return process.env.HUBOT_PAGERDUTY_API_KEY;
 }
@@ -39,6 +47,21 @@ class PagerDutyError extends Error {}
 /** @type {any} */
 let pdClient = null;
 let pdClientToken = null;
+let logger = fallbackLogger;
+
+function setLogger(nextLogger) {
+  if (nextLogger && typeof nextLogger === 'object') {
+    logger = {
+      debug: typeof nextLogger.debug === 'function' ? nextLogger.debug.bind(nextLogger) : fallbackLogger.debug,
+      info: typeof nextLogger.info === 'function' ? nextLogger.info.bind(nextLogger) : fallbackLogger.info,
+      warn: typeof nextLogger.warn === 'function' ? nextLogger.warn.bind(nextLogger) : fallbackLogger.warn,
+      error: typeof nextLogger.error === 'function' ? nextLogger.error.bind(nextLogger) : fallbackLogger.error,
+    };
+    return;
+  }
+
+  logger = fallbackLogger;
+}
 
 /**
  * Get or initialize the PagerDuty API client
@@ -74,6 +97,8 @@ function buildQueryString(query) {
 }
 
 module.exports = {
+  setLogger,
+
   /**
    * Make an HTTP GET request to PagerDuty API
    * @param {string} url - The API endpoint path
@@ -134,7 +159,7 @@ module.exports = {
    */
   put(url, data, cb) {
     if (isPagerNoop()) {
-      console.log(`Would have PUT ${url}: ${JSON.stringify(data)}`);
+      logger.info(`Would have PUT ${url}: ${JSON.stringify(data)}`);
       return;
     }
 
@@ -181,7 +206,7 @@ module.exports = {
    */
   post(url, data, cb) {
     if (isPagerNoop()) {
-      console.log(`Would have POST ${url}: ${JSON.stringify(data)}`);
+      logger.info(`Would have POST ${url}: ${JSON.stringify(data)}`);
       return;
     }
 
@@ -224,7 +249,7 @@ module.exports = {
    */
   delete(url, cb) {
     if (isPagerNoop()) {
-      console.log(`Would have DELETE ${url}`);
+      logger.info(`Would have DELETE ${url}`);
       return;
     }
 
@@ -252,8 +277,8 @@ module.exports = {
         if (err.response.statusCode === 204 || err.response.statusCode === 200) {
           return true;
         }
-        console.log(err.response.statusCode);
-        console.log(err.response.body);
+        logger.warn(`PagerDuty DELETE ${url} failed with ${err.response.statusCode}`);
+        logger.warn(err.response.body);
         return false;
       }
       throw err;
