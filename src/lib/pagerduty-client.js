@@ -1,11 +1,33 @@
 const { api } = require('@pagerduty/pdjs');
 
-const pagerDutyApiKey = process.env.HUBOT_PAGERDUTY_API_KEY;
-const pagerDutyFromEmail = process.env.HUBOT_PAGERDUTY_FROM_EMAIL;
-const pagerDutyServices = process.env.HUBOT_PAGERDUTY_SERVICES;
-let pagerNoop = process.env.HUBOT_PAGERDUTY_NOOP;
-if (pagerNoop === 'false' || pagerNoop === 'off') {
-  pagerNoop = false;
+function getPagerDutyApiKey() {
+  return process.env.HUBOT_PAGERDUTY_API_KEY;
+}
+
+function getPagerDutyFromEmail() {
+  return process.env.HUBOT_PAGERDUTY_FROM_EMAIL;
+}
+
+function getPagerDutyServiceIds() {
+  const services = process.env.HUBOT_PAGERDUTY_SERVICES;
+  if (!services || !services.trim()) {
+    return null;
+  }
+
+  const ids = services
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  return ids.length ? ids : null;
+}
+
+function isPagerNoop() {
+  const pagerNoop = process.env.HUBOT_PAGERDUTY_NOOP;
+  if (!pagerNoop || pagerNoop === 'false' || pagerNoop === 'off') {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -16,16 +38,20 @@ class PagerDutyError extends Error {}
 
 /** @type {any} */
 let pdClient = null;
+let pdClientToken = null;
 
 /**
  * Get or initialize the PagerDuty API client
  * @returns {any} PagerDuty API client instance
  */
 function getClient() {
-  if (!pdClient) {
+  const token = getPagerDutyApiKey();
+
+  if (!pdClient || pdClientToken !== token) {
     pdClient = api({
-      token: pagerDutyApiKey,
+      token,
     });
+    pdClientToken = token;
   }
   return pdClient;
 }
@@ -61,9 +87,10 @@ module.exports = {
       query = {};
     }
 
-    // Add service_id filtering if configured and endpoint is incidents
-    if (pagerDutyServices != null && url.match(/\/incidents/)) {
-      query['service_ids[]'] = pagerDutyServices.split(',');
+    // Add service_id filtering only for the incidents list endpoint.
+    const serviceIds = getPagerDutyServiceIds();
+    if (serviceIds && url === '/incidents') {
+      query['service_ids[]'] = serviceIds;
     }
 
     this._getAsync(url, query)
@@ -82,8 +109,9 @@ module.exports = {
     const client = getClient();
     const queryString = buildQueryString(query);
     const fullUrl = queryString ? `${url}?${queryString}` : url;
+    const fromEmail = getPagerDutyFromEmail();
     const options = {
-      headers: pagerDutyFromEmail ? { From: pagerDutyFromEmail } : {},
+      headers: fromEmail ? { From: fromEmail } : {},
     };
 
     try {
@@ -105,7 +133,7 @@ module.exports = {
    * @returns {void}
    */
   put(url, data, cb) {
-    if (pagerNoop) {
+    if (isPagerNoop()) {
       console.log(`Would have PUT ${url}: ${JSON.stringify(data)}`);
       return;
     }
@@ -124,7 +152,8 @@ module.exports = {
    */
   async _putAsync(url, data) {
     const client = getClient();
-    const headers = pagerDutyFromEmail ? { From: pagerDutyFromEmail } : {};
+    const fromEmail = getPagerDutyFromEmail();
+    const headers = fromEmail ? { From: fromEmail } : {};
 
     try {
       const { data: responseData } = await client.put(url, {
@@ -151,7 +180,7 @@ module.exports = {
    * @returns {void}
    */
   post(url, data, cb) {
-    if (pagerNoop) {
+    if (isPagerNoop()) {
       console.log(`Would have POST ${url}: ${JSON.stringify(data)}`);
       return;
     }
@@ -170,7 +199,8 @@ module.exports = {
    */
   async _postAsync(url, data) {
     const client = getClient();
-    const headers = pagerDutyFromEmail ? { From: pagerDutyFromEmail } : {};
+    const fromEmail = getPagerDutyFromEmail();
+    const headers = fromEmail ? { From: fromEmail } : {};
 
     try {
       const { data: responseData } = await client.post(url, {
@@ -193,7 +223,7 @@ module.exports = {
    * @returns {void}
    */
   delete(url, cb) {
-    if (pagerNoop) {
+    if (isPagerNoop()) {
       console.log(`Would have DELETE ${url}`);
       return;
     }
@@ -211,7 +241,8 @@ module.exports = {
    */
   async _deleteAsync(url) {
     const client = getClient();
-    const headers = pagerDutyFromEmail ? { From: pagerDutyFromEmail } : {};
+    const fromEmail = getPagerDutyFromEmail();
+    const headers = fromEmail ? { From: fromEmail } : {};
 
     try {
       await client.delete(url, { headers });
@@ -298,11 +329,11 @@ module.exports = {
    */
   missingEnvironmentForApi(msg) {
     let missingAnything = false;
-    if (pagerDutyFromEmail == null) {
+    if (getPagerDutyFromEmail() == null) {
       msg.send('PagerDuty From is missing:  Ensure that HUBOT_PAGERDUTY_FROM_EMAIL is set.');
       missingAnything = true;
     }
-    if (pagerDutyApiKey == null) {
+    if (getPagerDutyApiKey() == null) {
       msg.send('PagerDuty API Key is missing:  Ensure that HUBOT_PAGERDUTY_API_KEY is set.');
       missingAnything = true;
     }

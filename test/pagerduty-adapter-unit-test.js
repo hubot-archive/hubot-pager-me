@@ -91,51 +91,72 @@ describe('PagerDuty PDjs Adapter', function () {
       console.log = originalLog;
     });
 
-    it('respects noop=false setting', function () {
+    it('respects noop=false setting', function (done) {
       process.env.HUBOT_PAGERDUTY_NOOP = 'false';
       delete require.cache[require.resolve('../src/lib/pagerduty-client')];
 
       const adapter = require('../src/lib/pagerduty-client');
       const originalLog = console.log;
       console.log = sinon.spy();
+      const postStub = sinon.stub(adapter, '_postAsync').resolves({ status: 200 });
 
-      // This will fail because we don't have valid credentials, but that's expected
-      // We just want to verify it tries to execute instead of noop logging
-      adapter.post('/test', { data: 'test' }, function (err) {
-        // Expected to have error
+      adapter.post('/test', { data: 'test' }, function (err, json) {
+        expect(err).to.equal(null);
+        expect(json).to.deep.equal({ status: 200 });
+        expect(postStub).to.have.been.calledOnce;
+        expect(console.log).to.not.have.been.called;
+        console.log = originalLog;
+        postStub.restore();
+        done();
       });
-
-      expect(console.log).to.not.have.been.called;
-      console.log = originalLog;
     });
   });
 
   describe('Callback Compatibility', function () {
     it('handles getSchedules with just callback', function (done) {
       const adapter = require('../src/lib/pagerduty-client');
-      
-      // This will fail to call actual API but tests the interface
+      const getStub = sinon.stub(adapter, 'get').callsFake(function (url, query, cb) {
+        if (typeof query === 'function') {
+          cb = query;
+        }
+        cb(null, { schedules: [] });
+      });
+
       adapter.getSchedules(function (err, schedules) {
-        // Expected to have error due to invalid credentials
-        // Just testing that interface works
+        expect(err).to.equal(null);
+        expect(schedules).to.deep.equal([]);
+        expect(getStub).to.have.been.calledOnce;
+        getStub.restore();
         done();
       });
     });
 
     it('handles getSchedules with query and callback', function (done) {
       const adapter = require('../src/lib/pagerduty-client');
-      
+      const getStub = sinon.stub(adapter, 'get').callsFake(function (url, query, cb) {
+        cb(null, { schedules: [] });
+      });
+
       adapter.getSchedules({ query: 'test' }, function (err, schedules) {
-        // Expected to have error due to invalid credentials
+        expect(err).to.equal(null);
+        expect(schedules).to.deep.equal([]);
+        expect(getStub).to.have.been.calledOnce;
+        getStub.restore();
         done();
       });
     });
 
     it('handles getIncidents with status', function (done) {
       const adapter = require('../src/lib/pagerduty-client');
-      
+      const getStub = sinon.stub(adapter, 'get').callsFake(function (url, query, cb) {
+        cb(null, { incidents: [] });
+      });
+
       adapter.getIncidents('triggered,acknowledged', function (err, incidents) {
-        // Expected to have error due to invalid credentials
+        expect(err).to.equal(null);
+        expect(incidents).to.deep.equal([]);
+        expect(getStub).to.have.been.calledOnce;
+        getStub.restore();
         done();
       });
     });

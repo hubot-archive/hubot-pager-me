@@ -34,7 +34,7 @@ describe('Integration: Command Workflows', function () {
       expect(adapter.missingEnvironmentForApi).to.be.a('function');
     });
 
-    it('adapter is properly exported through index', function () {
+    it('adapter module resolves consistently', function () {
       const mainAdapter = require('../src/lib/pagerduty-client');
       const pdjs = require('../src/lib/pagerduty-client');
       
@@ -53,11 +53,15 @@ describe('Integration: Command Workflows', function () {
   describe('PagerDuty Compatibility Layer', function () {
     it('handles typical incident response structure', function (done) {
       const adapter = require('../src/lib/pagerduty-client');
-      
-      // Verify the adapter can handle error responses gracefully
+      const getAsyncStub = require('sinon').stub(adapter, '_getAsync').resolves({
+        incidents: [{ id: 'INC123', incident_number: 123, status: 'triggered' }],
+      });
+
       adapter.get('/incidents', { 'statuses[]': ['triggered'] }, function (err, incidents) {
-        // This will fail with invalid key, but that's expected
-        // We're testing the interface handles responses
+        expect(err).to.equal(null);
+        expect(incidents.incidents).to.have.length(1);
+        expect(getAsyncStub.calledOnce).to.equal(true);
+        getAsyncStub.restore();
         done();
       });
     });
@@ -65,11 +69,16 @@ describe('Integration: Command Workflows', function () {
     it('preserves service_id filtering when configured', function (done) {
       process.env.HUBOT_PAGERDUTY_SERVICES = 'SERVICE1,SERVICE2';
       delete require.cache[require.resolve('../src/lib/pagerduty-client')];
-      
+
       const adapter = require('../src/lib/pagerduty-client');
-      
-      adapter.getIncidents('triggered', function (err) {
-        // Expected to error with invalid credentials
+      const getAsyncStub = require('sinon').stub(adapter, '_getAsync').resolves({ incidents: [] });
+
+      adapter.getIncidents('triggered', function (err, incidents) {
+        expect(err).to.equal(null);
+        expect(incidents).to.deep.equal([]);
+        const queryArg = getAsyncStub.firstCall.args[1];
+        expect(queryArg['service_ids[]']).to.deep.equal(['SERVICE1', 'SERVICE2']);
+        getAsyncStub.restore();
         done();
       });
     });
@@ -77,11 +86,15 @@ describe('Integration: Command Workflows', function () {
     it('includes From header in requests', function (done) {
       process.env.HUBOT_PAGERDUTY_FROM_EMAIL = 'testbot@example.com';
       delete require.cache[require.resolve('../src/lib/pagerduty-client')];
-      
+
       const adapter = require('../src/lib/pagerduty-client');
-      
-      adapter.post('/incidents', { incident: {} }, function (err) {
-        // Expected to error with invalid credentials
+      const postAsyncStub = require('sinon').stub(adapter, '_postAsync').resolves({ incident: { id: 'INC123' } });
+
+      adapter.post('/incidents', { incident: {} }, function (err, json) {
+        expect(err).to.equal(null);
+        expect(json.incident.id).to.equal('INC123');
+        expect(postAsyncStub.calledOnce).to.equal(true);
+        postAsyncStub.restore();
         done();
       });
     });
@@ -109,9 +122,16 @@ describe('Integration: Command Workflows', function () {
     it('handles empty service list', function (done) {
       process.env.HUBOT_PAGERDUTY_SERVICES = '';
       delete require.cache[require.resolve('../src/lib/pagerduty-client')];
-      
+
       const adapter = require('../src/lib/pagerduty-client');
-      adapter.getIncidents('triggered', function (err) {
+      const getAsyncStub = require('sinon').stub(adapter, '_getAsync').resolves({ incidents: [] });
+
+      adapter.getIncidents('triggered', function (err, incidents) {
+        expect(err).to.equal(null);
+        expect(incidents).to.deep.equal([]);
+        const queryArg = getAsyncStub.firstCall.args[1];
+        expect(queryArg).to.not.have.property('service_ids[]');
+        getAsyncStub.restore();
         done();
       });
     });

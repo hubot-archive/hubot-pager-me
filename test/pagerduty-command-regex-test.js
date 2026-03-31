@@ -65,7 +65,7 @@ describe('pagerduty', function () {
     expect(msg[3]).to.equal('foo bar');
   });
 
-  it('whos on call handles schedules with quotes and quesiton mark', function () {
+  it('whos on call handles schedules with quotes and question mark', function () {
     const msg = this.whosOnCallRegex.exec('whos on call for "foo bar"?');
     expect(msg[3]).to.equal('foo bar');
   });
