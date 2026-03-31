@@ -1,6 +1,6 @@
 const chai = require('chai');
 const sinon = require('sinon');
-chai.use(require('sinon-chai'));
+chai.use(require('sinon-chai').default);
 const { expect } = chai;
 
 // ---------------------------------------------------------------------------

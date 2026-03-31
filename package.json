@@ -22,27 +22,33 @@
   },
   "dependencies": {
     "@pagerduty/pdjs": "^2.2.4",
-    "async": "^3.2.4",
-    "moment-timezone": "^0.5.43",
-    "nyc": "^15.1.0",
-    "prettier": "^3.0.2"
+    "async": "^3.2.6",
+    "moment-timezone": "^0.6.1",
+    "nyc": "^18.0.0",
+    "prettier": "^3.8.1"
   },
   "devDependencies": {
-    "chai": "^4.3.8",
-    "husky": "^8.0.3",
-    "mocha": "^10.2.0",
-    "sinon": "^15.2.0",
-    "sinon-chai": "^3.7.0"
+    "chai": "^6.2.2",
+    "eslint": "^10.1.0",
+    "globals": "^17.4.0",
+    "husky": "^9.1.7",
+    "mocha": "^11.7.5",
+    "sinon": "^21.0.3",
+    "sinon-chai": "^4.0.1"
   },
   "main": "index.js",
   "types": "src/index.d.ts",
   "nyc": {
-    "include": ["src/**/*.js"]
+    "include": [
+      "src/**/*.js"
+    ]
   },
   "scripts": {
     "test": "script/test",
     "test-with-coverage": "nyc --reporter=text script/test",
-    "prepare": "husky install",
+    "lint": "eslint src/**/*.js index.js test/**/*.js",
+    "lint:fix": "eslint --fix src/**/*.js index.js test/**/*.js",
+    "prepare": "husky",
     "format": "prettier --config .prettierrc **/*.js --write"
   },
   "files": [
@@ -51,6 +57,6 @@
     "index.js"
   ],
   "volta": {
-    "node": "18.19.0"
+    "node": "20.20.2"
   }
 }

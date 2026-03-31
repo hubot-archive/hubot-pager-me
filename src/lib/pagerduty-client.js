@@ -1,5 +1,6 @@
 const { api } = require('@pagerduty/pdjs');
 
+// eslint-disable-next-line no-console
 const fallbackLog = (...args) => console.log(...args);
 const fallbackLogger = {
   debug: fallbackLog,
