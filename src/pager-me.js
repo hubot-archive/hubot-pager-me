@@ -38,7 +38,7 @@
 // Authors:
 //   Jesse Newland, Josh Nicols, Jacob Bednarz, Chris Lundquist, Chris Streeter, Joseph Pierri, Greg Hoin, Michael Warkentin
 
-const pagerduty = require('../pagerduty');
+const pagerduty = require('./lib/pagerduty-client');
 const async = require('async');
 const { inspect } = require('util');
 const moment = require('moment-timezone');
@@ -51,6 +51,10 @@ const pagerDutyDefaultSchedule = process.env.HUBOT_PAGERDUTY_DEFAULT_SCHEDULE;
 
 module.exports = function (robot) {
   let campfireUserToPagerDutyUser;
+
+  if (typeof pagerduty.setLogger === 'function') {
+    pagerduty.setLogger(robot.logger);
+  }
 
   robot.respond(/pager( me)?$/i, function (msg) {
     if (pagerduty.missingEnvironmentForApi(msg)) {
@@ -110,7 +114,7 @@ module.exports = function (robot) {
       }
 
       if (!incident || !incident['incident']) {
-        logger.debug(incident);
+        robot.logger.debug(incident);
         msg.send('No matching incident found for `msg.match[3]`.');
         return;
       }
@@ -938,7 +942,15 @@ module.exports = function (robot) {
     let data = null;
     switch (cmd) {
       case 'trigger':
-        data = JSON.stringify({ service_key: pagerDutyServiceApiKey, event_type: 'trigger', description });
+        data = JSON.stringify({
+          routing_key: pagerDutyServiceApiKey,
+          event_action: 'trigger',
+          payload: {
+            summary: description,
+            source: msg.message.user.name || 'hubot',
+            severity: 'error',
+          },
+        });
         pagerDutyIntegrationPost(msg, data, (json) => cb(json));
     }
   };
@@ -1026,16 +1038,23 @@ module.exports = function (robot) {
 
   var pagerDutyIntegrationPost = (msg, json, cb) =>
     msg
-      .http('https://events.pagerduty.com/generic/2010-04-15/create_event.json')
+      .http('https://events.pagerduty.com/v2/enqueue')
       .header('content-type', 'application/json')
       .post(json)(function (err, res, body) {
+      if (err != null) {
+        robot.emit('error', err, msg);
+        return;
+      }
+
       switch (res.statusCode) {
         case 200:
+        case 202:
           json = JSON.parse(body);
           return cb(json);
         default:
-          console.log(res.statusCode);
-          return console.log(body);
+          robot.logger.warn(`PagerDuty events API returned ${res.statusCode}`);
+          robot.logger.warn(body);
+          return;
       }
     });
 
@@ -1143,7 +1162,7 @@ module.exports = function (robot) {
         }
 
         return pagerDutyIntegrationAPI(msg, 'trigger', description, function (json) {
-          query = { incident_key: json.incident_key };
+          query = { incident_key: json.incident_key || json.dedup_key };
 
           msg.reply(':pager: triggered! now assigning it to the right user...');
 

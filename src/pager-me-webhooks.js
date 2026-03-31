@@ -9,6 +9,8 @@ const pagerEndpoint = process.env.HUBOT_PAGERDUTY_ENDPOINT || '/hook';
 module.exports = function (robot) {
   // Webhook listener
   let generateIncidentString;
+  const debug =
+    robot.logger && typeof robot.logger.debug === 'function' ? robot.logger.debug.bind(robot.logger) : () => {};
   if (pagerEndpoint && pagerRoom) {
     robot.router.post(pagerEndpoint, function (req, res) {
       robot.messageRoom(pagerRoom, parseWebhook(req, res));
@@ -17,7 +19,7 @@ module.exports = function (robot) {
     });
   }
 
-  // Pagerduty Webhook Integration (For a payload example, see http://developer.pagerduty.com/documentation/rest/webhooks)
+  // Pagerduty Webhook Integration (For a payload example, see https://developer.pagerduty.com/docs/webhooks/)
   var parseWebhook = function (req, res) {
     const hook = req.body;
 
@@ -55,7 +57,7 @@ module.exports = function (robot) {
   }
 
   return (generateIncidentString = function (incident, hookType) {
-    console.log('hookType is ' + hookType);
+    debug('hookType is ' + hookType);
     const assigned_user = getUserForIncident(incident);
     const { incident_number } = incident;
 
