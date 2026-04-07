@@ -1,7 +1,7 @@
 {
   "name": "hubot-pager-me",
   "description": "PagerDuty integration for Hubot",
-  "version": "4.1.1",
+  "version": "4.2.0",
   "author": "Josh Nichols <technicalpickles@github.com>",
   "license": "MIT",
   "homepage": "https://github.com/hubot-archive/hubot-pager-me/",
