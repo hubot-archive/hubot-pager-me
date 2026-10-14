@@ -857,7 +857,7 @@ module.exports = function (robot) {
       const minutes = msg.match[3];
       const service_ids = msg.match[4].split(' ');
       const start_time = moment().format();
-      const end_time = moment().add('minutes', minutes).format();
+      const end_time = moment().add(minutes, 'minutes').format();
 
       const services = [];
       for (var service_id of Array.from(service_ids)) {
