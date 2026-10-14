@@ -44,8 +44,8 @@
     ]
   },
   "scripts": {
-    "test": "script/test",
-    "test-with-coverage": "nyc --reporter=text script/test",
+    "test": "mocha \"test/**/*-test.js\" --reporter spec --exit",
+    "test-with-coverage": "nyc --reporter=text mocha \"test/**/*-test.js\" --reporter spec --exit",
     "lint": "eslint src/**/*.js index.js test/**/*.js",
     "lint:fix": "eslint --fix src/**/*.js index.js test/**/*.js",
     "prepare": "husky",
