@@ -47,6 +47,7 @@ const pagerDutyServiceApiKey = process.env.HUBOT_PAGERDUTY_SERVICE_API_KEY;
 const pagerDutySchedules = process.env.HUBOT_PAGERDUTY_SCHEDULES;
 const pagerDutyDefaultSchedule = process.env.HUBOT_PAGERDUTY_DEFAULT_SCHEDULE;
 
+
 module.exports = function (robot) {
   let campfireUserToPagerDutyUser;
 
@@ -158,23 +159,26 @@ module.exports = function (robot) {
     msg.reply("Please include a user or schedule to page, like 'hubot pager infrastructure everything is on fire'.")
   );
 
-  robot.respond(/(pager|major)( me)? default (?:trigger|page) ?(.+)?$/i, function (msg) {
-    msg.finish();
+  robot.respond(
+    /(pager|major)( me)? default (?:trigger|page) ?(.+)?$/i,
+    function (msg) {
+      msg.finish();
 
-    if (pagerduty.missingEnvironmentForApi(msg)) {
-      return;
+      if (pagerduty.missingEnvironmentForApi(msg)) {
+        return;
+      }
+      if (!pagerDutyDefaultSchedule) {
+        msg.send("No default schedule configured! Cannot send a page! Please set HUBOT_PAGERDUTY_DEFAULT_SCHEDULE");
+        return;
+      }
+      const fromUserName = msg.message.user.name;
+      const query = pagerDutyDefaultSchedule;
+      const reason = msg.match[3] || 'We Need Help!';
+      const description = `${reason} - @${fromUserName}`;
+      robot.logger.debug(`Triggering a default page to ${pagerDutyDefaultSchedule} saying ${description}!`);
+      incidentTrigger(msg, query, description);
     }
-    if (!pagerDutyDefaultSchedule) {
-      msg.send('No default schedule configured! Cannot send a page! Please set HUBOT_PAGERDUTY_DEFAULT_SCHEDULE');
-      return;
-    }
-    const fromUserName = msg.message.user.name;
-    const query = pagerDutyDefaultSchedule;
-    const reason = msg.match[3] || 'We Need Help!';
-    const description = `${reason} - @${fromUserName}`;
-    robot.logger.debug(`Triggering a default page to ${pagerDutyDefaultSchedule} saying ${description}!`);
-    incidentTrigger(msg, query, description);
-  });
+  );
 
   robot.respond(
     /(pager|major)( me)? (?:trigger|page) ((["'])([^\4]*?)\4|“([^”]*?)”|‘([^’]*?)’|([\.\w\-]+)) ?(.+)?$/i,
@@ -186,7 +190,7 @@ module.exports = function (robot) {
       }
       const fromUserName = msg.message.user.name;
       const query = msg.match[5] || msg.match[6] || msg.match[7] || msg.match[8];
-      const reason = msg.match[9] || 'We Need Help!';
+      const reason = msg.match[9] || "We Need Help!";
       const description = `${reason} - @${fromUserName}`;
       robot.logger.debug(`Triggering a page to ${query} saying ${description}!`);
       incidentTrigger(msg, query, description);
@@ -657,7 +661,7 @@ module.exports = function (robot) {
         );
         return;
       }
-      const schedule = msg.match[2].replace(/(^"|"$)/gm, '');
+      const schedule = msg.match[2].replace(/(^"|"$)/mg, '');
       const minutes = parseInt(msg.match[3]);
       withScheduleMatching(msg, schedule, function (matchingSchedule) {
         if (!matchingSchedule.id) {
@@ -915,7 +919,9 @@ module.exports = function (robot) {
         } else {
           return SchedulesMatching(msg, string, function (schedule) {
             if (schedule) {
-              withCurrentOncallUser(msg, schedule, (user) => cb({ assigned_to_user: user.id, name: user.name }));
+              withCurrentOncallUser(msg, schedule, (user) =>
+                cb({ assigned_to_user: user.id, name: user.name })
+              );
             } else {
               cb();
             }
@@ -1028,25 +1034,26 @@ module.exports = function (robot) {
     });
 
   const pagerDutyIntegrationPost = (msg, json, cb) =>
-    msg.http('https://events.pagerduty.com/v2/enqueue').header('content-type', 'application/json').post(json)(
-      function (err, res, body) {
-        if (err != null) {
-          robot.emit('error', err, msg);
-          return;
-        }
-
-        switch (res.statusCode) {
-          case 200:
-          case 202:
-            json = JSON.parse(body);
-            return cb(json);
-          default:
-            robot.logger.warn(`PagerDuty events API returned ${res.statusCode}`);
-            robot.logger.warn(body);
-            return;
-        }
+    msg
+      .http('https://events.pagerduty.com/v2/enqueue')
+      .header('content-type', 'application/json')
+      .post(json)(function (err, res, body) {
+      if (err != null) {
+        robot.emit('error', err, msg);
+        return;
       }
-    );
+
+      switch (res.statusCode) {
+        case 200:
+        case 202:
+          json = JSON.parse(body);
+          return cb(json);
+        default:
+          robot.logger.warn(`PagerDuty events API returned ${res.statusCode}`);
+          robot.logger.warn(body);
+          return;
+      }
+    });
 
   const incidentsByUserId = (incidents, userId) =>
     incidents.filter(function (incident) {
