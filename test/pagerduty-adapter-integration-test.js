@@ -3,8 +3,9 @@
  * Tests the adapter with realistic PagerDuty response structures
  */
 
-const chai = require('chai');
-const { expect } = chai;
+const assert = require('node:assert/strict');
+const { describe, it, beforeEach } = require('node:test');
+const sinon = require('sinon');
 
 describe('Integration: Command Workflows', function () {
   beforeEach(function () {
@@ -22,81 +23,81 @@ describe('Integration: Command Workflows', function () {
   describe('Adapter Interface Compatibility', function () {
     it('maintains same method signatures as legacy adapter', function () {
       const adapter = require('../src/lib/pagerduty-client');
-      
+
       // Verify all required methods exist
-      expect(adapter.get).to.be.a('function');
-      expect(adapter.post).to.be.a('function');
-      expect(adapter.put).to.be.a('function');
-      expect(adapter.delete).to.be.a('function');
-      expect(adapter.getIncident).to.be.a('function');
-      expect(adapter.getIncidents).to.be.a('function');
-      expect(adapter.getSchedules).to.be.a('function');
-      expect(adapter.missingEnvironmentForApi).to.be.a('function');
+      assert.equal(typeof adapter.get, 'function');
+      assert.equal(typeof adapter.post, 'function');
+      assert.equal(typeof adapter.put, 'function');
+      assert.equal(typeof adapter.delete, 'function');
+      assert.equal(typeof adapter.getIncident, 'function');
+      assert.equal(typeof adapter.getIncidents, 'function');
+      assert.equal(typeof adapter.getSchedules, 'function');
+      assert.equal(typeof adapter.missingEnvironmentForApi, 'function');
     });
 
     it('adapter module resolves consistently', function () {
       const mainAdapter = require('../src/lib/pagerduty-client');
       const pdjs = require('../src/lib/pagerduty-client');
-      
+
       // Both should exist and have same interface
-      expect(mainAdapter).to.deep.equal(pdjs);
+      assert.deepEqual(mainAdapter, pdjs);
     });
   });
 
   describe('Webhook Handler', function () {
     it('still loads webhook handler without errors', function () {
       const webhookScript = require('../src/pager-me-webhooks');
-      expect(webhookScript).to.be.a('function');
+      assert.equal(typeof webhookScript, 'function');
     });
   });
 
   describe('PagerDuty Compatibility Layer', function () {
-    it('handles typical incident response structure', function (done) {
+    it('handles typical incident response structure', async function () {
       const adapter = require('../src/lib/pagerduty-client');
-      const getAsyncStub = require('sinon').stub(adapter, '_getAsync').resolves({
+      const getAsyncStub = sinon.stub(adapter, '_getAsync').resolves({
         incidents: [{ id: 'INC123', incident_number: 123, status: 'triggered' }],
       });
 
-      adapter.get('/incidents', { 'statuses[]': ['triggered'] }, function (err, incidents) {
-        expect(err).to.equal(null);
-        expect(incidents.incidents).to.have.length(1);
-        expect(getAsyncStub.calledOnce).to.equal(true);
-        getAsyncStub.restore();
-        done();
+      const { err, incidents } = await new Promise((resolve) => {
+        adapter.get('/incidents', { 'statuses[]': ['triggered'] }, (err, incidents) => resolve({ err, incidents }));
       });
+      assert.equal(err, null);
+      assert.equal(incidents.incidents.length, 1);
+      assert.equal(getAsyncStub.calledOnce, true);
+      getAsyncStub.restore();
     });
 
-    it('preserves service_id filtering when configured', function (done) {
+    it('preserves service_id filtering when configured', async function () {
       process.env.HUBOT_PAGERDUTY_SERVICES = 'SERVICE1,SERVICE2';
       delete require.cache[require.resolve('../src/lib/pagerduty-client')];
 
       const adapter = require('../src/lib/pagerduty-client');
-      const getAsyncStub = require('sinon').stub(adapter, '_getAsync').resolves({ incidents: [] });
+      const getAsyncStub = sinon.stub(adapter, '_getAsync').resolves({ incidents: [] });
 
-      adapter.getIncidents('triggered', function (err, incidents) {
-        expect(err).to.equal(null);
-        expect(incidents).to.deep.equal([]);
-        const queryArg = getAsyncStub.firstCall.args[1];
-        expect(queryArg['service_ids[]']).to.deep.equal(['SERVICE1', 'SERVICE2']);
-        getAsyncStub.restore();
-        done();
+      const { err, incidents } = await new Promise((resolve) => {
+        adapter.getIncidents('triggered', (err, incidents) => resolve({ err, incidents }));
       });
+      assert.equal(err, null);
+      assert.deepEqual(incidents, []);
+      const queryArg = getAsyncStub.firstCall.args[1];
+      assert.deepEqual(queryArg['service_ids[]'], ['SERVICE1', 'SERVICE2']);
+      getAsyncStub.restore();
     });
 
-    it('includes From header in requests', function (done) {
+    it('includes From header in requests', async function () {
       process.env.HUBOT_PAGERDUTY_FROM_EMAIL = 'testbot@example.com';
       delete require.cache[require.resolve('../src/lib/pagerduty-client')];
 
       const adapter = require('../src/lib/pagerduty-client');
-      const postAsyncStub = require('sinon').stub(adapter, '_postAsync').resolves({ incident: { id: 'INC123' } });
+      const postAsyncStub = sinon.stub(adapter, '_postAsync').resolves({ incident: { id: 'INC123' } });
 
-      adapter.post('/incidents', { incident: {} }, function (err, json) {
-        expect(err).to.equal(null);
-        expect(json.incident.id).to.equal('INC123');
-        expect(postAsyncStub.calledOnce).to.equal(true);
-        postAsyncStub.restore();
-        done();
+      const { err, json } = await new Promise((resolve) => {
+        adapter.post('/incidents', { incident: {} }, (err, json) => resolve({ err, json }));
       });
+      assert.equal(err, null);
+      assert.equal(json.incident.id, 'INC123');
+      assert.equal(postAsyncStub.calledOnce, true);
+      postAsyncStub.restore();
     });
   });
 
@@ -104,36 +105,36 @@ describe('Integration: Command Workflows', function () {
     it('respects HUBOT_PAGERDUTY_SCHEDULES filter', function () {
       process.env.HUBOT_PAGERDUTY_SCHEDULES = 'SCHED1,SCHED2,SCHED3';
       delete require.cache[require.resolve('../src/lib/pagerduty-client')];
-      
+
       const adapter = require('../src/lib/pagerduty-client');
-      expect(adapter).to.exist;
+      assert.ok(adapter);
     });
 
     it('tolerates missing optional environment variables', function () {
       delete process.env.HUBOT_PAGERDUTY_SERVICES;
       delete process.env.HUBOT_PAGERDUTY_SCHEDULES;
       delete process.env.HUBOT_PAGERDUTY_DEFAULT_SCHEDULE;
-      
+
       delete require.cache[require.resolve('../src/lib/pagerduty-client')];
       const adapter = require('../src/lib/pagerduty-client');
-      expect(adapter).to.exist;
+      assert.ok(adapter);
     });
 
-    it('handles empty service list', function (done) {
+    it('handles empty service list', async function () {
       process.env.HUBOT_PAGERDUTY_SERVICES = '';
       delete require.cache[require.resolve('../src/lib/pagerduty-client')];
 
       const adapter = require('../src/lib/pagerduty-client');
-      const getAsyncStub = require('sinon').stub(adapter, '_getAsync').resolves({ incidents: [] });
+      const getAsyncStub = sinon.stub(adapter, '_getAsync').resolves({ incidents: [] });
 
-      adapter.getIncidents('triggered', function (err, incidents) {
-        expect(err).to.equal(null);
-        expect(incidents).to.deep.equal([]);
-        const queryArg = getAsyncStub.firstCall.args[1];
-        expect(queryArg).to.not.have.property('service_ids[]');
-        getAsyncStub.restore();
-        done();
+      const { err, incidents } = await new Promise((resolve) => {
+        adapter.getIncidents('triggered', (err, incidents) => resolve({ err, incidents }));
       });
+      assert.equal(err, null);
+      assert.deepEqual(incidents, []);
+      const queryArg = getAsyncStub.firstCall.args[1];
+      assert.equal(Object.hasOwn(queryArg, 'service_ids[]'), false);
+      getAsyncStub.restore();
     });
   });
 });

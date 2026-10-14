@@ -23,29 +23,20 @@
   "dependencies": {
     "@pagerduty/pdjs": "^2.2.4",
     "async": "^3.2.6",
-    "moment-timezone": "^0.6.1"
+    "moment-timezone": "^0.6.5"
   },
   "devDependencies": {
-    "chai": "^6.3.0",
     "eslint": "^10.12.0",
     "globals": "^17.13.0",
     "husky": "^9.1.7",
-    "mocha": "^12.0.3",
-    "nyc": "^18.0.0",
     "prettier": "^3.9.10",
-    "sinon": "^21.0.3",
-    "sinon-chai": "^4.0.1"
+    "sinon": "^22.1.0"
   },
   "main": "index.js",
   "types": "src/index.d.ts",
-  "nyc": {
-    "include": [
-      "src/**/*.js"
-    ]
-  },
   "scripts": {
-    "test": "mocha \"test/**/*-test.js\" --reporter spec --exit",
-    "test-with-coverage": "nyc --reporter=text mocha \"test/**/*-test.js\" --reporter spec --exit",
+    "test": "node --test \"test/**/*-test.js\"",
+    "test-with-coverage": "node --experimental-test-coverage --test-coverage-include=\"src/**/*.js\" --test \"test/**/*-test.js\"",
     "lint": "eslint src/**/*.js index.js test/**/*.js",
     "lint:fix": "eslint --fix src/**/*.js index.js test/**/*.js",
     "prepare": "husky",
@@ -57,6 +48,6 @@
     "index.js"
   ],
   "volta": {
-    "node": "20.20.2"
+    "node": "22.20.0"
   }
 }

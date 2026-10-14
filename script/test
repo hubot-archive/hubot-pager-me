@@ -3,4 +3,4 @@
 # bootstrap environment
 source script/bootstrap
 
-mocha test/**/*-test.js --reporter spec --exit
+node --test "test/**/*-test.js"

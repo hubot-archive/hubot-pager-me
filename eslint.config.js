@@ -20,7 +20,7 @@ module.exports = [
       'no-console': ['warn', { allow: ['warn', 'error'] }],
 
       // Best practices
-      'eqeqeq': ['error', 'always', { null: 'ignore' }],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
       'no-eval': 'error',
       'no-implied-eval': 'error',
       'no-new-func': 'error',
@@ -40,16 +40,15 @@ module.exports = [
       sourceType: 'commonjs',
       globals: {
         ...globals.node,
-        ...globals.mocha,
       },
     },
     rules: {
       'no-undef': 'error',
       'no-unused-vars': ['error', { args: 'after-used', ignoreRestSiblings: true }],
       'no-console': 'off',
-      'eqeqeq': ['error', 'always', { null: 'ignore' }],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
       'no-eval': 'error',
-      'no-unused-expressions': ['off'], // chai `expect(x).to.be.true` triggers this
+      'no-unused-expressions': 'error',
       'prefer-const': ['error', { destructuring: 'all' }],
       'no-var': 'error',
     },

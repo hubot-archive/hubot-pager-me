@@ -3,7 +3,8 @@
  * Validates that fixtures match real PagerDuty API v2 response structures
  */
 
-const assert = require('assert');
+const assert = require('node:assert/strict');
+const { describe, it } = require('node:test');
 const fixtures = require('./pagerduty-api-fixtures');
 
 describe('PagerDuty API Response Fixtures', () => {
@@ -12,7 +13,7 @@ describe('PagerDuty API Response Fixtures', () => {
       assert.ok(fixtures.incidentsResponse);
       assert.ok(Array.isArray(fixtures.incidentsResponse.incidents));
       assert(fixtures.incidentsResponse.incidents.length > 0);
-      
+
       const incident = fixtures.incidentsResponse.incidents[0];
       assert.ok(incident.id);
       assert.ok(incident.incident_number);
@@ -25,7 +26,7 @@ describe('PagerDuty API Response Fixtures', () => {
       assert.ok(fixtures.schedulesResponse);
       assert.ok(Array.isArray(fixtures.schedulesResponse.schedules));
       assert(fixtures.schedulesResponse.schedules.length > 0);
-      
+
       const schedule = fixtures.schedulesResponse.schedules[0];
       assert.ok(schedule.id);
       assert.ok(schedule.name);
@@ -43,7 +44,7 @@ describe('PagerDuty API Response Fixtures', () => {
       assert.ok(fixtures.overridesResponse);
       assert.ok(Array.isArray(fixtures.overridesResponse.overrides));
       assert(fixtures.overridesResponse.overrides.length > 0);
-      
+
       const override = fixtures.overridesResponse.overrides[0];
       assert.ok(override.id);
       assert.ok(override.user);
@@ -55,7 +56,7 @@ describe('PagerDuty API Response Fixtures', () => {
       assert.ok(fixtures.notesResponse);
       assert.ok(Array.isArray(fixtures.notesResponse.notes));
       assert(fixtures.notesResponse.notes.length > 0);
-      
+
       const note = fixtures.notesResponse.notes[0];
       assert.ok(note.id);
       assert.ok(note.content);
@@ -74,7 +75,7 @@ describe('PagerDuty API Response Fixtures', () => {
       assert.ok(fixtures.errorResponses.notFound);
       assert.ok(fixtures.errorResponses.unauthorized);
       assert.ok(fixtures.errorResponses.rateLimited);
-      
+
       assert.ok(fixtures.errorResponses.notFound.error);
       assert.ok(fixtures.errorResponses.unauthorized.error);
       assert.ok(fixtures.errorResponses.rateLimited.error);
@@ -140,7 +141,7 @@ describe('PagerDuty API Response Fixtures', () => {
   describe('Fixture API Structure Accuracy', () => {
     it('incidents match PagerDuty API v2 schema', () => {
       const incident = fixtures.incidentsResponse.incidents[0];
-      
+
       // Required fields per API docs
       assert.ok(incident.id, 'incident must have id');
       assert.ok(incident.incident_number, 'incident must have incident_number');
@@ -152,7 +153,7 @@ describe('PagerDuty API Response Fixtures', () => {
 
     it('schedules match PagerDuty API v2 schema', () => {
       const schedule = fixtures.schedulesResponse.schedules[0];
-      
+
       assert.ok(schedule.id, 'schedule must have id');
       assert.ok(schedule.name, 'schedule must have name');
       assert.ok(schedule.type === 'schedule', 'schedule type should be schedule');
@@ -160,7 +161,7 @@ describe('PagerDuty API Response Fixtures', () => {
 
     it('overrides have correct structure for API calls', () => {
       const override = fixtures.overridesResponse.overrides[0];
-      
+
       assert.ok(override.id, 'override must have id');
       assert.ok(override.type === 'override', 'override type should be override');
       assert.ok(override.user, 'override must have user');
@@ -172,7 +173,7 @@ describe('PagerDuty API Response Fixtures', () => {
   describe('Update/Create Response Structures', () => {
     it('add note response has proper structure', () => {
       const { note } = fixtures.addNoteResponse;
-      
+
       assert.ok(note.id);
       assert.ok(note.content);
       assert.ok(note.created_at);
@@ -181,7 +182,7 @@ describe('PagerDuty API Response Fixtures', () => {
 
     it('create override response has proper structure', () => {
       const { override } = fixtures.createOverrideResponse;
-      
+
       assert.ok(override.id);
       assert.ok(override.type === 'override');
       assert.ok(override.user);
@@ -191,10 +192,10 @@ describe('PagerDuty API Response Fixtures', () => {
 
     it('update incident response has proper structure', () => {
       const { incidents } = fixtures.updateIncidentResponse;
-      
+
       assert.ok(Array.isArray(incidents));
       assert(incidents.length > 0);
-      
+
       const incident = incidents[0];
       assert.ok(incident.id);
       assert.ok(incident.status);

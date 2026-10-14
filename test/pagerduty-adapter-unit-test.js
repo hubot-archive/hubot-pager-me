@@ -1,7 +1,6 @@
-const chai = require('chai');
+const assert = require('node:assert/strict');
+const { describe, it, beforeEach, afterEach } = require('node:test');
 const sinon = require('sinon');
-chai.use(require('sinon-chai').default);
-const { expect } = chai;
 
 describe('PagerDuty PDjs Adapter', function () {
   beforeEach(function () {
@@ -19,14 +18,14 @@ describe('PagerDuty PDjs Adapter', function () {
   describe('API Adapter Initialization', function () {
     it('exports required methods', function () {
       const adapter = require('../src/lib/pagerduty-client');
-      expect(adapter).to.have.property('get').that.is.a('function');
-      expect(adapter).to.have.property('post').that.is.a('function');
-      expect(adapter).to.have.property('put').that.is.a('function');
-      expect(adapter).to.have.property('delete').that.is.a('function');
-      expect(adapter).to.have.property('getIncidents').that.is.a('function');
-      expect(adapter).to.have.property('getSchedules').that.is.a('function');
-      expect(adapter).to.have.property('getIncident').that.is.a('function');
-      expect(adapter).to.have.property('missingEnvironmentForApi').that.is.a('function');
+      assert.equal(typeof adapter.get, 'function');
+      assert.equal(typeof adapter.post, 'function');
+      assert.equal(typeof adapter.put, 'function');
+      assert.equal(typeof adapter.delete, 'function');
+      assert.equal(typeof adapter.getIncidents, 'function');
+      assert.equal(typeof adapter.getSchedules, 'function');
+      assert.equal(typeof adapter.getIncident, 'function');
+      assert.equal(typeof adapter.missingEnvironmentForApi, 'function');
     });
   });
 
@@ -41,9 +40,9 @@ describe('PagerDuty PDjs Adapter', function () {
       };
 
       const hasMissing = adapter.missingEnvironmentForApi(mockMsg);
-      expect(hasMissing).to.be.true;
-      expect(mockMsg.send).to.have.been.called;
-      expect(mockMsg.send.firstCall.args[0]).to.include('API Key');
+      assert.equal(hasMissing, true);
+      assert.equal(mockMsg.send.called, true);
+      assert.match(mockMsg.send.firstCall.args[0], /API Key/);
     });
 
     it('detects missing From email', function () {
@@ -56,9 +55,9 @@ describe('PagerDuty PDjs Adapter', function () {
       };
 
       const hasMissing = adapter.missingEnvironmentForApi(mockMsg);
-      expect(hasMissing).to.be.true;
-      expect(mockMsg.send).to.have.been.called;
-      expect(mockMsg.send.firstCall.args[0]).to.include('From');
+      assert.equal(hasMissing, true);
+      assert.equal(mockMsg.send.called, true);
+      assert.match(mockMsg.send.firstCall.args[0], /From/);
     });
 
     it('reports no missing env vars when both are set', function () {
@@ -68,8 +67,8 @@ describe('PagerDuty PDjs Adapter', function () {
       };
 
       const hasMissing = adapter.missingEnvironmentForApi(mockMsg);
-      expect(hasMissing).to.be.false;
-      expect(mockMsg.send).to.not.have.been.called;
+      assert.equal(hasMissing, false);
+      assert.equal(mockMsg.send.called, false);
     });
   });
 
@@ -91,11 +90,11 @@ describe('PagerDuty PDjs Adapter', function () {
         // callback should not be called in noop
       });
 
-      expect(mockLogger.info).to.have.been.called;
-      expect(mockLogger.info.firstCall.args[0]).to.include('Would have POST');
+      assert.equal(mockLogger.info.called, true);
+      assert.match(mockLogger.info.firstCall.args[0], /Would have POST/);
     });
 
-    it('respects noop=false setting', function (done) {
+    it('respects noop=false setting', async function () {
       process.env.HUBOT_PAGERDUTY_NOOP = 'false';
       delete require.cache[require.resolve('../src/lib/pagerduty-client')];
 
@@ -109,19 +108,19 @@ describe('PagerDuty PDjs Adapter', function () {
       adapter.setLogger(mockLogger);
       const postStub = sinon.stub(adapter, '_postAsync').resolves({ status: 200 });
 
-      adapter.post('/test', { data: 'test' }, function (err, json) {
-        expect(err).to.equal(null);
-        expect(json).to.deep.equal({ status: 200 });
-        expect(postStub).to.have.been.calledOnce;
-        expect(mockLogger.info).to.not.have.been.called;
-        postStub.restore();
-        done();
+      const { err, json } = await new Promise((resolve) => {
+        adapter.post('/test', { data: 'test' }, (err, json) => resolve({ err, json }));
       });
+      assert.equal(err, null);
+      assert.deepEqual(json, { status: 200 });
+      assert.equal(postStub.calledOnce, true);
+      assert.equal(mockLogger.info.called, false);
+      postStub.restore();
     });
   });
 
   describe('Callback Compatibility', function () {
-    it('handles getSchedules with just callback', function (done) {
+    it('handles getSchedules with just callback', async function () {
       const adapter = require('../src/lib/pagerduty-client');
       const getStub = sinon.stub(adapter, 'get').callsFake(function (url, query, cb) {
         if (typeof query === 'function') {
@@ -130,44 +129,43 @@ describe('PagerDuty PDjs Adapter', function () {
         cb(null, { schedules: [] });
       });
 
-      adapter.getSchedules(function (err, schedules) {
-        expect(err).to.equal(null);
-        expect(schedules).to.deep.equal([]);
-        expect(getStub).to.have.been.calledOnce;
-        getStub.restore();
-        done();
+      const { err, schedules } = await new Promise((resolve) => {
+        adapter.getSchedules((err, schedules) => resolve({ err, schedules }));
       });
+      assert.equal(err, null);
+      assert.deepEqual(schedules, []);
+      assert.equal(getStub.calledOnce, true);
+      getStub.restore();
     });
 
-    it('handles getSchedules with query and callback', function (done) {
+    it('handles getSchedules with query and callback', async function () {
       const adapter = require('../src/lib/pagerduty-client');
       const getStub = sinon.stub(adapter, 'get').callsFake(function (url, query, cb) {
         cb(null, { schedules: [] });
       });
 
-      adapter.getSchedules({ query: 'test' }, function (err, schedules) {
-        expect(err).to.equal(null);
-        expect(schedules).to.deep.equal([]);
-        expect(getStub).to.have.been.calledOnce;
-        getStub.restore();
-        done();
+      const { err, schedules } = await new Promise((resolve) => {
+        adapter.getSchedules({ query: 'test' }, (err, schedules) => resolve({ err, schedules }));
       });
+      assert.equal(err, null);
+      assert.deepEqual(schedules, []);
+      assert.equal(getStub.calledOnce, true);
+      getStub.restore();
     });
 
-    it('handles getIncidents with status', function (done) {
+    it('handles getIncidents with status', async function () {
       const adapter = require('../src/lib/pagerduty-client');
       const getStub = sinon.stub(adapter, 'get').callsFake(function (url, query, cb) {
         cb(null, { incidents: [] });
       });
 
-      adapter.getIncidents('triggered,acknowledged', function (err, incidents) {
-        expect(err).to.equal(null);
-        expect(incidents).to.deep.equal([]);
-        expect(getStub).to.have.been.calledOnce;
-        getStub.restore();
-        done();
+      const { err, incidents } = await new Promise((resolve) => {
+        adapter.getIncidents('triggered,acknowledged', (err, incidents) => resolve({ err, incidents }));
       });
+      assert.equal(err, null);
+      assert.deepEqual(incidents, []);
+      assert.equal(getStub.calledOnce, true);
+      getStub.restore();
     });
   });
 });
-
