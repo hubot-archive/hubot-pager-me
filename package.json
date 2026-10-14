@@ -35,8 +35,8 @@
   "main": "index.js",
   "types": "src/index.d.ts",
   "scripts": {
-    "test": "node --test test/pager-me-test.js test/pagerduty-adapter-integration-test.js test/pagerduty-adapter-unit-test.js test/pagerduty-api-fixtures-test.js test/pagerduty-command-regex-test.js",
-    "test-with-coverage": "node --experimental-test-coverage --test-coverage-include=\"src/**/*.js\" --test test/pager-me-test.js test/pagerduty-adapter-integration-test.js test/pagerduty-adapter-unit-test.js test/pagerduty-api-fixtures-test.js test/pagerduty-command-regex-test.js",
+    "test": "node --test \"test/**/*-test.js\"",
+    "test-with-coverage": "node --experimental-test-coverage --test-coverage-include=\"src/**/*.js\" --test \"test/**/*-test.js\"",
     "lint": "eslint src/**/*.js index.js test/**/*.js",
     "lint:fix": "eslint --fix src/**/*.js index.js test/**/*.js",
     "prepare": "husky",
