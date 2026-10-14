@@ -1,5 +1,5 @@
 /**
- * Test fixtures - Real PagerDuty API responses for mocking
+ * Real PagerDuty API response fixtures for tests
  * Based on PagerDuty REST API v2 documentation
  */
 
