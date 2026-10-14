@@ -35,8 +35,8 @@
   "main": "index.js",
   "types": "src/index.d.ts",
   "scripts": {
-    "test": "node --test",
-    "test-with-coverage": "node --experimental-test-coverage --test",
+    "test": "node --test \"test/**/*-test.js\"",
+    "test-with-coverage": "node --experimental-test-coverage --test-coverage-include=\"src/**/*.js\" --test \"test/**/*-test.js\"",
     "lint": "eslint src/**/*.js index.js test/**/*.js",
     "lint:fix": "eslint --fix src/**/*.js index.js test/**/*.js",
     "prepare": "husky",
@@ -48,6 +48,6 @@
     "index.js"
   ],
   "volta": {
-    "node": "20.20.2"
+    "node": "22.20.0"
   }
 }

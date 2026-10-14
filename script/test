@@ -3,4 +3,4 @@
 # bootstrap environment
 source script/bootstrap
 
-node --test
+node --test "test/**/*-test.js"
