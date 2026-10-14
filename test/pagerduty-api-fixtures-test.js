@@ -5,7 +5,7 @@
 
 const assert = require('node:assert/strict');
 const { describe, it } = require('node:test');
-const fixtures = require('./pagerduty-api-fixtures');
+const fixtures = require('../fixtures/pagerduty-api-fixtures');
 
 describe('PagerDuty API Response Fixtures', () => {
   describe('Fixtures Validation', () => {

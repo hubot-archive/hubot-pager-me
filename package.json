@@ -35,8 +35,8 @@
   "main": "index.js",
   "types": "src/index.d.ts",
   "scripts": {
-    "test": "node --test \"test/**/*-test.js\"",
-    "test-with-coverage": "node --experimental-test-coverage --test-coverage-include=\"src/**/*.js\" --test \"test/**/*-test.js\"",
+    "test": "node --test",
+    "test-with-coverage": "node --experimental-test-coverage --test",
     "lint": "eslint src/**/*.js index.js test/**/*.js",
     "lint:fix": "eslint --fix src/**/*.js index.js test/**/*.js",
     "prepare": "husky",
