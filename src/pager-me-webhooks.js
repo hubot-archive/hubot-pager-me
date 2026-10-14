@@ -13,14 +13,14 @@ module.exports = function (robot) {
     robot.logger && typeof robot.logger.debug === 'function' ? robot.logger.debug.bind(robot.logger) : () => {};
   if (pagerEndpoint && pagerRoom) {
     robot.router.post(pagerEndpoint, function (req, res) {
-      robot.messageRoom(pagerRoom, parseWebhook(req, res));
+      robot.messageRoom(pagerRoom, parseWebhook(req));
       res.end();
       return;
     });
   }
 
   // Pagerduty Webhook Integration (For a payload example, see https://developer.pagerduty.com/docs/webhooks/)
-  var parseWebhook = function (req, res) {
+  const parseWebhook = function (req) {
     const hook = req.body;
 
     const { messages } = hook;
@@ -32,12 +32,12 @@ module.exports = function (robot) {
     }
   };
 
-  var parseIncidents = function (messages) {
+  const parseIncidents = function (messages) {
     const returnMessage = [];
     let count = 0;
-    for (var message of Array.from(messages)) {
-      var { incident } = message.data;
-      var hookType = message.type;
+    for (const message of Array.from(messages)) {
+      const { incident } = message.data;
+      const hookType = message.type;
       returnMessage.push(generateIncidentString(incident, hookType));
       count = count + 1;
     }

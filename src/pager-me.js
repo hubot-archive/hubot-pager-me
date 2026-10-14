@@ -40,7 +40,6 @@
 
 const pagerduty = require('./lib/pagerduty-client');
 const async = require('async');
-const { inspect } = require('util');
 const moment = require('moment-timezone');
 
 const pagerDutyUserId = process.env.HUBOT_PAGERDUTY_USER_ID;
@@ -79,7 +78,7 @@ module.exports = function (robot) {
     let cmds = robot.helpCommands();
     cmds = (() => {
       const result = [];
-      for (var cmd of Array.from(cmds)) {
+      for (const cmd of Array.from(cmds)) {
         if (cmd.match(/hubot (pager |who's on call)/)) {
           result.push(cmd);
         }
@@ -130,7 +129,7 @@ module.exports = function (robot) {
         return;
       }
 
-      if (incidents.length == 0) {
+      if (incidents.length === 0) {
         msg.send('No open incidents');
         return;
       }
@@ -173,9 +172,9 @@ module.exports = function (robot) {
         return;
       }
       const fromUserName = msg.message.user.name;
-      query = pagerDutyDefaultSchedule;
-      reason = msg.match[4] || "We Need Help!"
-      description = `${reason} - @${fromUserName}`;
+      const query = pagerDutyDefaultSchedule;
+      const reason = msg.match[3] || 'We Need Help!';
+      const description = `${reason} - @${fromUserName}`;
       robot.logger.debug(`Triggering a default page to ${pagerDutyDefaultSchedule} saying ${description}!`);
       incidentTrigger(msg, query, description);
     }
@@ -313,7 +312,7 @@ module.exports = function (robot) {
       }
 
       let buffer = '';
-      for (var note of Array.from(json.notes)) {
+      for (const note of Array.from(json.notes)) {
         buffer += `${note.created_at} ${note.user.summary}: ${note.content}\n`;
       }
       msg.send(buffer);
@@ -375,13 +374,13 @@ module.exports = function (robot) {
         return;
       }
 
-      if (schedules.length == 0) {
+      if (schedules.length === 0) {
         msg.send('No schedules found!');
         return;
       }
 
       let buffer = '';
-      for (var schedule of Array.from(schedules)) {
+      for (const schedule of Array.from(schedules)) {
         buffer += `* ${schedule.name} - ${schedule.html_url}\n`;
       }
       msg.send(buffer);
@@ -450,9 +449,9 @@ module.exports = function (robot) {
             const sortedEntries = entries.sort((a, b) => moment(a.start).unix() - moment(b.start).unix());
 
             let buffer = '';
-            for (var entry of Array.from(sortedEntries)) {
-              var startTime = moment(entry.start).tz(timezone).format();
-              var endTime = moment(entry.end).tz(timezone).format();
+            for (const entry of Array.from(sortedEntries)) {
+              const startTime = moment(entry.start).tz(timezone).format();
+              const endTime = moment(entry.end).tz(timezone).format();
               if (entry.id) {
                 buffer += `* (${entry.id}) ${startTime} - ${endTime} ${entry.user.summary}\n`;
               } else {
@@ -522,10 +521,10 @@ module.exports = function (robot) {
                 const sortedEntries = entries.sort((a, b) => moment(a.start).unix() - moment(b.start).unix());
 
                 let buffer = '';
-                for (var entry of Array.from(sortedEntries)) {
+                for (const entry of Array.from(sortedEntries)) {
                   if (userId === entry.user.id) {
-                    var startTime = moment(entry.start).tz(timezone).format();
-                    var endTime = moment(entry.end).tz(timezone).format();
+                    const startTime = moment(entry.start).tz(timezone).format();
+                    const endTime = moment(entry.end).tz(timezone).format();
 
                     buffer += `* ${startTime} - ${endTime} ${entry.user.summary} (${schedule.name})\n`;
                   }
@@ -733,7 +732,7 @@ module.exports = function (robot) {
             return;
           }
 
-          if (schedules.length == 0) {
+          if (schedules.length === 0) {
             msg.send('No schedules found!');
           }
 
@@ -801,7 +800,7 @@ module.exports = function (robot) {
             robot.emit('error', err, msg);
             return;
           }
-          if (schedules.length == 0) {
+          if (schedules.length === 0) {
             msg.send('No schedules found!');
             return;
           }
@@ -831,12 +830,12 @@ module.exports = function (robot) {
 
       let buffer = '';
       const { services } = json;
-      if (services.length == 0) {
+      if (services.length === 0) {
         msg.send('No services found!');
         return;
       }
 
-      for (var service of Array.from(services)) {
+      for (const service of Array.from(services)) {
         buffer += `* ${service.id}: ${service.name} (${service.status}) - ${service.html_url}\n`;
       }
       msg.send(buffer);
@@ -860,7 +859,7 @@ module.exports = function (robot) {
       const end_time = moment().add(minutes, 'minutes').format();
 
       const services = [];
-      for (var service_id of Array.from(service_ids)) {
+      for (const service_id of Array.from(service_ids)) {
         services.push({ id: service_id, type: 'service_reference' });
       }
 
@@ -886,9 +885,9 @@ module.exports = function (robot) {
     });
   });
 
-  var parseIncidentNumbers = (match) => match.split(/[ ,]+/).map((incidentNumber) => parseInt(incidentNumber));
+  const parseIncidentNumbers = (match) => match.split(/[ ,]+/).map((incidentNumber) => parseInt(incidentNumber));
 
-  var reassignmentParametersForUserOrScheduleOrEscalationPolicy = function (msg, string, cb) {
+  const reassignmentParametersForUserOrScheduleOrEscalationPolicy = function (msg, string, cb) {
     let campfireUser;
     if ((campfireUser = robot.brain.userForName(string))) {
       return campfireUserToPagerDutyUser(msg, campfireUser, (user) =>
@@ -920,7 +919,7 @@ module.exports = function (robot) {
         } else {
           return SchedulesMatching(msg, string, function (schedule) {
             if (schedule) {
-              withCurrentOncallUser(msg, schedule, (user, schedule) =>
+              withCurrentOncallUser(msg, schedule, (user) =>
                 cb({ assigned_to_user: user.id, name: user.name })
               );
             } else {
@@ -932,7 +931,7 @@ module.exports = function (robot) {
     }
   };
 
-  var pagerDutyIntegrationAPI = function (msg, cmd, description, cb) {
+  const pagerDutyIntegrationAPI = function (msg, cmd, description, cb) {
     if (pagerDutyServiceApiKey == null) {
       msg.send('PagerDuty API service key is missing.');
       msg.send('Ensure that HUBOT_PAGERDUTY_SERVICE_API_KEY is set.');
@@ -955,7 +954,7 @@ module.exports = function (robot) {
     }
   };
 
-  var formatIncident = function (inc) {
+  const formatIncident = function (inc) {
     let assigned_to;
     const summary = inc.title;
     const assignee = __guard__(
@@ -964,13 +963,11 @@ module.exports = function (robot) {
     );
     if (assignee) {
       assigned_to = `- assigned to ${assignee}`;
-    } else {
-      ('');
     }
     return `${inc.incident_number}: ${inc.created_at} ${summary} ${assigned_to}\n`;
   };
 
-  var updateIncidents = (msg, incidentNumbers, statusFilter, updatedStatus) =>
+  const updateIncidents = (msg, incidentNumbers, statusFilter, updatedStatus) =>
     campfireUserToPagerDutyUser(msg, msg.message.user, function (user) {
       const requesterId = user.id;
       if (!requesterId) {
@@ -1036,7 +1033,7 @@ module.exports = function (robot) {
       });
     });
 
-  var pagerDutyIntegrationPost = (msg, json, cb) =>
+  const pagerDutyIntegrationPost = (msg, json, cb) =>
     msg
       .http('https://events.pagerduty.com/v2/enqueue')
       .header('content-type', 'application/json')
@@ -1058,13 +1055,13 @@ module.exports = function (robot) {
       }
     });
 
-  var incidentsByUserId = (incidents, userId) =>
+  const incidentsByUserId = (incidents, userId) =>
     incidents.filter(function (incident) {
       const assignments = incident.assignments.map((item) => item.assignee.id);
       return assignments.some((assignment) => assignment === userId);
     });
 
-  var withCurrentOncall = (msg, schedule, cb) =>
+  const withCurrentOncall = (msg, schedule, cb) =>
     withCurrentOncallUser(msg, schedule, function (user, s) {
       if (user) {
         return cb(user.name, s);
@@ -1073,7 +1070,7 @@ module.exports = function (robot) {
       }
     });
 
-  var withCurrentOncallId = (msg, schedule, cb) =>
+  const withCurrentOncallId = (msg, schedule, cb) =>
     withCurrentOncallUser(msg, schedule, function (user, s) {
       if (user) {
         return cb(user.id, user.name, s);
@@ -1082,7 +1079,7 @@ module.exports = function (robot) {
       }
     });
 
-  var withCurrentOncallUser = function (msg, schedule, cb) {
+  const withCurrentOncallUser = function (msg, schedule, cb) {
     const oneHour = moment().add(1, 'hours').format();
     const now = moment().format();
 
@@ -1112,7 +1109,7 @@ module.exports = function (robot) {
     });
   };
 
-  var SchedulesMatching = function (msg, q, cb) {
+  const SchedulesMatching = function (msg, q, cb) {
     const query = {
       query: q,
     };
@@ -1126,18 +1123,18 @@ module.exports = function (robot) {
     });
   };
 
-  var withScheduleMatching = (msg, q, cb) =>
+  const withScheduleMatching = (msg, q, cb) =>
     SchedulesMatching(msg, q, function (schedules) {
       if ((schedules != null ? schedules.length : undefined) < 1) {
         msg.send(`I couldn't find any schedules matching ${q}`);
       } else {
-        for (var schedule of Array.from(schedules)) {
+        for (const schedule of Array.from(schedules)) {
           cb(schedule);
         }
       }
     });
 
-  var incidentTrigger = (msg, query, description) =>
+  const incidentTrigger = (msg, query, description) =>
     // Figure out who we are
     campfireUserToPagerDutyUser(msg, msg.message.user, false, function (triggerdByPagerDutyUser) {
       const triggerdByPagerDutyUserId = (() => {
