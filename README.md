@@ -120,12 +120,16 @@ hubot> * 2014-06-24T09:06:45-07:00 - 2014-06-25T03:00:00-07:00 technicalpickles
 
 ## Development
 
+Development and tests require Node.js 22 or newer.
+
 Fork this repository, and clone it locally. To start using with an existing Hubot for testing:
 
 * Run `npm install` in `hubot-pager-me` repository
 * Run `npm link` in `hubot-pager-me` repository
 * Run `npm link hubot-pager-me` in your Hubot directory
 * NOTE: if you are using something like [nodenv](https://github.com/wfarr/nodenv) or similar, make sure your `npm link` from the same node version
+
+Run the test suite with `npm test`. To include Node's built-in coverage report, run `npm run test-with-coverage`.
 
 There's a few environment variables useful for testing:
 
