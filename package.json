@@ -23,14 +23,14 @@
   "dependencies": {
     "@pagerduty/pdjs": "^2.2.4",
     "async": "^3.2.6",
-    "moment-timezone": "^0.6.1"
+    "moment-timezone": "^0.6.5"
   },
   "devDependencies": {
     "eslint": "^10.12.0",
     "globals": "^17.13.0",
     "husky": "^9.1.7",
     "prettier": "^3.9.10",
-    "sinon": "^21.0.3"
+    "sinon": "^22.1.0"
   },
   "main": "index.js",
   "types": "src/index.d.ts",
