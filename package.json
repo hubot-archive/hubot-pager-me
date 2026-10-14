@@ -29,20 +29,14 @@
     "eslint": "^10.12.0",
     "globals": "^17.13.0",
     "husky": "^9.1.7",
-    "nyc": "^18.0.0",
     "prettier": "^3.9.10",
     "sinon": "^21.0.3"
   },
   "main": "index.js",
   "types": "src/index.d.ts",
-  "nyc": {
-    "include": [
-      "src/**/*.js"
-    ]
-  },
   "scripts": {
     "test": "node --test test/pager-me-test.js test/pagerduty-adapter-integration-test.js test/pagerduty-adapter-unit-test.js test/pagerduty-api-fixtures-test.js test/pagerduty-command-regex-test.js",
-    "test-with-coverage": "nyc --reporter=text node --test test/pager-me-test.js test/pagerduty-adapter-integration-test.js test/pagerduty-adapter-unit-test.js test/pagerduty-api-fixtures-test.js test/pagerduty-command-regex-test.js",
+    "test-with-coverage": "node --experimental-test-coverage --test-coverage-include=\"src/**/*.js\" --test test/pager-me-test.js test/pagerduty-adapter-integration-test.js test/pagerduty-adapter-unit-test.js test/pagerduty-api-fixtures-test.js test/pagerduty-command-regex-test.js",
     "lint": "eslint src/**/*.js index.js test/**/*.js",
     "lint:fix": "eslint --fix src/**/*.js index.js test/**/*.js",
     "prepare": "husky",

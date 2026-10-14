@@ -23,7 +23,7 @@ describe('Integration: Command Workflows', function () {
   describe('Adapter Interface Compatibility', function () {
     it('maintains same method signatures as legacy adapter', function () {
       const adapter = require('../src/lib/pagerduty-client');
-      
+
       // Verify all required methods exist
       assert.equal(typeof adapter.get, 'function');
       assert.equal(typeof adapter.post, 'function');
@@ -38,7 +38,7 @@ describe('Integration: Command Workflows', function () {
     it('adapter module resolves consistently', function () {
       const mainAdapter = require('../src/lib/pagerduty-client');
       const pdjs = require('../src/lib/pagerduty-client');
-      
+
       // Both should exist and have same interface
       assert.deepEqual(mainAdapter, pdjs);
     });
@@ -105,7 +105,7 @@ describe('Integration: Command Workflows', function () {
     it('respects HUBOT_PAGERDUTY_SCHEDULES filter', function () {
       process.env.HUBOT_PAGERDUTY_SCHEDULES = 'SCHED1,SCHED2,SCHED3';
       delete require.cache[require.resolve('../src/lib/pagerduty-client')];
-      
+
       const adapter = require('../src/lib/pagerduty-client');
       assert.ok(adapter);
     });
@@ -114,7 +114,7 @@ describe('Integration: Command Workflows', function () {
       delete process.env.HUBOT_PAGERDUTY_SERVICES;
       delete process.env.HUBOT_PAGERDUTY_SCHEDULES;
       delete process.env.HUBOT_PAGERDUTY_DEFAULT_SCHEDULE;
-      
+
       delete require.cache[require.resolve('../src/lib/pagerduty-client')];
       const adapter = require('../src/lib/pagerduty-client');
       assert.ok(adapter);

@@ -33,10 +33,7 @@ function makeMsg(matchArray, userOverrides) {
     reply: sinon.spy(),
     finish: sinon.spy(),
     message: {
-      user: Object.assign(
-        { id: 'U123', name: 'testuser', email_address: 'test@example.com' },
-        userOverrides
-      ),
+      user: Object.assign({ id: 'U123', name: 'testuser', email_address: 'test@example.com' }, userOverrides),
     },
     http: sinon.stub(),
   };
@@ -72,7 +69,11 @@ describe('pager-me.js', function () {
     pagerdutyStub.get.callsFake(function (url, queryOrCb, cb) {
       if (typeof queryOrCb === 'function') cb = queryOrCb;
       if (/^\/users/.test(url)) {
-        cb(null, { users: [{ id: 'PU001', name: 'Test User', email: 'test@example.com', html_url: 'https://pd.test/users/PU001' }] });
+        cb(null, {
+          users: [
+            { id: 'PU001', name: 'Test User', email: 'test@example.com', html_url: 'https://pd.test/users/PU001' },
+          ],
+        });
       } else {
         cb(null, {});
       }
@@ -155,8 +156,20 @@ describe('pager-me.js', function () {
     it('formats triggered and acknowledged incidents', function () {
       pagerdutyStub.getIncidents.callsFake(function (status, cb) {
         cb(null, [
-          { incident_number: 1, status: 'triggered',    title: 'Server down', created_at: '2026-01-01T00:00:00Z', assignments: [{ assignee: { summary: 'Alice' } }] },
-          { incident_number: 2, status: 'acknowledged', title: 'DB slow',     created_at: '2026-01-01T01:00:00Z', assignments: [] },
+          {
+            incident_number: 1,
+            status: 'triggered',
+            title: 'Server down',
+            created_at: '2026-01-01T00:00:00Z',
+            assignments: [{ assignee: { summary: 'Alice' } }],
+          },
+          {
+            incident_number: 2,
+            status: 'acknowledged',
+            title: 'DB slow',
+            created_at: '2026-01-01T01:00:00Z',
+            assignments: [],
+          },
         ]);
       });
       const msg = makeMsg(['pager incidents', 'pager', undefined, 'incidents']);
@@ -166,14 +179,18 @@ describe('pager-me.js', function () {
     });
 
     it('says No open incidents when list is empty', function () {
-      pagerdutyStub.getIncidents.callsFake(function (status, cb) { cb(null, []); });
+      pagerdutyStub.getIncidents.callsFake(function (status, cb) {
+        cb(null, []);
+      });
       const msg = makeMsg(['pager incidents', 'pager', undefined, 'incidents']);
       robot.getHandler(regex)(msg);
       assert.equal(msg.send.calledWith('No open incidents'), true);
     });
 
     it('emits error on API failure', function () {
-      pagerdutyStub.getIncidents.callsFake(function (status, cb) { cb(new Error('API error')); });
+      pagerdutyStub.getIncidents.callsFake(function (status, cb) {
+        cb(new Error('API error'));
+      });
       const msg = makeMsg(['pager incidents', 'pager', undefined, 'incidents']);
       robot.getHandler(regex)(msg);
       assert.equal(robot.emit.calledWith('error'), true);
@@ -219,7 +236,9 @@ describe('pager-me.js', function () {
     const regex = /(pager|major)( me)? ack(nowledge)?(!)?$/i;
 
     it('says Nothing to acknowledge when no incidents exist', function () {
-      pagerdutyStub.getIncidents.callsFake(function (status, cb) { cb(null, []); });
+      pagerdutyStub.getIncidents.callsFake(function (status, cb) {
+        cb(null, []);
+      });
       const msg = makeMsg(['pager ack', 'pager', undefined, undefined, undefined]);
       robot.getHandler(regex)(msg);
       assert.equal(msg.send.calledWith('Nothing to acknowledge'), true);
@@ -227,7 +246,9 @@ describe('pager-me.js', function () {
 
     it('says Nothing assigned to you when incidents belong to others', function () {
       pagerdutyStub.getIncidents.callsFake(function (status, cb) {
-        cb(null, [{ id: 'INC1', incident_number: 1, status: 'triggered', assignments: [{ assignee: { id: 'OTHER_USER' } }] }]);
+        cb(null, [
+          { id: 'INC1', incident_number: 1, status: 'triggered', assignments: [{ assignee: { id: 'OTHER_USER' } }] },
+        ]);
       });
       const msg = makeMsg(['pager ack', 'pager', undefined, undefined, undefined]);
       robot.getHandler(regex)(msg);
@@ -236,7 +257,9 @@ describe('pager-me.js', function () {
 
     it('force flag acks all incidents regardless of assignee', function () {
       pagerdutyStub.getIncidents.callsFake(function (status, cb) {
-        cb(null, [{ id: 'INC1', incident_number: 1, status: 'triggered', assignments: [{ assignee: { id: 'OTHER_USER' } }] }]);
+        cb(null, [
+          { id: 'INC1', incident_number: 1, status: 'triggered', assignments: [{ assignee: { id: 'OTHER_USER' } }] },
+        ]);
       });
       pagerdutyStub.put.callsFake(function (url, data, cb) {
         cb(null, { incidents: [{ incident_number: 1 }] });
@@ -247,7 +270,9 @@ describe('pager-me.js', function () {
     });
 
     it('emits error when getIncidents fails', function () {
-      pagerdutyStub.getIncidents.callsFake(function (status, cb) { cb(new Error('fail')); });
+      pagerdutyStub.getIncidents.callsFake(function (status, cb) {
+        cb(new Error('fail'));
+      });
       const msg = makeMsg(['pager ack', 'pager', undefined, undefined, undefined]);
       robot.getHandler(regex)(msg);
       assert.equal(robot.emit.calledWith('error'), true);
@@ -276,7 +301,9 @@ describe('pager-me.js', function () {
     const regex = /(pager|major)( me)? res(olve)?(d)?(!)?$/i;
 
     it('says Nothing to resolve when no acknowledged incidents', function () {
-      pagerdutyStub.getIncidents.callsFake(function (status, cb) { cb(null, []); });
+      pagerdutyStub.getIncidents.callsFake(function (status, cb) {
+        cb(null, []);
+      });
       const msg = makeMsg(['pager resolve', 'pager', undefined, 'olve', undefined, undefined]);
       robot.getHandler(regex)(msg);
       assert.equal(msg.send.calledWith('Nothing to resolve'), true);
@@ -284,7 +311,9 @@ describe('pager-me.js', function () {
 
     it('says Nothing assigned to you when incidents belong to others', function () {
       pagerdutyStub.getIncidents.callsFake(function (status, cb) {
-        cb(null, [{ id: 'INC1', incident_number: 1, status: 'acknowledged', assignments: [{ assignee: { id: 'OTHER_USER' } }] }]);
+        cb(null, [
+          { id: 'INC1', incident_number: 1, status: 'acknowledged', assignments: [{ assignee: { id: 'OTHER_USER' } }] },
+        ]);
       });
       const msg = makeMsg(['pager resolve', 'pager', undefined, 'olve', undefined, undefined]);
       robot.getHandler(regex)(msg);
@@ -293,7 +322,9 @@ describe('pager-me.js', function () {
 
     it('force flag resolves all acknowledged incidents', function () {
       pagerdutyStub.getIncidents.callsFake(function (status, cb) {
-        cb(null, [{ id: 'INC1', incident_number: 1, status: 'acknowledged', assignments: [{ assignee: { id: 'OTHER_USER' } }] }]);
+        cb(null, [
+          { id: 'INC1', incident_number: 1, status: 'acknowledged', assignments: [{ assignee: { id: 'OTHER_USER' } }] },
+        ]);
       });
       pagerdutyStub.put.callsFake(function (url, data, cb) {
         cb(null, { incidents: [{ incident_number: 1 }] });
@@ -314,9 +345,16 @@ describe('pager-me.js', function () {
         if (/^\/users/.test(url)) {
           cb(null, { users: [{ id: 'PU001' }] });
         } else if (url.includes('/notes')) {
-          cb(null, { notes: [
-            { id: 'N1', content: 'Investigating now', created_at: '2026-01-01T00:00:00Z', user: { summary: 'Alice' } },
-          ] });
+          cb(null, {
+            notes: [
+              {
+                id: 'N1',
+                content: 'Investigating now',
+                created_at: '2026-01-01T00:00:00Z',
+                user: { summary: 'Alice' },
+              },
+            ],
+          });
         }
       });
       const msg = makeMsg(['pager notes 1', 'pager', undefined, '1']);
@@ -353,14 +391,18 @@ describe('pager-me.js', function () {
     });
 
     it('reports failure when response contains no note', function () {
-      pagerdutyStub.post.callsFake(function (url, data, cb) { cb(null, {}); });
+      pagerdutyStub.post.callsFake(function (url, data, cb) {
+        cb(null, {});
+      });
       const msg = makeMsg(['pager note 1 All clear', 'pager', undefined, '1', 'All clear']);
       robot.getHandler(regex)(msg);
       assertCalledWithMatch(msg.send, /couldn't do it/);
     });
 
     it('emits error on API failure', function () {
-      pagerdutyStub.post.callsFake(function (url, data, cb) { cb(new Error('fail')); });
+      pagerdutyStub.post.callsFake(function (url, data, cb) {
+        cb(new Error('fail'));
+      });
       const msg = makeMsg(['pager note 1 All clear', 'pager', undefined, '1', 'All clear']);
       robot.getHandler(regex)(msg);
       assert.equal(robot.emit.calledWith('error'), true);
@@ -409,7 +451,9 @@ describe('pager-me.js', function () {
     it('lists services', function () {
       pagerdutyStub.get.callsFake(function (url, query, cb) {
         if (typeof query === 'function') cb = query;
-        cb(null, { services: [{ id: 'SVC1', name: 'Production API', status: 'active', html_url: 'https://pd.test/SVC1' }] });
+        cb(null, {
+          services: [{ id: 'SVC1', name: 'Production API', status: 'active', html_url: 'https://pd.test/SVC1' }],
+        });
       });
       const msg = makeMsg(['pager services', 'pager', undefined]);
       robot.getHandler(regex)(msg);
@@ -441,7 +485,9 @@ describe('pager-me.js', function () {
     });
 
     it('reports failure when post returns no window', function () {
-      pagerdutyStub.post.callsFake(function (url, data, cb) { cb(null, {}); });
+      pagerdutyStub.post.callsFake(function (url, data, cb) {
+        cb(null, {});
+      });
       const msg = makeMsg(['pager maintenance 60 SVC1', 'pager', undefined, '60', 'SVC1']);
       robot.getHandler(regex)(msg);
       assertCalledWithMatch(msg.send, /didn't work/);
@@ -468,10 +514,21 @@ describe('pager-me.js', function () {
         if (typeof query === 'function') cb = query;
         cb(null, [{ id: 'S1', name: 'Primary' }]);
       });
-      pagerdutyStub.delete.callsFake(function (url, cb) { cb(null, true); });
-      const msg = makeMsg(
-        ['pager override Primary delete OVR1', 'pager', undefined, 'override', 'Primary', undefined, undefined, 'Primary', 'delete', 'OVR1']
-      );
+      pagerdutyStub.delete.callsFake(function (url, cb) {
+        cb(null, true);
+      });
+      const msg = makeMsg([
+        'pager override Primary delete OVR1',
+        'pager',
+        undefined,
+        'override',
+        'Primary',
+        undefined,
+        undefined,
+        'Primary',
+        'delete',
+        'OVR1',
+      ]);
       robot.getHandler(regex)(msg);
       assert.equal(msg.send.calledWith(':boom:'), true);
     });
@@ -481,10 +538,21 @@ describe('pager-me.js', function () {
         if (typeof query === 'function') cb = query;
         cb(null, [{ id: 'S1', name: 'Primary' }]);
       });
-      pagerdutyStub.delete.callsFake(function (url, cb) { cb(null, false); });
-      const msg = makeMsg(
-        ['pager override Primary delete OVR1', 'pager', undefined, 'override', 'Primary', undefined, undefined, 'Primary', 'delete', 'OVR1']
-      );
+      pagerdutyStub.delete.callsFake(function (url, cb) {
+        cb(null, false);
+      });
+      const msg = makeMsg([
+        'pager override Primary delete OVR1',
+        'pager',
+        undefined,
+        'override',
+        'Primary',
+        undefined,
+        undefined,
+        'Primary',
+        'delete',
+        'OVR1',
+      ]);
       robot.getHandler(regex)(msg);
       assert.equal(msg.send.calledWith('Something went weird.'), true);
     });
@@ -494,9 +562,18 @@ describe('pager-me.js', function () {
         if (typeof query === 'function') cb = query;
         cb(null, []);
       });
-      const msg = makeMsg(
-        ['pager override Primary delete OVR1', 'pager', undefined, 'override', 'Primary', undefined, undefined, 'Primary', 'delete', 'OVR1']
-      );
+      const msg = makeMsg([
+        'pager override Primary delete OVR1',
+        'pager',
+        undefined,
+        'override',
+        'Primary',
+        undefined,
+        undefined,
+        'Primary',
+        'delete',
+        'OVR1',
+      ]);
       robot.getHandler(regex)(msg);
       assertCalledWithMatch(msg.send, /couldn't find any schedules/);
     });
@@ -504,7 +581,8 @@ describe('pager-me.js', function () {
 
   // -----------------------------------------------------------------------
   describe("who's on call", function () {
-    const regex = /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?:\?)?(?: (?:for )?((["'])([^]*?)\2|(.*?))(?:\?|$))?$/i;
+    const regex =
+      /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?:\?)?(?: (?:for )?((["'])([^]*?)\2|(.*?))(?:\?|$))?$/i;
 
     it('lists who is on call for each schedule', async function () {
       pagerdutyStub.getSchedules.callsFake(function (queryOrCb, cb) {

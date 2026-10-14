@@ -20,7 +20,7 @@ module.exports = [
       'no-console': ['warn', { allow: ['warn', 'error'] }],
 
       // Best practices
-      'eqeqeq': ['error', 'always', { null: 'ignore' }],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
       'no-eval': 'error',
       'no-implied-eval': 'error',
       'no-new-func': 'error',
@@ -46,7 +46,7 @@ module.exports = [
       'no-undef': 'error',
       'no-unused-vars': ['error', { args: 'after-used', ignoreRestSiblings: true }],
       'no-console': 'off',
-      'eqeqeq': ['error', 'always', { null: 'ignore' }],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
       'no-eval': 'error',
       'no-unused-expressions': 'error',
       'prefer-const': ['error', { destructuring: 'all' }],
