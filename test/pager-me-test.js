@@ -1,7 +1,10 @@
-const chai = require('chai');
+const assert = require('node:assert/strict');
+const { describe, it, beforeEach, afterEach } = require('node:test');
 const sinon = require('sinon');
-chai.use(require('sinon-chai').default);
-const { expect } = chai;
+
+function assertCalledWithMatch(spy, pattern) {
+  assert.equal(spy.calledWithMatch(pattern), true);
+}
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -99,8 +102,8 @@ describe('pager-me.js', function () {
     it('stores email on the user and confirms', function () {
       const msg = makeMsg(['pager me as alice@example.com', 'alice@example.com']);
       robot.getHandler(regex)(msg);
-      expect(msg.message.user.pagerdutyEmail).to.equal('alice@example.com');
-      expect(msg.send).to.have.been.calledWithMatch(/alice@example\.com/);
+      assert.equal(msg.message.user.pagerdutyEmail, 'alice@example.com');
+      assertCalledWithMatch(msg.send, /alice@example\.com/);
     });
   });
 
@@ -112,8 +115,8 @@ describe('pager-me.js', function () {
       const msg = makeMsg(['pager forget me']);
       msg.message.user.pagerdutyEmail = 'old@example.com';
       robot.getHandler(regex)(msg);
-      expect(msg.message.user.pagerdutyEmail).to.be.undefined;
-      expect(msg.send).to.have.been.calledWithMatch(/forgotten/);
+      assert.equal(msg.message.user.pagerdutyEmail, undefined);
+      assertCalledWithMatch(msg.send, /forgotten/);
     });
   });
 
@@ -125,13 +128,13 @@ describe('pager-me.js', function () {
       pagerdutyStub.missingEnvironmentForApi.returns(true);
       const msg = makeMsg(['pager', undefined]);
       robot.getHandler(regex)(msg);
-      expect(pagerdutyStub.get).to.not.have.been.called;
+      assert.equal(pagerdutyStub.get.called, false);
     });
 
     it('shows found user with pagerdutyEmail set', function () {
       const msg = makeMsg(['pager', undefined], { pagerdutyEmail: 'test@example.com' });
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWithMatch(/I found your PagerDuty user/);
+      assertCalledWithMatch(msg.send, /I found your PagerDuty user/);
     });
 
     it("shows couldn't find when user lookup returns empty", function () {
@@ -141,7 +144,7 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager', undefined]);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWithMatch(/Sorry, I expected to get 1 user/);
+      assertCalledWithMatch(msg.send, /Sorry, I expected to get 1 user/);
     });
   });
 
@@ -158,22 +161,22 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager incidents', 'pager', undefined, 'incidents']);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWithMatch(/Triggered/);
-      expect(msg.send).to.have.been.calledWithMatch(/Acknowledged/);
+      assertCalledWithMatch(msg.send, /Triggered/);
+      assertCalledWithMatch(msg.send, /Acknowledged/);
     });
 
     it('says No open incidents when list is empty', function () {
       pagerdutyStub.getIncidents.callsFake(function (status, cb) { cb(null, []); });
       const msg = makeMsg(['pager incidents', 'pager', undefined, 'incidents']);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWith('No open incidents');
+      assert.equal(msg.send.calledWith('No open incidents'), true);
     });
 
     it('emits error on API failure', function () {
       pagerdutyStub.getIncidents.callsFake(function (status, cb) { cb(new Error('API error')); });
       const msg = makeMsg(['pager incidents', 'pager', undefined, 'incidents']);
       robot.getHandler(regex)(msg);
-      expect(robot.emit).to.have.been.calledWith('error');
+      assert.equal(robot.emit.calledWith('error'), true);
     });
   });
 
@@ -185,7 +188,7 @@ describe('pager-me.js', function () {
       pagerdutyStub.missingEnvironmentForApi.returns(true);
       const msg = makeMsg(['pager ack 1', '1']);
       robot.getHandler(regex)(msg);
-      expect(pagerdutyStub.getIncidents).to.not.have.been.called;
+      assert.equal(pagerdutyStub.getIncidents.called, false);
     });
 
     it('acks matched incident and replies with acked count', function () {
@@ -197,8 +200,8 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager ack 1', '1']);
       robot.getHandler(regex)(msg);
-      expect(pagerdutyStub.put).to.have.been.called;
-      expect(msg.reply).to.have.been.calledWithMatch(/acknowledged/);
+      assert.equal(pagerdutyStub.put.called, true);
+      assertCalledWithMatch(msg.reply, /acknowledged/);
     });
 
     it('replies with error message when incident not found', function () {
@@ -207,7 +210,7 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager ack 99', '99']);
       robot.getHandler(regex)(msg);
-      expect(msg.reply).to.have.been.calledWithMatch(/Couldn't find incident/);
+      assertCalledWithMatch(msg.reply, /Couldn't find incident/);
     });
   });
 
@@ -219,7 +222,7 @@ describe('pager-me.js', function () {
       pagerdutyStub.getIncidents.callsFake(function (status, cb) { cb(null, []); });
       const msg = makeMsg(['pager ack', 'pager', undefined, undefined, undefined]);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWith('Nothing to acknowledge');
+      assert.equal(msg.send.calledWith('Nothing to acknowledge'), true);
     });
 
     it('says Nothing assigned to you when incidents belong to others', function () {
@@ -228,7 +231,7 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager ack', 'pager', undefined, undefined, undefined]);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWithMatch(/Nothing assigned to you/);
+      assertCalledWithMatch(msg.send, /Nothing assigned to you/);
     });
 
     it('force flag acks all incidents regardless of assignee', function () {
@@ -240,14 +243,14 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager ack!', 'pager', undefined, undefined, '!']);
       robot.getHandler(regex)(msg);
-      expect(pagerdutyStub.put).to.have.been.called;
+      assert.equal(pagerdutyStub.put.called, true);
     });
 
     it('emits error when getIncidents fails', function () {
       pagerdutyStub.getIncidents.callsFake(function (status, cb) { cb(new Error('fail')); });
       const msg = makeMsg(['pager ack', 'pager', undefined, undefined, undefined]);
       robot.getHandler(regex)(msg);
-      expect(robot.emit).to.have.been.calledWith('error');
+      assert.equal(robot.emit.calledWith('error'), true);
     });
   });
 
@@ -264,7 +267,7 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager resolve 1', '1']);
       robot.getHandler(regex)(msg);
-      expect(msg.reply).to.have.been.calledWithMatch(/resolved/);
+      assertCalledWithMatch(msg.reply, /resolved/);
     });
   });
 
@@ -276,7 +279,7 @@ describe('pager-me.js', function () {
       pagerdutyStub.getIncidents.callsFake(function (status, cb) { cb(null, []); });
       const msg = makeMsg(['pager resolve', 'pager', undefined, 'olve', undefined, undefined]);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWith('Nothing to resolve');
+      assert.equal(msg.send.calledWith('Nothing to resolve'), true);
     });
 
     it('says Nothing assigned to you when incidents belong to others', function () {
@@ -285,7 +288,7 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager resolve', 'pager', undefined, 'olve', undefined, undefined]);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWithMatch(/Nothing assigned to you/);
+      assertCalledWithMatch(msg.send, /Nothing assigned to you/);
     });
 
     it('force flag resolves all acknowledged incidents', function () {
@@ -297,7 +300,7 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager resolve!', 'pager', undefined, 'olve', undefined, '!']);
       robot.getHandler(regex)(msg);
-      expect(pagerdutyStub.put).to.have.been.called;
+      assert.equal(pagerdutyStub.put.called, true);
     });
   });
 
@@ -318,7 +321,7 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager notes 1', 'pager', undefined, '1']);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWithMatch(/Investigating now/);
+      assertCalledWithMatch(msg.send, /Investigating now/);
     });
 
     it('emits error on API failure', function () {
@@ -332,7 +335,7 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager notes 1', 'pager', undefined, '1']);
       robot.getHandler(regex)(msg);
-      expect(robot.emit).to.have.been.calledWith('error');
+      assert.equal(robot.emit.calledWith('error'), true);
     });
   });
 
@@ -346,21 +349,21 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager note 1 All clear', 'pager', undefined, '1', 'All clear']);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWithMatch(/Note created: All clear/);
+      assertCalledWithMatch(msg.send, /Note created: All clear/);
     });
 
     it('reports failure when response contains no note', function () {
       pagerdutyStub.post.callsFake(function (url, data, cb) { cb(null, {}); });
       const msg = makeMsg(['pager note 1 All clear', 'pager', undefined, '1', 'All clear']);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWithMatch(/couldn't do it/);
+      assertCalledWithMatch(msg.send, /couldn't do it/);
     });
 
     it('emits error on API failure', function () {
       pagerdutyStub.post.callsFake(function (url, data, cb) { cb(new Error('fail')); });
       const msg = makeMsg(['pager note 1 All clear', 'pager', undefined, '1', 'All clear']);
       robot.getHandler(regex)(msg);
-      expect(robot.emit).to.have.been.calledWith('error');
+      assert.equal(robot.emit.calledWith('error'), true);
     });
   });
 
@@ -375,7 +378,7 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager schedules', 'pager', undefined]);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWithMatch(/Primary On-Call/);
+      assertCalledWithMatch(msg.send, /Primary On-Call/);
     });
 
     it('says No schedules found when none exist', function () {
@@ -385,7 +388,7 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager schedules', 'pager', undefined]);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWith('No schedules found!');
+      assert.equal(msg.send.calledWith('No schedules found!'), true);
     });
 
     it('emits error on API failure', function () {
@@ -395,7 +398,7 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager schedules', 'pager', undefined]);
       robot.getHandler(regex)(msg);
-      expect(robot.emit).to.have.been.calledWith('error');
+      assert.equal(robot.emit.calledWith('error'), true);
     });
   });
 
@@ -410,7 +413,7 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager services', 'pager', undefined]);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWithMatch(/Production API/);
+      assertCalledWithMatch(msg.send, /Production API/);
     });
 
     it('says No services found when none exist', function () {
@@ -420,7 +423,7 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager services', 'pager', undefined]);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWith('No services found!');
+      assert.equal(msg.send.calledWith('No services found!'), true);
     });
   });
 
@@ -434,14 +437,14 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['pager maintenance 60 SVC1', 'pager', undefined, '60', 'SVC1']);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWithMatch(/Maintenance window created/);
+      assertCalledWithMatch(msg.send, /Maintenance window created/);
     });
 
     it('reports failure when post returns no window', function () {
       pagerdutyStub.post.callsFake(function (url, data, cb) { cb(null, {}); });
       const msg = makeMsg(['pager maintenance 60 SVC1', 'pager', undefined, '60', 'SVC1']);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWithMatch(/didn't work/);
+      assertCalledWithMatch(msg.send, /didn't work/);
     });
   });
 
@@ -452,7 +455,7 @@ describe('pager-me.js', function () {
     it('prompts the user to include a schedule and message', function () {
       const msg = makeMsg(['pager trigger foo', 'pager', undefined, 'foo']);
       robot.getHandler(regex)(msg);
-      expect(msg.reply).to.have.been.calledWithMatch(/Please include a user or schedule/);
+      assertCalledWithMatch(msg.reply, /Please include a user or schedule/);
     });
   });
 
@@ -470,7 +473,7 @@ describe('pager-me.js', function () {
         ['pager override Primary delete OVR1', 'pager', undefined, 'override', 'Primary', undefined, undefined, 'Primary', 'delete', 'OVR1']
       );
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWith(':boom:');
+      assert.equal(msg.send.calledWith(':boom:'), true);
     });
 
     it('reports failure when delete returns false', function () {
@@ -483,7 +486,7 @@ describe('pager-me.js', function () {
         ['pager override Primary delete OVR1', 'pager', undefined, 'override', 'Primary', undefined, undefined, 'Primary', 'delete', 'OVR1']
       );
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWith('Something went weird.');
+      assert.equal(msg.send.calledWith('Something went weird.'), true);
     });
 
     it('says could not find any schedules when none match', function () {
@@ -495,7 +498,7 @@ describe('pager-me.js', function () {
         ['pager override Primary delete OVR1', 'pager', undefined, 'override', 'Primary', undefined, undefined, 'Primary', 'delete', 'OVR1']
       );
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWithMatch(/couldn't find any schedules/);
+      assertCalledWithMatch(msg.send, /couldn't find any schedules/);
     });
   });
 
@@ -503,7 +506,7 @@ describe('pager-me.js', function () {
   describe("who's on call", function () {
     const regex = /who(?:’s|'s|s| is|se)? (?:on call|oncall|on-call)(?:\?)?(?: (?:for )?((["'])([^]*?)\2|(.*?))(?:\?|$))?$/i;
 
-    it('lists who is on call for each schedule', function (done) {
+    it('lists who is on call for each schedule', async function () {
       pagerdutyStub.getSchedules.callsFake(function (queryOrCb, cb) {
         if (typeof queryOrCb === 'function') cb = queryOrCb;
         cb(null, [{ id: 'S1', name: 'Primary', html_url: 'https://pd.test/S1' }]);
@@ -518,10 +521,8 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['whos on call', undefined, undefined, undefined, undefined]);
       robot.getHandler(regex)(msg);
-      setImmediate(function () {
-        expect(msg.send).to.have.been.calledWithMatch(/Alice/);
-        done();
-      });
+      await new Promise((resolve) => setImmediate(resolve));
+      assertCalledWithMatch(msg.send, /Alice/);
     });
 
     it('says No schedules found when none exist', function () {
@@ -531,7 +532,7 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['whos on call', undefined, undefined, undefined, undefined]);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWith('No schedules found!');
+      assert.equal(msg.send.calledWith('No schedules found!'), true);
     });
   });
 
@@ -539,7 +540,7 @@ describe('pager-me.js', function () {
   describe('am i on call', function () {
     const regex = /am i on (call|oncall|on-call)/i;
 
-    it('confirms when the caller is on call for a schedule', function (done) {
+    it('confirms when the caller is on call for a schedule', async function () {
       pagerdutyStub.getSchedules.callsFake(function (cb) {
         cb(null, [{ id: 'S1', name: 'Primary', html_url: 'https://pd.test/S1' }]);
       });
@@ -549,15 +550,11 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['am i on call', 'call']);
       robot.getHandler(regex)(msg);
-      setImmediate(function () {
-        setImmediate(function () {
-          expect(msg.send).to.have.been.calledWithMatch(/Yes, you are on call/);
-          done();
-        });
-      });
+      await new Promise((resolve) => setImmediate(() => setImmediate(resolve)));
+      assertCalledWithMatch(msg.send, /Yes, you are on call/);
     });
 
-    it('says no when someone else is on call', function (done) {
+    it('says no when someone else is on call', async function () {
       pagerdutyStub.getSchedules.callsFake(function (cb) {
         cb(null, [{ id: 'S1', name: 'Primary', html_url: 'https://pd.test/S1' }]);
       });
@@ -571,12 +568,8 @@ describe('pager-me.js', function () {
       });
       const msg = makeMsg(['am i on call', 'call']);
       robot.getHandler(regex)(msg);
-      setImmediate(function () {
-        setImmediate(function () {
-          expect(msg.send).to.have.been.calledWithMatch(/NOT on call/);
-          done();
-        });
-      });
+      await new Promise((resolve) => setImmediate(() => setImmediate(resolve)));
+      assertCalledWithMatch(msg.send, /NOT on call/);
     });
   });
 
@@ -591,7 +584,7 @@ describe('pager-me.js', function () {
       require('../src/pager-me')(robot);
       const msg = makeMsg(['pager default trigger help', 'pager', undefined, 'help']);
       robot.getHandler(regex)(msg);
-      expect(msg.send).to.have.been.calledWithMatch(/No default schedule configured/);
+      assertCalledWithMatch(msg.send, /No default schedule configured/);
     });
   });
 });

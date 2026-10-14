@@ -40,7 +40,6 @@ module.exports = [
       sourceType: 'commonjs',
       globals: {
         ...globals.node,
-        ...globals.mocha,
       },
     },
     rules: {
@@ -49,7 +48,7 @@ module.exports = [
       'no-console': 'off',
       'eqeqeq': ['error', 'always', { null: 'ignore' }],
       'no-eval': 'error',
-      'no-unused-expressions': ['off'], // chai `expect(x).to.be.true` triggers this
+      'no-unused-expressions': 'error',
       'prefer-const': ['error', { destructuring: 'all' }],
       'no-var': 'error',
     },

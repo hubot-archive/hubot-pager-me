@@ -26,15 +26,12 @@
     "moment-timezone": "^0.6.1"
   },
   "devDependencies": {
-    "chai": "^6.3.0",
     "eslint": "^10.12.0",
     "globals": "^17.13.0",
     "husky": "^9.1.7",
-    "mocha": "^11.7.5",
     "nyc": "^18.0.0",
     "prettier": "^3.9.10",
-    "sinon": "^21.0.3",
-    "sinon-chai": "^4.0.1"
+    "sinon": "^21.0.3"
   },
   "main": "index.js",
   "types": "src/index.d.ts",
@@ -44,8 +41,8 @@
     ]
   },
   "scripts": {
-    "test": "mocha \"test/**/*-test.js\" --reporter spec --exit",
-    "test-with-coverage": "nyc --reporter=text mocha \"test/**/*-test.js\" --reporter spec --exit",
+    "test": "node --test test/pager-me-test.js test/pagerduty-adapter-integration-test.js test/pagerduty-adapter-unit-test.js test/pagerduty-api-fixtures-test.js test/pagerduty-command-regex-test.js",
+    "test-with-coverage": "nyc --reporter=text node --test test/pager-me-test.js test/pagerduty-adapter-integration-test.js test/pagerduty-adapter-unit-test.js test/pagerduty-api-fixtures-test.js test/pagerduty-command-regex-test.js",
     "lint": "eslint src/**/*.js index.js test/**/*.js",
     "lint:fix": "eslint --fix src/**/*.js index.js test/**/*.js",
     "prepare": "husky",
